@@ -9,6 +9,7 @@ import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
+import 'package:trendline/ui/progress/energy_card.dart';
 import 'package:trendline/ui/progress/trend_chart.dart';
 import 'package:trendline/ui/progress/weigh_in_sheet.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
@@ -118,6 +119,8 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
         ),
         children: [
           _Summary(trend: trend, unit: _unit),
+          const SizedBox(height: Space.md),
+          EnergyCard(unit: _unit),
           const SizedBox(height: Space.lg),
           SegmentedButton<_Range>(
             segments: [

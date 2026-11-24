@@ -1,12 +1,17 @@
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/energy/energy_repository.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
+import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
+import 'package:trendline/domain/adaptive_tdee.dart';
+import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/units.dart';
@@ -138,6 +143,26 @@ class FakeFoodRepository implements FoodRepository {
 
 class FakeFoodLogRepository implements FoodLogRepository {
   final items = <FoodLogEntry>[];
+
+  /// Extra per-day totals, for tests that need weeks of intake.
+  final dailyKcal = <DateTime, double>{};
+
+  @override
+  Future<Map<DateTime, double>> fetchDailyKcal(
+    DateTime from,
+    DateTime to,
+  ) async {
+    final totals = <DateTime, double>{
+      for (final e in dailyKcal.entries)
+        if (!e.key.isBefore(from) && !e.key.isAfter(to)) e.key: e.value,
+    };
+    for (final e in items) {
+      if (e.eatenOn.isBefore(from) || e.eatenOn.isAfter(to)) continue;
+      totals[e.eatenOn] = (totals[e.eatenOn] ?? 0) + e.nutrition.kcal;
+    }
+    return totals;
+  }
+
   bool failUpdates = false;
   int _next = 0;
 
@@ -242,6 +267,55 @@ class FakeHealthSource implements HealthSource {
     reads.add((start: start, end: end));
     if (readError case final e?) throw e;
     return readings;
+  }
+}
+
+class FakeGoalRepository implements GoalRepository {
+  new({this.goal});
+
+  Goal? goal;
+  int saves = 0;
+
+  @override
+  Future<Goal?> fetchActive() async => goal;
+
+  @override
+  Future<Goal> save(Goal goal) async {
+    saves++;
+    return this.goal = goal;
+  }
+}
+
+class FakeEnergyRepository implements EnergyRepository {
+  final completeDays = <DateTime>{};
+  final estimates = <EnergyEstimate>[];
+
+  @override
+  Future<Set<DateTime>> fetchCompleteDays(DateTime from, DateTime to) async => {
+    for (final d in completeDays)
+      if (!d.isBefore(dayOf(from)) && !d.isAfter(dayOf(to))) d,
+  };
+
+  @override
+  Future<void> setComplete(DateTime day, {required bool complete}) async {
+    if (complete) {
+      completeDays.add(dayOf(day));
+    } else {
+      completeDays.remove(dayOf(day));
+    }
+  }
+
+  @override
+  Future<EnergyEstimate?> fetchLatest() async => estimates.isEmpty
+      ? null
+      : (estimates.toList()
+              ..sort((a, b) => a.computedOn.compareTo(b.computedOn)))
+            .last;
+
+  @override
+  Future<void> save(EnergyEstimate estimate) async {
+    if (estimates.any((e) => e.computedOn == estimate.computedOn)) return;
+    estimates.add(estimate);
   }
 }
 

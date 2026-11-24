@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/energy/day_complete_notifier.dart';
 import 'package:trendline/data/food_logs/food_log_notifier.dart';
+import 'package:trendline/data/goals/targets_provider.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
@@ -13,8 +16,8 @@ import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
 
-/// A day's food log, by meal. Targets and the plan arrive in later
-/// milestones; for now this is logging and totals.
+/// A day's food log, by meal, against the day's targets. The plan
+/// arrives in a later milestone.
 class TodayScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -98,7 +101,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         ),
         AsyncValue(:final value?) => RefreshIndicator(
           onRefresh: () => ref.refresh(foodLogProvider(_day).future),
-          child: _DayLog(entries: value, onAdd: _add, onEdit: _edit),
+          child: _DayLog(
+            day: _day,
+            entries: value,
+            targets: ref.watch(targetsProvider).value?.targets,
+            onAdd: _add,
+            onEdit: _edit,
+          ),
         ),
         _ => const CenteredProgress(),
       },
@@ -107,9 +116,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 }
 
 class _DayLog extends StatelessWidget {
-  const new({required this.entries, required this.onAdd, required this.onEdit});
+  const new({
+    required this.day,
+    required this.entries,
+    required this.targets,
+    required this.onAdd,
+    required this.onEdit,
+  });
 
+  final DateTime day;
   final List<FoodLogEntry> entries;
+  final DailyTargets? targets;
   final ValueChanged<MealSlot> onAdd;
   final ValueChanged<FoodLogEntry> onEdit;
 
@@ -124,7 +141,7 @@ class _DayLog extends StatelessWidget {
         Space.xxl,
       ),
       children: [
-        _Totals(total: total),
+        _Totals(total: total, targets: targets),
         for (final slot in MealSlot.values)
           _SlotSection(
             slot: slot,
@@ -135,40 +152,229 @@ class _DayLog extends StatelessWidget {
             onAdd: () => onAdd(slot),
             onEdit: onEdit,
           ),
+        const SizedBox(height: Space.xl),
+        _DayComplete(day: day),
       ],
     );
   }
 }
 
 class _Totals extends StatelessWidget {
-  const new({required this.total});
+  const new({required this.total, required this.targets});
 
   final Nutrition total;
+
+  /// Null until there's a goal and a weigh-in.
+  final DailyTargets? targets;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final t = targets;
+
+    if (t == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(Space.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Eaten', style: text.bodySmall),
+              const SizedBox(height: Space.xs),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    formatKcal(total.kcal),
+                    style: text.displaySmall?.tabular,
+                  ),
+                  const SizedBox(width: Space.sm),
+                  Text('kcal', style: text.bodySmall),
+                ],
+              ),
+              const SizedBox(height: Space.md),
+              MacroLine(total),
+              const SizedBox(height: Space.md),
+              Text(
+                'Add a weigh-in to see your targets.',
+                style: text.bodySmall?.copyWith(color: colors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final left = t.kcal - total.kcal;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Space.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Eaten', style: text.bodySmall),
-            const SizedBox(height: Space.xs),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(formatKcal(total.kcal), style: text.displaySmall?.tabular),
-                const SizedBox(width: Space.sm),
-                Text('kcal', style: text.bodySmall),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        left >= 0 ? 'Left today' : 'Over today',
+                        style: text.bodySmall,
+                      ),
+                      const SizedBox(height: Space.xs),
+                      Text(
+                        formatKcal(left.abs()),
+                        style: text.displaySmall?.tabular.copyWith(
+                          color: left >= 0
+                              ? colors.textPrimary
+                              : colors.warning,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${formatKcal(total.kcal)} / ${formatKcal(t.kcal)} kcal',
+                  style: text.bodySmall?.tabular.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: Space.md),
-            MacroLine(total),
+            const SizedBox(height: Space.sm),
+            _Bar(value: total.kcal, target: t.kcal, color: colors.accent),
+            const SizedBox(height: Space.lg),
+            _MacroBar(
+              label: 'Protein',
+              value: total.proteinG,
+              target: t.proteinG,
+              color: colors.protein,
+              atLeast: true,
+            ),
+            _MacroBar(
+              label: 'Carbs',
+              value: total.carbsG,
+              target: t.carbsG,
+              color: colors.carbs,
+            ),
+            _MacroBar(
+              label: 'Fat',
+              value: total.fatG,
+              target: t.fatG,
+              color: colors.fat,
+            ),
+            _MacroBar(
+              label: 'Fibre',
+              value: total.fibreG,
+              target: t.fibreG,
+              color: colors.fibre,
+              atLeast: true,
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Bar extends StatelessWidget {
+  const new({required this.value, required this.target, required this.color});
+
+  final double value;
+  final double target;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(3),
+    child: LinearProgressIndicator(
+      value: target <= 0 ? 0 : (value / target).clamp(0, 1),
+      minHeight: 6,
+      color: color,
+      backgroundColor: context.colors.surfaceMuted,
+    ),
+  );
+}
+
+class _MacroBar extends StatelessWidget {
+  const new({
+    required this.label,
+    required this.value,
+    required this.target,
+    required this.color,
+    this.atLeast = false,
+  });
+
+  final String label;
+  final double value;
+  final double target;
+  final Color color;
+
+  /// A minimum to reach (protein, fibre) rather than a budget.
+  final bool atLeast;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final goal = atLeast
+        ? 'at least ${target.round()} g'
+        : '${target.round()} g';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(label, style: text.labelMedium)),
+              Text(
+                '${value.round()} / $goal',
+                style: text.labelMedium?.tabular.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Space.xs),
+          _Bar(value: value, target: target, color: color),
+        ],
+      ),
+    );
+  }
+}
+
+/// Marks the day as fully logged. Only complete days teach the app the
+/// user's real energy use.
+class _DayComplete extends ConsumerWidget {
+  const new({required this.day});
+
+  final DateTime day;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = dayCompleteProvider(dayOf(day));
+    final complete = ref.watch(provider).value ?? false;
+    final text = Theme.of(context).textTheme;
+    return Card(
+      child: SwitchListTile(
+        value: complete,
+        title: const Text('Everything eaten is logged'),
+        subtitle: Text(
+          'Only fully logged days are used to learn your real calorie burn.',
+          style: text.bodySmall,
+        ),
+        onChanged: (v) async {
+          try {
+            await ref.read(provider.notifier).set(complete: v);
+          } on Object catch (e) {
+            if (context.mounted) showErrorSnack(context, e);
+          }
+        },
       ),
     );
   }

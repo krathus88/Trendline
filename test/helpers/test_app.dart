@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/app.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/profile.dart';
 
 import 'fake_auth_repository.dart';
@@ -24,6 +25,8 @@ class TestBackend {
   final foodLogs = FakeFoodLogRepository();
   final scanner = FakeBarcodeScanner();
   final health = FakeHealthSource();
+  final goals = FakeGoalRepository(goal: Goal.maintenance);
+  final energy = FakeEnergyRepository();
 
   /// Open Food Facts responses. Defaults to "not found" for everything.
   Future<http.Response> Function(http.Request) off = (_) async =>
@@ -37,6 +40,8 @@ class TestBackend {
     foodLogRepositoryProvider.overrideWithValue(foodLogs),
     barcodeScannerProvider.overrideWithValue(scanner),
     healthSourceProvider.overrideWithValue(health),
+    goalRepositoryProvider.overrideWithValue(goals),
+    energyRepositoryProvider.overrideWithValue(energy),
     offClientProvider.overrideWith((ref) => fakeOffClient((r) => off(r))),
   ];
 

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/units.dart';
@@ -338,6 +339,86 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
       expect(find.text('Health Connect'), findsNothing);
+    });
+  });
+  group('Goals and targets', () {
+    Future<TestBackend> withWeighIn(WidgetTester tester, {Goal? goal}) async {
+      final backend = TestBackend(profile: testProfile);
+      backend.goals.goal = goal;
+      await backend.weighIns.add(
+        measuredAt: DateTime.now().subtract(const Duration(hours: 1)),
+        weightKg: 90,
+      );
+      await backend.pump(tester);
+      return backend;
+    }
+
+    testWidgets('asks for a goal, and says when a pace is capped', (
+      tester,
+    ) async {
+      final backend = await withWeighIn(tester);
+      expect(find.text('Your goal'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Target weight'),
+        '80',
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'Pace'), '2');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('capped at'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.pumpAndSettle();
+      expect(backend.goals.saves, 1);
+      expect(backend.goals.goal!.targetWeightKg, 80);
+      expect(find.byType(HomeShell), findsOneWidget);
+    });
+
+    testWidgets('a percent pace above 1% cannot be saved', (tester) async {
+      await withWeighIn(tester);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Target weight'),
+        '80',
+      );
+      await tester.tap(find.text('% a week'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Pace'), '1.5');
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+            .onPressed,
+        isNull,
+      );
+      expect(find.text('Enter a pace up to 1% a week.'), findsOneWidget);
+    });
+
+    testWidgets('Today shows what is left and marks the day complete', (
+      tester,
+    ) async {
+      final backend = await withWeighIn(tester, goal: Goal.maintenance);
+      expect(find.text('Left today'), findsOneWidget);
+      expect(find.text('Protein'), findsOneWidget);
+
+      await tester.tap(find.text('Everything eaten is logged'));
+      await tester.pumpAndSettle();
+      expect(backend.energy.completeDays, {dayOf(DateTime.now())});
+    });
+
+    testWidgets('Progress explains the estimate and the goal', (tester) async {
+      await withWeighIn(
+        tester,
+        goal: const Goal(
+          kind: GoalKind.targetAndPace,
+          targetWeightKg: 85,
+          paceValue: 0.5,
+        ),
+      );
+      await tester.tap(find.text('Progress'));
+      await tester.pumpAndSettle();
+      expect(find.text('Daily burn estimate'), findsOneWidget);
+      expect(find.textContaining('From a formula for now.'), findsOneWidget);
+      expect(find.textContaining('losing 0.5 kg/week'), findsOneWidget);
     });
   });
 }

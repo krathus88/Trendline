@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:trendline/app_info.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
+import 'package:trendline/data/energy/energy_repository.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
+import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
@@ -36,6 +38,14 @@ final foodRepositoryProvider = Provider<FoodRepository>(
 
 final foodLogRepositoryProvider = Provider<FoodLogRepository>(
   (ref) => SupabaseFoodLogRepository(ref.watch(supabaseClientProvider)),
+);
+
+final goalRepositoryProvider = Provider<GoalRepository>(
+  (ref) => SupabaseGoalRepository(ref.watch(supabaseClientProvider)),
+);
+
+final energyRepositoryProvider = Provider<EnergyRepository>(
+  (ref) => SupabaseEnergyRepository(ref.watch(supabaseClientProvider)),
 );
 
 final offClientProvider = Provider<OffClient>((ref) {

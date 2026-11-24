@@ -1,6 +1,7 @@
-﻿import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/units.dart';
 
 final NumberFormat _whole = NumberFormat('#,##0');
 final NumberFormat _oneDecimal = NumberFormat('#,##0.#');
@@ -25,6 +26,20 @@ String formatDayLabel(DateTime day, {DateTime? now}) {
 
 /// "23 Nov"
 String formatShortDate(DateTime day) => DateFormat('d MMM').format(day);
+
+/// "14 Apr 2027"
+String formatLongDate(DateTime day) => DateFormat('d MMM y').format(day);
+
+/// A weekly pace in the user's unit: "0.5 kg/week" or "1.1 lb/week" (stones
+/// users see pounds).
+String formatPace(double kgPerWeek, WeightUnit unit) {
+  if (unit == WeightUnit.kg) {
+    return '${_twoDecimals.format(kgPerWeek)} kg/week';
+  }
+  return '${_twoDecimals.format(kgToLb(kgPerWeek))} lb/week';
+}
+
+final NumberFormat _twoDecimals = NumberFormat('0.0#');
 
 /// "23 Nov, 07:41"
 String formatDateTime(DateTime moment) =>

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/app_info.dart';
+import 'package:trendline/data/goals/goal_notifier.dart';
+import 'package:trendline/data/goals/targets_provider.dart';
 import 'package:trendline/data/health/health_sync_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
@@ -8,7 +10,9 @@ import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
+import 'package:trendline/ui/goals/goal_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
+import 'package:trendline/ui/progress/energy_card.dart';
 import 'package:trendline/ui/settings/health_connect_sheet.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
@@ -20,6 +24,8 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider).value;
     final health = ref.watch(healthSyncProvider).value;
+    final goal = ref.watch(goalProvider).value;
+    final targets = ref.watch(targetsProvider).value;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -40,6 +46,21 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          ListTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: const Text('Goal'),
+            subtitle: Text(
+              targets != null
+                  ? goalSummary(targets, profile?.weightUnit ?? WeightUnit.kg)
+                  : 'Set your goal',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => GoalScreen(existing: goal),
+              ),
+            ),
+          ),
           if (health != null &&
               health.availability != HealthAvailability.unavailable)
             ListTile(

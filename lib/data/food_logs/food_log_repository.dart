@@ -20,6 +20,10 @@ abstract interface class FoodLogRepository {
   Future<FoodLogEntry> updateGrams(FoodLogEntry entry, double grams);
 
   Future<void> delete(String id);
+
+  /// Total kcal logged on each day from [from] to [to], inclusive. Days with
+  /// nothing logged are absent.
+  Future<Map<DateTime, double>> fetchDailyKcal(DateTime from, DateTime to);
 }
 
 class SupabaseFoodLogRepository implements FoodLogRepository {
@@ -39,6 +43,24 @@ class SupabaseFoodLogRepository implements FoodLogRepository {
         .eq('eaten_on', writeDate(day))
         .order('eaten_at');
     return rows.map(foodLogFromRow).toList();
+  }
+
+  @override
+  Future<Map<DateTime, double>> fetchDailyKcal(
+    DateTime from,
+    DateTime to,
+  ) async {
+    final rows = await _db
+        .from('food_logs')
+        .select('eaten_on, kcal')
+        .gte('eaten_on', writeDate(from))
+        .lte('eaten_on', writeDate(to));
+    final totals = <DateTime, double>{};
+    for (final r in rows) {
+      final day = readDate(r['eaten_on']);
+      totals[day] = (totals[day] ?? 0) + readDouble(r['kcal']);
+    }
+    return totals;
   }
 
   @override
