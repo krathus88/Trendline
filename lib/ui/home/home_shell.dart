@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/health/health_sync_notifier.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/food/food_screen.dart';
+import 'package:trendline/ui/plan/plan_screen.dart';
 import 'package:trendline/ui/progress/progress_screen.dart';
 import 'package:trendline/ui/settings/settings_screen.dart';
 import 'package:trendline/ui/today/today_screen.dart';
@@ -39,6 +40,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   static const _tabs = <Widget>[
     TodayScreen(),
+    PlanScreen(),
     FoodScreen(),
     ProgressScreen(),
     SettingsScreen(),
@@ -70,6 +72,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             icon: Icon(Icons.today_outlined),
             selectedIcon: Icon(Icons.today),
             label: 'Today',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_view_week_outlined),
+            selectedIcon: Icon(Icons.calendar_view_week),
+            label: 'Plan',
           ),
           NavigationDestination(
             icon: Icon(Icons.restaurant_outlined),

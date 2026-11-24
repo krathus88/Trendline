@@ -11,6 +11,9 @@ abstract interface class RecipeRepository {
   Future<Recipe> save(Recipe recipe);
 
   Future<void> delete(String id);
+
+  /// Shows or hides a recipe in the Recipes list.
+  Future<void> setListed(String id, {required bool listed});
 }
 
 class SupabaseRecipeRepository implements RecipeRepository {
@@ -20,7 +23,7 @@ class SupabaseRecipeRepository implements RecipeRepository {
 
   static const _columns =
       'id, name, method, portions, cooked_weight_g, fridge_days, freezable, '
-      'origin, source_id, source_version, estimated_cooked_weight_g, '
+      'origin, source_id, source_version, estimated_cooked_weight_g, listed, '
       'recipe_ingredients(food_id, raw_grams, position)';
 
   @override
@@ -55,6 +58,11 @@ class SupabaseRecipeRepository implements RecipeRepository {
     // Log entries keep their snapshot; their recipe_id is set to null.
     await _db.from('recipes').delete().eq('id', id);
   }
+
+  @override
+  Future<void> setListed(String id, {required bool listed}) async {
+    await _db.from('recipes').update({'listed': listed}).eq('id', id);
+  }
 }
 
 Recipe recipeFromRow(Map<String, dynamic> row) {
@@ -74,6 +82,7 @@ Recipe recipeFromRow(Map<String, dynamic> row) {
     sourceId: row['source_id'] as String?,
     sourceVersion: row['source_version'] as int?,
     estimatedCookedWeightG: readDoubleOrNull(row['estimated_cooked_weight_g']),
+    listed: row['listed'] as bool? ?? true,
     ingredients: [
       for (final i in items)
         RecipeIngredient(

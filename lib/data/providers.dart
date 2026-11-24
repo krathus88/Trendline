@@ -9,6 +9,7 @@ import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/meal_rules/meal_rule_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
+import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/data/preferences/food_preferences_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
@@ -59,6 +60,10 @@ final scheduleRepositoryProvider = Provider<ScheduleRepository>(
 
 final mealRuleRepositoryProvider = Provider<MealRuleRepository>(
   (ref) => SupabaseMealRuleRepository(ref.watch(supabaseClientProvider)),
+);
+
+final mealPlanRepositoryProvider = Provider<MealPlanRepository>(
+  (ref) => SupabaseMealPlanRepository(ref.watch(supabaseClientProvider)),
 );
 
 final foodLogRepositoryProvider = Provider<FoodLogRepository>(

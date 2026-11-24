@@ -1,0 +1,153 @@
+import 'package:meta/meta.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:trendline/data/supabase/row_parsing.dart';
+import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/planner.dart';
+
+/// One saved plan item: a food (grams) or a recipe (portions) of the
+/// user's own.
+@immutable
+class SavedPlanItem {
+  const new({
+    required this.day,
+    required this.slot,
+    required this.amount,
+    this.foodId,
+    this.recipeId,
+    this.amountMin,
+    this.amountMax,
+    this.locked = false,
+    this.batch,
+    this.mealRuleId,
+  });
+
+  final DateTime day;
+  final MealSlot slot;
+  final String? foodId;
+  final String? recipeId;
+  final double amount;
+  final double? amountMin;
+  final double? amountMax;
+  final bool locked;
+  final int? batch;
+  final String? mealRuleId;
+}
+
+/// A saved week's plan.
+@immutable
+class SavedPlan {
+  const new({
+    required this.weekStart,
+    required this.targets,
+    required this.notes,
+    required this.items,
+  });
+
+  final DateTime weekStart;
+  final PlanTargets targets;
+  final List<String> notes;
+  final List<SavedPlanItem> items;
+}
+
+abstract interface class MealPlanRepository {
+  /// The plan for the week starting [weekStart] (a Monday), or null.
+  Future<SavedPlan?> fetchWeek(DateTime weekStart);
+
+  /// Saves the week's plan, replacing any already saved for that week.
+  Future<void> save(SavedPlan plan);
+}
+
+class SupabaseMealPlanRepository implements MealPlanRepository {
+  const new(this._db);
+
+  final SupabaseClient _db;
+
+  static const _columns =
+      'week_start, kcal_target, protein_target_g, carbs_target_g, '
+      'fat_target_g, fibre_target_g, notes, plan_items(day, slot, food_id, '
+      'recipe_id, amount, amount_min, amount_max, locked, batch, '
+      'meal_rule_id)';
+
+  @override
+  Future<SavedPlan?> fetchWeek(DateTime weekStart) async {
+    final row = await _db
+        .from('meal_plans')
+        .select(_columns)
+        .eq('week_start', writeDate(weekStart))
+        .maybeSingle();
+    return row == null ? null : savedPlanFromRow(row);
+  }
+
+  @override
+  Future<void> save(SavedPlan plan) async {
+    // One database function replaces the week's plan and its items in a
+    // single transaction.
+    await _db.rpc<String>('save_meal_plan', params: savePlanParams(plan));
+  }
+}
+
+SavedPlan savedPlanFromRow(Map<String, dynamic> row) => SavedPlan(
+  weekStart: readDate(row['week_start']),
+  targets: PlanTargets(
+    kcal: readDouble(row['kcal_target']),
+    proteinG: readDouble(row['protein_target_g']),
+    carbsG: readDouble(row['carbs_target_g']),
+    fatG: readDouble(row['fat_target_g']),
+    fibreG: readDouble(row['fibre_target_g']),
+  ),
+  notes: [
+    for (final n in (row['notes'] as List? ?? const []))
+      if (n is String) n,
+  ],
+  items: [
+    for (final i in (row['plan_items'] as List? ?? const []))
+      ?_itemFromRow(i as Map<String, dynamic>),
+  ],
+);
+
+SavedPlanItem? _itemFromRow(Map<String, dynamic> row) {
+  final slot = MealSlot.values.asNameMap()[row['slot']];
+  final amount = readDoubleOrNull(row['amount']);
+  if (slot == null || amount == null) return null;
+  return SavedPlanItem(
+    day: readDate(row['day']),
+    slot: slot,
+    foodId: row['food_id'] as String?,
+    recipeId: row['recipe_id'] as String?,
+    amount: amount,
+    amountMin: readDoubleOrNull(row['amount_min']),
+    amountMax: readDoubleOrNull(row['amount_max']),
+    locked: row['locked'] as bool? ?? false,
+    batch: row['batch'] as int?,
+    mealRuleId: row['meal_rule_id'] as String?,
+  );
+}
+
+Map<String, dynamic> savePlanParams(SavedPlan plan) {
+  double r1(double v) => (v * 10).round() / 10;
+  double r2(double v) => (v * 100).round() / 100;
+  return {
+    'week_start': writeDate(plan.weekStart),
+    'kcal_target': r1(plan.targets.kcal),
+    'protein_target_g': r1(plan.targets.proteinG),
+    'carbs_target_g': r1(plan.targets.carbsG),
+    'fat_target_g': r1(plan.targets.fatG),
+    'fibre_target_g': r1(plan.targets.fibreG),
+    'notes': plan.notes,
+    'items': [
+      for (final i in plan.items)
+        {
+          'day': writeDate(i.day),
+          'slot': i.slot.name,
+          'food_id': i.foodId,
+          'recipe_id': i.recipeId,
+          'amount': r2(i.amount),
+          'amount_min': i.amountMin == null ? null : r2(i.amountMin!),
+          'amount_max': i.amountMax == null ? null : r2(i.amountMax!),
+          'locked': i.locked,
+          'batch': i.batch,
+          'meal_rule_id': i.mealRuleId,
+        },
+    ],
+  };
+}

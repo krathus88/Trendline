@@ -102,6 +102,15 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
     );
   }
 
+  /// Shows or hides [id] in the Recipes list ("keep this one").
+  Future<void> setListed(String id, {required bool listed}) async {
+    await ref.read(recipeRepositoryProvider).setListed(id, listed: listed);
+    state = AsyncData([
+      for (final r in state.value ?? const <Recipe>[])
+        if (r.id == id) r.withListed(listed) else r,
+    ]);
+  }
+
   /// Removes the recipe straight away; puts it back if the delete fails.
   /// Past log entries keep their own copy of its details.
   Future<void> delete(String id) async {

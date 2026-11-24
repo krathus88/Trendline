@@ -42,6 +42,7 @@ class Recipe {
     this.sourceId,
     this.sourceVersion,
     this.estimatedCookedWeightG,
+    this.listed = true,
   });
 
   static const int maxPortions = 50;
@@ -70,6 +71,26 @@ class Recipe {
   /// What a planner-made dish is expected to weigh after cooking. Guidance
   /// only: portions are logged against the measured [cookedWeightG].
   final double? estimatedCookedWeightG;
+
+  /// Shown in the Recipes list. Dishes the planner copied in from templates
+  /// aren't, until the user keeps them.
+  final bool listed;
+
+  Recipe withListed(bool listed) => Recipe(
+    id: id,
+    name: name,
+    ingredients: ingredients,
+    portions: portions,
+    cookedWeightG: cookedWeightG,
+    fridgeDays: fridgeDays,
+    freezable: freezable,
+    method: method,
+    origin: origin,
+    sourceId: sourceId,
+    sourceVersion: sourceVersion,
+    estimatedCookedWeightG: estimatedCookedWeightG,
+    listed: listed,
+  );
 
   double get rawWeightG => ingredients.fold(0, (sum, i) => sum + i.rawGrams);
 

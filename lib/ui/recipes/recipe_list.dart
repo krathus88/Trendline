@@ -71,16 +71,17 @@ class RecipeList extends ConsumerWidget {
             padding: EdgeInsets.all(Space.xl),
             child: CenteredProgress(),
           ),
-          _ when (recipes.value ?? const []).isEmpty => const EmptyState(
-            title: 'No recipes yet',
-            message:
-                'Add a dish you cook in batches. Weigh it after cooking to '
-                'log portions by weight.',
-          ),
+          _ when !(recipes.value ?? const []).any((r) => r.listed) =>
+            const EmptyState(
+              title: 'No recipes yet',
+              message:
+                  'Add a dish you cook in batches. Weigh it after cooking to '
+                  'log portions by weight.',
+            ),
           _ => Column(
             children: [
               for (final r in recipes.value!)
-                RecipeTile(recipe: r, onTap: () => open(r)),
+                if (r.listed) RecipeTile(recipe: r, onTap: () => open(r)),
             ],
           ),
         },

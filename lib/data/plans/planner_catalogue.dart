@@ -1,0 +1,249 @@
+import 'dart:math';
+
+import 'package:meta/meta.dart';
+import 'package:trendline/domain/dish_templates.dart';
+import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/food_preferences.dart';
+import 'package:trendline/domain/meal_rules.dart';
+import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/planner.dart';
+import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/recipe_library.dart';
+
+/// Everything the planner draws on, already loaded.
+@immutable
+class PlannerSources {
+  const new({
+    required this.recipes,
+    required this.foods,
+    required this.library,
+    required this.libraryFoods,
+    required this.templates,
+    required this.templateFoods,
+    required this.preferences,
+    required this.rules,
+  });
+
+  final List<Recipe> recipes;
+  final Map<String, Food> foods;
+  final List<LibraryRecipe> library;
+  final Map<FoodKey, FoodDraft> libraryFoods;
+  final DishTemplates? templates;
+  final Map<FoodKey, FoodDraft> templateFoods;
+  final FoodPreferences preferences;
+  final List<MealRule> rules;
+}
+
+/// A template dish the planner may use, with its expected cooked weight.
+typedef GeneratedOption = ({GeneratedDish dish, double? expectedCookedG});
+
+/// The planner's candidates and rules, plus what's needed to save the
+/// library and template dishes it picks.
+@immutable
+class PlannerCatalogue {
+  const new({
+    required this.dishes,
+    required this.rules,
+    required this.library,
+    required this.generated,
+  });
+
+  final List<DishCandidate> dishes;
+  final List<PlannerRule> rules;
+
+  /// Library recipes by candidate key.
+  final Map<String, LibraryRecipe> library;
+
+  /// Template dishes by candidate key.
+  final Map<String, GeneratedOption> generated;
+}
+
+/// Turns [s] into planner candidates:
+///
+/// * the user's listed recipes (in the meals of the library recipe or
+///   template they came from; lunch and dinner for their own);
+/// * library recipes they haven't copied yet;
+/// * [variants] dishes per template and flavour, made under their
+///   preferences.
+///
+/// Anything with a "never" food or cuisine is left out; likes and dislikes
+/// set each dish's preference weight.
+PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
+  final prefs = s.preferences;
+  final dishes = <DishCandidate>[];
+  final library = <String, LibraryRecipe>{};
+  final generated = <String, GeneratedOption>{};
+
+  // The user's foods copied from basic foods, so rules about them can count
+  // library and template dishes that use the same basic food.
+  final userFoodByBasic = <(String, String), String>{
+    for (final f in s.foods.values)
+      if (f.referenceCode != null) (f.referenceCode!, f.name): f.id,
+  };
+  Set<String> containsBasic(
+    Iterable<LibraryIngredient> ingredients,
+    Map<FoodKey, FoodDraft> drafts,
+  ) => {
+    for (final i in ingredients)
+      if (drafts[i.key] case final d?)
+        if (userFoodByBasic[(d.referenceCode ?? '', d.name)] case final id?)
+          'food:$id',
+  };
+
+  double weightOf(Iterable<LibraryIngredient> ingredients, Cuisine? cuisine) {
+    var w = cuisine == null ? 1.0 : preferenceWeight(prefs.cuisines[cuisine]);
+    for (final i in ingredients) {
+      w *= preferenceWeight(prefs.ingredients[i.key]);
+    }
+    return w;
+  }
+
+  Nutrition? perPortionOf(LibraryRecipe r, Map<FoodKey, FoodDraft> drafts) =>
+      libraryRecipeNutrition(r, {
+        for (final e in drafts.entries) e.key: e.value.per100g,
+      })?.perPortion;
+
+  final libraryById = {for (final r in s.library) r.id: r};
+  final templatesById = {
+    for (final t in s.templates?.templates ?? const <DishTemplate>[]) t.id: t,
+  };
+
+  // The user's recipes.
+  for (final r in s.recipes) {
+    if (!r.listed) continue;
+    final n = recipeNutrition(r, s.foods);
+    if (!n.complete || r.ingredients.isEmpty) continue;
+    final meals = switch (r.origin) {
+      RecipeOrigin.library => libraryById[r.sourceId]?.meals,
+      RecipeOrigin.template => templatesById[r.sourceId]?.meals,
+      RecipeOrigin.user => null,
+    };
+    dishes.add(
+      DishCandidate(
+        key: 'recipe:${r.id}',
+        name: r.name,
+        kind: CandidateKind.recipe,
+        meals: meals ?? const {MealSlot.lunch, MealSlot.dinner},
+        perPortion: n.perPortion,
+        maxServingsPerBatch: r.portions,
+        keepsDays: r.fridgeDays,
+        contains: {
+          'recipe:${r.id}',
+          for (final i in r.ingredients) 'food:${i.foodId}',
+        },
+      ),
+    );
+  }
+
+  // Library recipes not already in the user's recipes.
+  final copied = {
+    for (final r in s.recipes)
+      if (r.origin == RecipeOrigin.library) r.sourceId,
+  };
+  for (final r in s.library) {
+    if (copied.contains(r.id)) continue;
+    final weight = weightOf(r.ingredients, r.cuisine);
+    final perPortion = perPortionOf(r, s.libraryFoods);
+    if (weight <= 0 || perPortion == null) continue;
+    final key = 'library:${r.id}';
+    library[key] = r;
+    dishes.add(
+      DishCandidate(
+        key: key,
+        name: r.name,
+        kind: CandidateKind.library,
+        meals: r.meals,
+        perPortion: perPortion,
+        // Library dishes are scaled to the servings they're cooked for.
+        maxServingsPerBatch: 6,
+        keepsDays: r.fridgeDays,
+        cuisine: r.cuisine,
+        preference: weight,
+        contains: containsBasic(r.ingredients, s.libraryFoods),
+      ),
+    );
+  }
+
+  // Dishes made from templates.
+  final templates = s.templates;
+  if (templates != null) {
+    final kcal = {
+      for (final e in s.templateFoods.entries) e.key: e.value.per100g.kcal,
+    };
+    for (final t in templates.templates) {
+      for (final flavour in t.flavourIds) {
+        final names = <String>{};
+        for (var v = 0; v < variants; v++) {
+          final result = generateDish(
+            t,
+            templates.flavours,
+            prefs,
+            Random(Object.hash(t.id, flavour, v)),
+            flavourId: flavour,
+          );
+          if (result is! GeneratedDish || !names.add(result.name)) continue;
+          final recipe = result.toRecipe();
+          final perPortion = perPortionOf(recipe, s.templateFoods);
+          final weight = weightOf(recipe.ingredients, recipe.cuisine);
+          if (perPortion == null || weight <= 0) continue;
+          final key = 'template:${t.id}:$flavour:$v';
+          generated[key] = (
+            dish: result,
+            expectedCookedG: result.expectedCookedWeightG(kcal),
+          );
+          dishes.add(
+            DishCandidate(
+              key: key,
+              name: result.name,
+              kind: CandidateKind.template,
+              meals: t.meals,
+              perPortion: perPortion,
+              maxServingsPerBatch: 6,
+              keepsDays: t.fridgeDays,
+              cuisine: recipe.cuisine,
+              preference: weight,
+              contains: containsBasic(recipe.ingredients, s.templateFoods),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Rules, with what they add per gram or portion.
+  final recipesById = {for (final r in s.recipes) r.id: r};
+  final rules = <PlannerRule>[];
+  for (final rule in s.rules) {
+    if (rule.isRecipe) {
+      final r = recipesById[rule.recipeId];
+      if (r == null) continue;
+      final n = recipeNutrition(r, s.foods);
+      if (!n.complete) continue;
+      rules.add(PlannerRule(rule: rule, name: r.name, perUnit: n.perPortion));
+    } else {
+      final f = s.foods[rule.foodId];
+      if (f == null) continue;
+      rules.add(
+        PlannerRule(rule: rule, name: f.name, perUnit: perGram(f.per100g)),
+      );
+    }
+  }
+
+  return PlannerCatalogue(
+    dishes: dishes,
+    rules: rules,
+    library: library,
+    generated: generated,
+  );
+}
+
+/// Per-100 g values as per gram, unrounded ([Nutrition.forGrams] rounds to
+/// 0.1, which would lose most of a gram's protein).
+Nutrition perGram(Nutrition per100g) => Nutrition(
+  kcal: per100g.kcal / 100,
+  proteinG: per100g.proteinG / 100,
+  carbsG: per100g.carbsG / 100,
+  fatG: per100g.fatG / 100,
+  fibreG: per100g.fibreG / 100,
+  fibreUnknown: per100g.fibreUnknown,
+);

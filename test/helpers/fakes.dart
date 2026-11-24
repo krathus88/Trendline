@@ -8,6 +8,7 @@ import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/meal_rules/meal_rule_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
+import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/data/preferences/food_preferences_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
@@ -185,6 +186,7 @@ class FakeRecipeRepository implements RecipeRepository {
       sourceId: r.sourceId,
       sourceVersion: r.sourceVersion,
       estimatedCookedWeightG: r.estimatedCookedWeightG,
+      listed: r.listed,
     );
     items
       ..removeWhere((x) => x.id == saved.id)
@@ -194,6 +196,23 @@ class FakeRecipeRepository implements RecipeRepository {
 
   @override
   Future<void> delete(String id) async => items.removeWhere((r) => r.id == id);
+
+  @override
+  Future<void> setListed(String id, {required bool listed}) async {
+    final i = items.indexWhere((r) => r.id == id);
+    if (i >= 0) items[i] = items[i].withListed(listed);
+  }
+}
+
+/// Meal plans in memory, by week.
+class FakeMealPlanRepository implements MealPlanRepository {
+  final weeks = <DateTime, SavedPlan>{};
+
+  @override
+  Future<SavedPlan?> fetchWeek(DateTime weekStart) async => weeks[weekStart];
+
+  @override
+  Future<void> save(SavedPlan plan) async => weeks[plan.weekStart] = plan;
 }
 
 /// Day schedules in memory, by weekday.

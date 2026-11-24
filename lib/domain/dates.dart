@@ -16,3 +16,9 @@ int daysBetween(DateTime from, DateTime to) {
   final b = DateTime.utc(to.year, to.month, to.day);
   return b.difference(a).inDays;
 }
+
+/// The Monday of [moment]'s week, at midnight (weeks run Monday to Sunday).
+DateTime weekStartOf(DateTime moment) {
+  final day = dayOf(moment);
+  return addDays(day, 1 - day.weekday);
+}

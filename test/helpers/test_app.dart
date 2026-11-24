@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -5,10 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/app.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
+import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/domain/goals.dart';
+import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/profile.dart';
 
 import 'fake_auth_repository.dart';
@@ -29,6 +33,7 @@ class TestBackend {
   final preferences = FakeFoodPreferencesRepository();
   final schedules = FakeScheduleRepository();
   final rules = FakeMealRuleRepository();
+  final plans = FakeMealPlanRepository();
   final foodLogs = FakeFoodLogRepository();
   final scanner = FakeBarcodeScanner();
   final health = FakeHealthSource();
@@ -55,6 +60,21 @@ class TestBackend {
     foodPreferencesRepositoryProvider.overrideWithValue(preferences),
     scheduleRepositoryProvider.overrideWithValue(schedules),
     mealRuleRepositoryProvider.overrideWithValue(rules),
+    mealPlanRepositoryProvider.overrideWithValue(plans),
+    // Plan on the test's thread with a short search, so it's quick and
+    // fake-async friendly.
+    planRunnerProvider.overrideWithValue(
+      (input, seed) async => planWeek(
+        PlannerInput(
+          targets: input.targets,
+          dishes: input.dishes,
+          rules: input.rules,
+          locked: input.locked,
+          iterations: 400,
+        ),
+        Random(seed),
+      ),
+    ),
     foodLogRepositoryProvider.overrideWithValue(foodLogs),
     barcodeScannerProvider.overrideWithValue(scanner),
     healthSourceProvider.overrideWithValue(health),

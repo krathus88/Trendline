@@ -1,0 +1,370 @@
+import 'dart:isolate';
+import 'dart:math';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart'
+    show AsyncNotifierProviderFamily, ProviderListenable;
+import 'package:meta/meta.dart';
+import 'package:trendline/data/foods/foods_notifier.dart';
+import 'package:trendline/data/goals/targets_provider.dart';
+import 'package:trendline/data/meal_rules/meal_rules_notifier.dart';
+import 'package:trendline/data/plans/meal_plan_repository.dart';
+import 'package:trendline/data/plans/planner_catalogue.dart';
+import 'package:trendline/data/preferences/food_preferences_notifier.dart';
+import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/dish_template_providers.dart';
+import 'package:trendline/data/recipes/recipe_library_providers.dart';
+import 'package:trendline/data/recipes/recipes_notifier.dart';
+import 'package:trendline/domain/dates.dart';
+import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/planner.dart';
+import 'package:trendline/domain/recipe.dart';
+
+/// Raised when there's nothing to plan towards yet.
+class PlanNeedsTargets implements Exception {
+  const new();
+
+  String get message =>
+      'Set up your profile, goal and a weigh-in first: the plan is sized '
+      'to your targets.';
+}
+
+/// A week's plan as shown: saved, or freshly made and not saved yet.
+@immutable
+class PlanState {
+  const new({
+    required this.weekStart,
+    this.plan,
+    this.targets,
+    this.saved = false,
+  });
+
+  /// The Monday the week starts on.
+  final DateTime weekStart;
+
+  /// Null until a plan is made.
+  final WeekPlan? plan;
+  final PlanTargets? targets;
+
+  /// Whether [plan] is what's saved.
+  final bool saved;
+
+  DateTime dayOf(int day) => addDays(weekStart, day);
+}
+
+/// Runs the planner. Off the UI thread in the app; tests run it directly.
+final planRunnerProvider =
+    Provider<Future<WeekPlan> Function(PlannerInput input, int seed)>(
+      (ref) =>
+          (input, seed) => Isolate.run(() => planWeek(input, Random(seed))),
+    );
+
+/// The plan for the week starting on the given Monday.
+final AsyncNotifierProviderFamily<PlanNotifier, PlanState, DateTime>
+planProvider = AsyncNotifierProvider.family<PlanNotifier, PlanState, DateTime>(
+  PlanNotifier.new,
+);
+
+class PlanNotifier extends AsyncNotifier<PlanState> {
+  new(this.weekStart);
+
+  final DateTime weekStart;
+
+  /// The candidates behind the last plan made, for saving its library and
+  /// template dishes and offering swaps.
+  PlannerCatalogue? _catalogue;
+
+  @override
+  Future<PlanState> build() async {
+    if (ref.watch(currentUserIdProvider) == null) {
+      return PlanState(weekStart: weekStart);
+    }
+    // Keep everything planning reads active: Riverpod pauses providers no
+    // one listens to, and their futures would never complete. Listening
+    // (not watching) so a change elsewhere doesn't throw away an unsaved
+    // plan.
+    for (final source in <ProviderListenable<Object?>>[
+      recipesProvider,
+      foodsProvider,
+      recipeLibraryProvider,
+      libraryFoodsProvider,
+      dishTemplatesProvider,
+      templateFoodsProvider,
+      foodPreferencesProvider,
+      mealRulesProvider,
+      targetsProvider,
+    ]) {
+      ref.listen(source, (_, _) {});
+    }
+    final saved = await ref
+        .watch(mealPlanRepositoryProvider)
+        .fetchWeek(weekStart);
+    if (saved == null) return PlanState(weekStart: weekStart);
+    final recipes = await ref.read(recipesProvider.future);
+    final foods = {
+      for (final f in await ref.read(foodsProvider.future)) f.id: f,
+    };
+    return PlanState(
+      weekStart: weekStart,
+      plan: _fromSaved(saved, recipes, foods),
+      targets: saved.targets,
+      saved: true,
+    );
+  }
+
+  Future<PlannerCatalogue> _buildCatalogue() async {
+    Future<T?> orNull<T>(Future<T> f) async {
+      try {
+        return await f;
+      } on Object {
+        return null;
+      }
+    }
+
+    final sources = PlannerSources(
+      recipes: await ref.read(recipesProvider.future),
+      foods: {for (final f in await ref.read(foodsProvider.future)) f.id: f},
+      // The library and templates are extras: plan without them if they
+      // can't be loaded.
+      library: await orNull(ref.read(recipeLibraryProvider.future)) ?? const [],
+      libraryFoods:
+          await orNull(ref.read(libraryFoodsProvider.future)) ?? const {},
+      templates: await orNull(ref.read(dishTemplatesProvider.future)),
+      templateFoods:
+          await orNull(ref.read(templateFoodsProvider.future)) ?? const {},
+      preferences: await ref.read(foodPreferencesProvider.future),
+      rules: await ref.read(mealRulesProvider.future),
+    );
+    return _catalogue = buildCatalogue(sources);
+  }
+
+  /// Makes a plan for the week, keeping the items the user locked.
+  Future<void> generate({int? seed}) async {
+    final today = await ref.read(targetsProvider.future);
+    if (today == null) throw const PlanNeedsTargets();
+    final t = today.targets;
+    final targets = PlanTargets(
+      kcal: t.kcal,
+      proteinG: t.proteinG,
+      carbsG: t.carbsG,
+      fatG: t.fatG,
+      fibreG: t.fibreG,
+    );
+    final catalogue = await _buildCatalogue();
+    final locked = [
+      for (final i in state.value?.plan?.items ?? const <PlannedItem>[])
+        if (i.locked) i,
+    ];
+    final plan = await ref.read(planRunnerProvider)(
+      PlannerInput(
+        targets: [targets],
+        dishes: catalogue.dishes,
+        rules: catalogue.rules,
+        locked: locked,
+      ),
+      seed ?? Random().nextInt(1 << 31),
+    );
+    state = AsyncData(
+      PlanState(weekStart: weekStart, plan: plan, targets: targets),
+    );
+  }
+
+  /// Locks or unlocks [item]: locked items stay when regenerating.
+  void toggleLock(PlannedItem item) =>
+      _replace(item, item.copyWith(locked: !item.locked));
+
+  void remove(PlannedItem item) => _replace(item, null);
+
+  /// Dishes that could go in [slot] instead.
+  Future<List<DishCandidate>> swapOptions(MealSlot slot) async {
+    final catalogue = _catalogue ?? await _buildCatalogue();
+    return [
+      for (final d in catalogue.dishes)
+        if (d.meals.contains(slot)) d,
+    ]..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  /// Puts [dish] in [item]'s place, one portion, locked.
+  void swap(PlannedItem item, DishCandidate dish) => _replace(
+    item,
+    PlannedItem(
+      day: item.day,
+      slot: item.slot,
+      key: dish.key,
+      name: dish.name,
+      amount: 1,
+      isDish: true,
+      perUnit: dish.perPortion,
+      minAmount: dish.minServing,
+      maxAmount: dish.maxServing,
+      locked: true,
+    ),
+  );
+
+  void _replace(PlannedItem item, PlannedItem? replacement) {
+    final current = state.value;
+    final plan = current?.plan;
+    if (current == null || plan == null) return;
+    bool same(PlannedItem i) =>
+        i.day == item.day && i.slot == item.slot && i.key == item.key;
+    state = AsyncData(
+      PlanState(
+        weekStart: weekStart,
+        targets: current.targets,
+        plan: WeekPlan(
+          items: [
+            for (final i in plan.items)
+              if (!same(i)) i else ?replacement,
+          ],
+          notes: plan.notes,
+        ),
+      ),
+    );
+  }
+
+  /// Saves the plan. Library and template dishes it uses are copied into
+  /// the user's recipes first (template ones stay out of the Recipes list
+  /// until kept), so the saved plan only points at the user's own data.
+  Future<void> save() async {
+    final current = state.value;
+    final plan = current?.plan;
+    final targets = current?.targets;
+    if (current == null || plan == null || targets == null) return;
+    final recipes = ref.read(recipesProvider.notifier);
+    final recipeIds = <String, String>{};
+
+    Future<String?> recipeFor(String key) async {
+      if (recipeIds[key] case final id?) return id;
+      final catalogue = _catalogue;
+      String? id;
+      if (key.startsWith('recipe:')) {
+        id = key.substring('recipe:'.length);
+      } else if (catalogue?.library[key] case final library?) {
+        id = (recipes.copyOf(library) ?? await recipes.addFromLibrary(library))
+            .id;
+      } else if (catalogue?.generated[key] case final option?) {
+        final copy = await recipes.addFromLibrary(
+          option.dish.toRecipe(),
+          origin: RecipeOrigin.template,
+          foods: await ref.read(templateFoodsProvider.future),
+          estimatedCookedWeightG: option.expectedCookedG,
+        );
+        await recipes.setListed(copy.id, listed: false);
+        id = copy.id;
+      }
+      if (id != null) recipeIds[key] = id;
+      return id;
+    }
+
+    final items = <SavedPlanItem>[];
+    final saved = <PlannedItem>[];
+    for (final i in plan.items) {
+      final foodId = i.key.startsWith('food:')
+          ? i.key.substring('food:'.length)
+          : null;
+      final recipeId = foodId == null ? await recipeFor(i.key) : null;
+      if (foodId == null && recipeId == null) continue;
+      items.add(
+        SavedPlanItem(
+          day: current.dayOf(i.day),
+          slot: i.slot,
+          foodId: foodId,
+          recipeId: recipeId,
+          amount: i.amount,
+          amountMin: i.minAmount,
+          amountMax: i.maxAmount,
+          locked: i.locked,
+          batch: i.batch,
+          mealRuleId: i.ruleId,
+        ),
+      );
+      saved.add(
+        PlannedItem(
+          day: i.day,
+          slot: i.slot,
+          key: foodId != null ? i.key : 'recipe:$recipeId',
+          name: i.name,
+          amount: i.amount,
+          isDish: i.isDish,
+          perUnit: i.perUnit,
+          minAmount: i.minAmount,
+          maxAmount: i.maxAmount,
+          locked: i.locked,
+          batch: i.batch,
+          ruleId: i.ruleId,
+        ),
+      );
+    }
+    await ref
+        .read(mealPlanRepositoryProvider)
+        .save(
+          SavedPlan(
+            weekStart: weekStart,
+            targets: targets,
+            notes: plan.notes,
+            items: items,
+          ),
+        );
+    state = AsyncData(
+      PlanState(
+        weekStart: weekStart,
+        targets: targets,
+        plan: WeekPlan(items: saved, notes: plan.notes),
+        saved: true,
+      ),
+    );
+  }
+}
+
+WeekPlan _fromSaved(
+  SavedPlan saved,
+  List<Recipe> recipes,
+  Map<String, Food> foods,
+) {
+  final recipesById = {for (final r in recipes) r.id: r};
+  final items = <PlannedItem>[];
+  for (final i in saved.items) {
+    final day = daysBetween(saved.weekStart, i.day);
+    if (i.recipeId case final id?) {
+      final r = recipesById[id];
+      if (r == null) continue;
+      items.add(
+        PlannedItem(
+          day: day,
+          slot: i.slot,
+          key: 'recipe:$id',
+          name: r.name,
+          amount: i.amount,
+          isDish: i.mealRuleId == null,
+          perUnit: recipeNutrition(r, foods).perPortion,
+          minAmount: i.amountMin,
+          maxAmount: i.amountMax,
+          locked: i.locked,
+          batch: i.batch,
+          ruleId: i.mealRuleId,
+        ),
+      );
+    } else if (foods[i.foodId] case final f?) {
+      items.add(
+        PlannedItem(
+          day: day,
+          slot: i.slot,
+          key: 'food:${f.id}',
+          name: f.name,
+          amount: i.amount,
+          isDish: false,
+          perUnit: perGram(f.per100g),
+          minAmount: i.amountMin,
+          maxAmount: i.amountMax,
+          locked: i.locked,
+          ruleId: i.mealRuleId,
+        ),
+      );
+    }
+  }
+  items.sort((a, b) {
+    final byDay = a.day.compareTo(b.day);
+    return byDay != 0 ? byDay : a.slot.index.compareTo(b.slot.index);
+  });
+  return WeekPlan(items: items, notes: saved.notes);
+}
