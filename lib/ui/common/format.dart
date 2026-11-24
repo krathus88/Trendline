@@ -45,6 +45,9 @@ final NumberFormat _twoDecimals = NumberFormat('0.0#');
 String formatDateTime(DateTime moment) =>
     DateFormat('d MMM, HH:mm').format(moment);
 
+/// "14:05".
+String formatClockTime(DateTime moment) => DateFormat('HH:mm').format(moment);
+
 String mealSlotLabel(MealSlot slot) => switch (slot) {
   MealSlot.breakfast => 'Breakfast',
   MealSlot.lunch => 'Lunch',

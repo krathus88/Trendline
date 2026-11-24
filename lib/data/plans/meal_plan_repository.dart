@@ -19,8 +19,11 @@ class SavedPlanItem {
     this.locked = false,
     this.batch,
     this.mealRuleId,
+    this.id,
   });
 
+  /// Null until saved.
+  final String? id;
   final DateTime day;
   final MealSlot slot;
   final String? foodId;
@@ -55,6 +58,11 @@ abstract interface class MealPlanRepository {
 
   /// Saves the week's plan, replacing any already saved for that week.
   Future<void> save(SavedPlan plan);
+
+  /// Gives saved items new amounts (by item ID), each within its range.
+  /// Portions of batches not yet cooked follow; a cooked batch's portions
+  /// can't change.
+  Future<void> updateAmounts(Map<String, double> amounts);
 }
 
 class SupabaseMealPlanRepository implements MealPlanRepository {
@@ -64,7 +72,7 @@ class SupabaseMealPlanRepository implements MealPlanRepository {
 
   static const _columns =
       'week_start, kcal_target, protein_target_g, carbs_target_g, '
-      'fat_target_g, fibre_target_g, notes, plan_items(day, slot, food_id, '
+      'fat_target_g, fibre_target_g, notes, plan_items(id, day, slot, food_id, '
       'recipe_id, amount, amount_min, amount_max, locked, batch, '
       'meal_rule_id)';
 
@@ -83,6 +91,20 @@ class SupabaseMealPlanRepository implements MealPlanRepository {
     // One database function replaces the week's plan and its items in a
     // single transaction.
     await _db.rpc<String>('save_meal_plan', params: savePlanParams(plan));
+  }
+
+  @override
+  Future<void> updateAmounts(Map<String, double> amounts) async {
+    // One database function, so the items and their prep change together.
+    await _db.rpc<void>(
+      'replan_plan_items',
+      params: {
+        'amounts': [
+          for (final MapEntry(key: id, value: amount) in amounts.entries)
+            {'id': id, 'amount': (amount * 100).round() / 100},
+        ],
+      },
+    );
   }
 }
 
@@ -110,6 +132,7 @@ SavedPlanItem? _itemFromRow(Map<String, dynamic> row) {
   final amount = readDoubleOrNull(row['amount']);
   if (slot == null || amount == null) return null;
   return SavedPlanItem(
+    id: row['id'] as String?,
     day: readDate(row['day']),
     slot: slot,
     foodId: row['food_id'] as String?,

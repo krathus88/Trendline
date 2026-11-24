@@ -10,9 +10,11 @@ import 'package:trendline/data/meal_rules/meal_rule_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/data/preferences/food_preferences_repository.dart';
+import 'package:trendline/data/prep/prep_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/schedule/schedule_repository.dart';
+import 'package:trendline/data/snapshots/today_snapshot.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
 import 'package:trendline/domain/dates.dart';
@@ -22,6 +24,7 @@ import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/prep.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
@@ -30,6 +33,24 @@ import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
 import 'package:trendline/platform/health_source.dart';
+
+/// Snapshots in memory.
+class FakeSnapshotStore implements SnapshotStore {
+  final values = <String, String>{};
+  int writes = 0;
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    writes++;
+    values[key] = value;
+  }
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+}
 
 /// Thrown by fakes to simulate a failed network call.
 class FakeNetworkError implements Exception;
@@ -50,8 +71,14 @@ class FakeProfileRepository implements ProfileRepository {
   Profile? profile;
   int saves = 0;
 
+  /// Simulates having no signal.
+  bool failFetch = false;
+
   @override
-  Future<Profile?> fetch() async => profile;
+  Future<Profile?> fetch() async {
+    if (failFetch) throw FakeNetworkError();
+    return profile;
+  }
 
   @override
   Future<Profile> save(Profile p) async {
@@ -208,11 +235,151 @@ class FakeRecipeRepository implements RecipeRepository {
 class FakeMealPlanRepository implements MealPlanRepository {
   final weeks = <DateTime, SavedPlan>{};
 
+  /// Runs after each save, as the database lays out prep when it saves.
+  void Function(SavedPlan plan)? onSaved;
+
   @override
   Future<SavedPlan?> fetchWeek(DateTime weekStart) async => weeks[weekStart];
 
+  /// Item IDs i0, i1, ... are given on saving, as the database does.
+  int _nextItem = 0;
+  bool failUpdates = false;
+
   @override
-  Future<void> save(SavedPlan plan) async => weeks[plan.weekStart] = plan;
+  Future<void> save(SavedPlan plan) async {
+    final saved = SavedPlan(
+      weekStart: plan.weekStart,
+      targets: plan.targets,
+      notes: plan.notes,
+      items: [
+        for (final i in plan.items) _withAmount(i, i.amount, 'i${_nextItem++}'),
+      ],
+    );
+    weeks[plan.weekStart] = saved;
+    onSaved?.call(saved);
+  }
+
+  @override
+  Future<void> updateAmounts(Map<String, double> amounts) async {
+    if (failUpdates) throw FakeNetworkError();
+    for (final MapEntry(key: week, value: plan) in weeks.entries.toList()) {
+      weeks[week] = SavedPlan(
+        weekStart: plan.weekStart,
+        targets: plan.targets,
+        notes: plan.notes,
+        items: [
+          for (final i in plan.items)
+            _withAmount(i, amounts[i.id] ?? i.amount, i.id),
+        ],
+      );
+    }
+  }
+
+  static SavedPlanItem _withAmount(
+    SavedPlanItem i,
+    double amount,
+    String? id,
+  ) => SavedPlanItem(
+    id: id,
+    day: i.day,
+    slot: i.slot,
+    foodId: i.foodId,
+    recipeId: i.recipeId,
+    amount: amount,
+    amountMin: i.amountMin,
+    amountMax: i.amountMax,
+    locked: i.locked,
+    batch: i.batch,
+    mealRuleId: i.mealRuleId,
+  );
+}
+
+/// Prep sessions in memory. New ones get IDs s0, s1, ...; portions p0, ...
+class FakePrepRepository implements PrepRepository {
+  final sessions = <PrepSession>[];
+  bool failPortionUpdates = false;
+  int _nextSession = 0;
+  int _nextPortion = 0;
+
+  @override
+  Future<List<PrepSession>> fetchFrom(DateTime from) async => [
+    for (final s in sessions)
+      if (!s.cookOn.isBefore(from)) s,
+  ];
+
+  @override
+  Future<PrepSession> markCooked(String sessionId, double cookedWeightG) async {
+    final i = sessions.indexWhere((s) => s.id == sessionId);
+    return sessions[i] = sessions[i].copyWith(
+      cookedAt: DateTime.now,
+      cookedWeightG: () => cookedWeightG,
+    );
+  }
+
+  @override
+  Future<void> updatePortion(PrepPortion portion) async {
+    if (failPortionUpdates) throw FakeNetworkError();
+    final i = sessions.indexWhere((s) => s.id == portion.sessionId);
+    sessions[i] = sessions[i].copyWith(
+      portions: [
+        for (final p in sessions[i].portions)
+          if (p.id == portion.id) portion else p,
+      ],
+    );
+  }
+
+  /// Lays out [plan]'s batches as `save_meal_plan` does: sessions not yet
+  /// cooked are replaced; each batch is cooked on its first day (batches
+  /// of one recipe starting the same day together), one portion per
+  /// serving, eaten by the cook day + the recipe's fridge days.
+  void layOut(SavedPlan plan, List<Recipe> recipes) {
+    final planId = 'plan-${plan.weekStart.toIso8601String()}';
+    sessions.removeWhere((s) => s.planId == planId && !s.cooked);
+    final firstDay = <(String, int), DateTime>{};
+    for (final i in plan.items) {
+      final (r, b) = (i.recipeId, i.batch);
+      if (r == null || b == null) continue;
+      final d = firstDay[(r, b)];
+      if (d == null || i.day.isBefore(d)) firstDay[(r, b)] = i.day;
+    }
+    final grouped = <(String, DateTime), List<SavedPlanItem>>{};
+    for (final i in plan.items) {
+      final (r, b) = (i.recipeId, i.batch);
+      if (r == null || b == null) continue;
+      (grouped[(r, firstDay[(r, b)]!)] ??= []).add(i);
+    }
+    for (final MapEntry(key: (recipeId, cookOn), value: items)
+        in grouped.entries) {
+      if (sessions.any(
+        (s) =>
+            s.planId == planId && s.recipeId == recipeId && s.cookOn == cookOn,
+      )) {
+        continue;
+      }
+      final recipe = recipes.firstWhere((r) => r.id == recipeId);
+      final id = 's${_nextSession++}';
+      sessions.add(
+        PrepSession(
+          id: id,
+          planId: planId,
+          recipeId: recipeId,
+          cookOn: cookOn,
+          portionCount: items.fold(0, (sum, i) => sum + i.amount),
+          portions: [
+            for (final i in items)
+              PrepPortion(
+                id: 'p${_nextPortion++}',
+                sessionId: id,
+                day: i.day,
+                slot: i.slot,
+                amount: i.amount,
+                useBy: addDays(cookOn, recipe.fridgeDays),
+              ),
+          ],
+        ),
+      );
+    }
+  }
 }
 
 /// Day schedules in memory, by weekday.
@@ -340,13 +507,19 @@ class FakeFoodLogRepository implements FoodLogRepository {
   }
 
   bool failUpdates = false;
+
+  /// Simulates having no signal.
+  bool failFetch = false;
   int _next = 0;
 
   @override
-  Future<List<FoodLogEntry>> fetchDay(DateTime day) async => [
-    for (final e in items)
-      if (e.eatenOn == day) e,
-  ];
+  Future<List<FoodLogEntry>> fetchDay(DateTime day) async {
+    if (failFetch) throw FakeNetworkError();
+    return [
+      for (final e in items)
+        if (e.eatenOn == day) e,
+    ];
+  }
 
   @override
   Future<FoodLogEntry> add({

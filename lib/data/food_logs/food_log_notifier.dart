@@ -37,8 +37,8 @@ class FoodLogNotifier extends AsyncNotifier<List<FoodLogEntry>> {
   }
 
   /// Logs [grams] (cooked) of [recipe], whose nutrition per 100 g cooked is
-  /// [per100gCooked].
-  Future<void> addRecipe({
+  /// [per100gCooked], and returns the entry.
+  Future<FoodLogEntry> addRecipe({
     required MealSlot slot,
     required Recipe recipe,
     required Nutrition per100gCooked,
@@ -54,6 +54,7 @@ class FoodLogNotifier extends AsyncNotifier<List<FoodLogEntry>> {
           grams: grams,
         );
     state = AsyncData([...state.value ?? const <FoodLogEntry>[], entry]);
+    return entry;
   }
 
   /// Shows the new portion straight away; reverts if saving fails.

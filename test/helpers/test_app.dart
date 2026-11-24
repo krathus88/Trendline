@@ -11,6 +11,7 @@ import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
+import 'package:trendline/data/snapshots/today_snapshot_notifier.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/profile.dart';
@@ -22,7 +23,9 @@ import 'fakes.dart';
 class TestBackend {
   new({Profile? profile, AuthStatus auth = const SignedIn('user-1')})
     : auth = FakeAuthRepository(initial: auth),
-      profiles = FakeProfileRepository(profile: profile);
+      profiles = FakeProfileRepository(profile: profile) {
+    plans.onSaved = (plan) => prep.layOut(plan, recipes.items);
+  }
 
   final FakeAuthRepository auth;
   final FakeProfileRepository profiles;
@@ -34,6 +37,8 @@ class TestBackend {
   final schedules = FakeScheduleRepository();
   final rules = FakeMealRuleRepository();
   final plans = FakeMealPlanRepository();
+  final prep = FakePrepRepository();
+  final snapshots = FakeSnapshotStore();
   final foodLogs = FakeFoodLogRepository();
   final scanner = FakeBarcodeScanner();
   final health = FakeHealthSource();
@@ -61,6 +66,8 @@ class TestBackend {
     scheduleRepositoryProvider.overrideWithValue(schedules),
     mealRuleRepositoryProvider.overrideWithValue(rules),
     mealPlanRepositoryProvider.overrideWithValue(plans),
+    prepRepositoryProvider.overrideWithValue(prep),
+    snapshotStoreProvider.overrideWithValue(snapshots),
     // Plan on the test's thread with a short search, so it's quick and
     // fake-async friendly.
     planRunnerProvider.overrideWithValue(

@@ -118,6 +118,17 @@ void main() {
       isTrue,
     );
     expect(find.text('Saved'), findsOneWidget);
+
+    // Saving lays out the batches to cook.
+    expect(backend.prep.sessions, isNotEmpty);
+    expect(
+      backend.prep.sessions.expand((s) => s.portions),
+      hasLength(21),
+      reason: 'one portion per planned dish',
+    );
+    await tester.tap(find.byTooltip('Prep'));
+    await tester.pumpAndSettle();
+    expect(find.text('To cook'), findsOneWidget);
   });
 
   testWidgets('a locked item stays when regenerating', (tester) async {

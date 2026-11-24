@@ -10,6 +10,7 @@ import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/schedule.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
+import 'package:trendline/ui/prep/prep_screen.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
@@ -67,6 +68,15 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Plan'),
+        actions: [
+          IconButton(
+            tooltip: 'Prep',
+            icon: const Icon(Icons.kitchen_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const PrepScreen())),
+          ),
+        ],
         bottom: _busy
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),

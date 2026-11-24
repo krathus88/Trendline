@@ -3,21 +3,29 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/energy/day_complete_notifier.dart';
 import 'package:trendline/data/food_logs/food_log_notifier.dart';
 import 'package:trendline/data/goals/targets_provider.dart';
+import 'package:trendline/data/plans/plan_notifier.dart';
+import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/snapshots/today_snapshot.dart';
+import 'package:trendline/data/snapshots/today_snapshot_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/planner.dart';
+import 'package:trendline/domain/replan.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/food/food_picker_screen.dart';
 import 'package:trendline/ui/food/nutrition_widgets.dart';
 import 'package:trendline/ui/food/portion_sheet.dart';
+import 'package:trendline/ui/plan/plan_screen.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
 
-/// A day's food log, by meal, against the day's targets. The plan
-/// arrives in a later milestone.
+/// A day's food log, by meal, against the day's targets, with the saved
+/// plan's meals still to eat. Today's rest can be re-planned around what
+/// was actually eaten.
 class TodayScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -29,6 +37,41 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   DateTime _day = dayOf(DateTime.now());
 
   bool get _isToday => _day == dayOf(DateTime.now());
+
+  bool _replanning = false;
+
+  Future<void> _logPlanned(PlannedItem item) async {
+    try {
+      await ref
+          .read(planProvider(weekStartOf(_day)).notifier)
+          .logPlanned(item, _day);
+    } on Object catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  Future<void> _replan(List<FoodLogEntry> eaten, double targetKcal) async {
+    setState(() => _replanning = true);
+    try {
+      final result = await ref
+          .read(planProvider(weekStartOf(_day)).notifier)
+          .replanDay(date: _day, eaten: eaten, targetKcal: targetKcal);
+      if (!mounted) return;
+      final changed = result.items.length;
+      showMessageSnack(
+        context,
+        result.note ??
+            (changed == 0
+                ? 'Nothing left to re-plan today.'
+                : 'Re-planned the rest of today: about '
+                      '${formatKcal(result.dayKcal)} kcal in all.'),
+      );
+    } on Object catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _replanning = false);
+    }
+  }
 
   void _move(int days) => setState(() => _day = addDays(_day, days));
 
@@ -75,9 +118,61 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     }
   }
 
+  /// Saves what Today shows once everything on it has loaded, so the app
+  /// can open on it next time.
+  void _saveSnapshot({
+    required List<FoodLogEntry> entries,
+    required AsyncValue<TodayTargets?> targets,
+    required AsyncValue<PlanState> plan,
+    required List<PlannedItem> planned,
+  }) {
+    final userId = ref.read(currentUserIdProvider);
+    if (!_isToday ||
+        userId == null ||
+        targets is! AsyncData ||
+        plan is! AsyncData) {
+      return;
+    }
+    final snapshot = TodaySnapshot(
+      userId: userId,
+      day: _day,
+      savedAt: DateTime.now(),
+      entries: entries,
+      targets: targets.value?.targets,
+      planned: planned,
+    );
+    // After the frame: providers can't be changed while building.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(todaySnapshotProvider.notifier).save(snapshot).ignore();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final log = ref.watch(foodLogProvider(_day));
+    final week = weekStartOf(_day);
+    final planAsync = ref.watch(planProvider(week));
+    final planState = planAsync.value;
+    // Only a saved plan is followed; one still being edited isn't yet.
+    final planned = planState?.saved ?? false
+        ? planState!.plan?.itemsOn(daysBetween(week, _day)) ??
+              const <PlannedItem>[]
+        : const <PlannedItem>[];
+    final targetsAsync = ref.watch(targetsProvider);
+    final targets = targetsAsync.value?.targets;
+    final snapshot = switch (ref.watch(todaySnapshotProvider).value) {
+      final s? when _isToday && s.day == _day => s,
+      _ => null,
+    };
+    if (log case AsyncData(:final value)) {
+      _saveSnapshot(
+        entries: value,
+        targets: targetsAsync,
+        plan: planAsync,
+        planned: planned,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -96,6 +191,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         ],
       ),
       body: switch (log) {
+        // Until today's log loads (or when it can't), the last copy saved
+        // on the device.
+        _ when log.value == null && snapshot != null => _SnapshotView(
+          snapshot: snapshot,
+          failed: log.hasError,
+          onRetry: () => ref.invalidate(foodLogProvider(_day)),
+          onAdd: _add,
+          onEdit: _edit,
+        ),
         AsyncError(:final error) when log.value == null => ErrorView(
           error: error,
           onRetry: () => ref.invalidate(foodLogProvider(_day)),
@@ -105,9 +209,18 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           child: _DayLog(
             day: _day,
             entries: value,
-            targets: ref.watch(targetsProvider).value?.targets,
+            planned: remainingItems(planned, value),
+            targets: targets,
             onAdd: _add,
             onEdit: _edit,
+            onLogPlanned: _logPlanned,
+            onReplan:
+                _isToday &&
+                    targets != null &&
+                    planned.isNotEmpty &&
+                    !_replanning
+                ? () => _replan(value, targets.kcal)
+                : null,
           ),
         ),
         _ => const CenteredProgress(),
@@ -116,20 +229,101 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   }
 }
 
-class _DayLog extends StatelessWidget {
+/// Today as last saved on the device, with a line saying so.
+class _SnapshotView extends StatelessWidget {
   const new({
-    required this.day,
-    required this.entries,
-    required this.targets,
+    required this.snapshot,
+    required this.failed,
+    required this.onRetry,
     required this.onAdd,
     required this.onEdit,
   });
 
+  final TodaySnapshot snapshot;
+
+  /// Loading failed (for example, no signal), rather than still going.
+  final bool failed;
+  final VoidCallback onRetry;
+  final ValueChanged<MealSlot> onAdd;
+  final ValueChanged<FoodLogEntry> onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final time = formatClockTime(snapshot.savedAt);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Space.gutter,
+            Space.sm,
+            Space.sm,
+            0,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  failed
+                      ? 'Can’t reach the server. Showing what was saved at '
+                            '$time.'
+                      : 'Showing what was saved at $time. Updating…',
+                  style: text.bodySmall?.copyWith(
+                    color: failed ? colors.warning : colors.textTertiary,
+                  ),
+                ),
+              ),
+              if (failed)
+                TextButton(onPressed: onRetry, child: const Text('Try again')),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _DayLog(
+            day: snapshot.day,
+            entries: snapshot.entries,
+            planned: remainingItems(snapshot.planned, snapshot.entries),
+            targets: snapshot.targets,
+            onAdd: onAdd,
+            onEdit: onEdit,
+            // Logging as planned and re-planning need the live plan.
+            onLogPlanned: null,
+            onReplan: null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayLog extends StatelessWidget {
+  const new({
+    required this.day,
+    required this.entries,
+    required this.planned,
+    required this.targets,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onLogPlanned,
+    required this.onReplan,
+  });
+
   final DateTime day;
   final List<FoodLogEntry> entries;
+
+  /// The plan's items for the day not yet eaten.
+  final List<PlannedItem> planned;
   final DailyTargets? targets;
   final ValueChanged<MealSlot> onAdd;
   final ValueChanged<FoodLogEntry> onEdit;
+
+  /// Null while only a saved copy is shown.
+  final ValueChanged<PlannedItem>? onLogPlanned;
+
+  /// Null when there's nothing to re-plan (or it isn't today).
+  final VoidCallback? onReplan;
 
   @override
   Widget build(BuildContext context) {
@@ -143,6 +337,14 @@ class _DayLog extends StatelessWidget {
       ),
       children: [
         _Totals(total: total, targets: targets),
+        if (onReplan != null) ...[
+          const SizedBox(height: Space.sm),
+          OutlinedButton.icon(
+            onPressed: onReplan,
+            icon: const Icon(Icons.tune),
+            label: const Text('Re-plan the rest of the day'),
+          ),
+        ],
         for (final slot in MealSlot.values)
           _SlotSection(
             slot: slot,
@@ -150,8 +352,13 @@ class _DayLog extends StatelessWidget {
               for (final e in entries)
                 if (e.slot == slot) e,
             ],
+            planned: [
+              for (final i in planned)
+                if (i.slot == slot) i,
+            ],
             onAdd: () => onAdd(slot),
             onEdit: onEdit,
+            onLogPlanned: onLogPlanned,
           ),
         const SizedBox(height: Space.xl),
         _DayComplete(day: day),
@@ -397,14 +604,18 @@ class _SlotSection extends StatelessWidget {
   const new({
     required this.slot,
     required this.entries,
+    required this.planned,
     required this.onAdd,
     required this.onEdit,
+    required this.onLogPlanned,
   });
 
   final MealSlot slot;
   final List<FoodLogEntry> entries;
+  final List<PlannedItem> planned;
   final VoidCallback onAdd;
   final ValueChanged<FoodLogEntry> onEdit;
+  final ValueChanged<PlannedItem>? onLogPlanned;
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +659,34 @@ class _SlotSection extends StatelessWidget {
                 style: text.bodyMedium?.tabular,
               ),
               onTap: () => onEdit(e),
+            ),
+          for (final i in planned)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.schedule,
+                size: 20,
+                color: colors.textTertiary,
+              ),
+              title: Text(
+                i.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colors.textSecondary),
+              ),
+              subtitle: Text(
+                'Planned · ${planAmount(i)} · '
+                '${formatKcal(i.nutrition.kcal)} kcal',
+                style: text.bodySmall?.tabular,
+              ),
+              trailing: switch (onLogPlanned) {
+                final log? => IconButton(
+                  tooltip: 'Eaten as planned',
+                  icon: const Icon(Icons.check_circle_outline),
+                  onPressed: () => log(i),
+                ),
+                null => null,
+              },
             ),
           Align(
             alignment: Alignment.centerLeft,

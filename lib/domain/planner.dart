@@ -119,6 +119,7 @@ class PlannedItem {
     this.locked = false,
     this.batch,
     this.ruleId,
+    this.id,
   });
 
   /// 0 = the plan's first day.
@@ -145,6 +146,9 @@ class PlannedItem {
   /// The rule that put it here, if one did.
   final String? ruleId;
 
+  /// The saved plan item's ID; null until saved.
+  final String? id;
+
   Nutrition get nutrition => _times(perUnit, amount);
 
   bool get isPortions => isDish || key.startsWith('recipe:');
@@ -163,6 +167,7 @@ class PlannedItem {
         locked: locked ?? this.locked,
         batch: batch ?? this.batch,
         ruleId: ruleId,
+        id: id,
       );
 }
 
@@ -434,46 +439,53 @@ List<PlannedItem> _build(
   return _fitDays(input, items);
 }
 
-/// Scales each day's flexible amounts together so the day lands on its
-/// calories, within every item's range. Locked and fixed items stay put.
-List<PlannedItem> _fitDays(PlannerInput input, List<PlannedItem> items) {
-  final out = <PlannedItem>[];
-  for (var d = 0; d < input.days; d++) {
-    var day = [
+/// Fits each day's amounts to its calories (see [fitToKcal]).
+List<PlannedItem> _fitDays(PlannerInput input, List<PlannedItem> items) => [
+  for (var d = 0; d < input.days; d++)
+    ...fitToKcal([
       for (final i in items)
         if (i.day == d) i,
+    ], input.targetOn(d).kcal),
+];
+
+/// Scales [items]' flexible amounts together so they add up to [kcal] as
+/// closely as their ranges allow, rounded to practical amounts. Locked
+/// items, items with no range and any [fixed] stay as they are.
+List<PlannedItem> fitToKcal(
+  List<PlannedItem> items,
+  double kcal, {
+  bool Function(PlannedItem item)? fixed,
+}) {
+  var out = items;
+  // Two passes: items clamped in the first leave the rest to make up.
+  for (var pass = 0; pass < 2; pass++) {
+    bool flexible(PlannedItem i) =>
+        !i.locked &&
+        !(fixed?.call(i) ?? false) &&
+        i.minAmount != null &&
+        i.maxAmount != null &&
+        i.minAmount! < i.maxAmount! &&
+        (pass == 0 || (i.amount > i.minAmount! && i.amount < i.maxAmount!));
+    final fixedKcal = out
+        .where((i) => !flexible(i))
+        .fold<double>(0, (s, i) => s + i.nutrition.kcal);
+    final flexKcal = out
+        .where(flexible)
+        .fold<double>(0, (s, i) => s + i.nutrition.kcal);
+    if (flexKcal <= 0) break;
+    final factor = max(0, kcal - fixedKcal) / flexKcal;
+    out = [
+      for (final i in out)
+        if (flexible(i))
+          i.copyWith(
+            amount: _round(
+              (i.amount * factor).clamp(i.minAmount!, i.maxAmount!),
+              portions: i.isPortions,
+            ),
+          )
+        else
+          i,
     ];
-    final target = input.targetOn(d).kcal;
-    // Two passes: items clamped in the first leave the rest to make up.
-    for (var pass = 0; pass < 2; pass++) {
-      bool flexible(PlannedItem i) =>
-          !i.locked &&
-          i.minAmount != null &&
-          i.maxAmount != null &&
-          i.minAmount! < i.maxAmount! &&
-          (pass == 0 || (i.amount > i.minAmount! && i.amount < i.maxAmount!));
-      final fixedKcal = day
-          .where((i) => !flexible(i))
-          .fold<double>(0, (s, i) => s + i.nutrition.kcal);
-      final flexKcal = day
-          .where(flexible)
-          .fold<double>(0, (s, i) => s + i.nutrition.kcal);
-      if (flexKcal <= 0) break;
-      final factor = max(0, target - fixedKcal) / flexKcal;
-      day = [
-        for (final i in day)
-          if (flexible(i))
-            i.copyWith(
-              amount: _round(
-                (i.amount * factor).clamp(i.minAmount!, i.maxAmount!),
-                portions: i.isPortions,
-              ),
-            )
-          else
-            i,
-      ];
-    }
-    out.addAll(day);
   }
   return out;
 }

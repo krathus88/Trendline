@@ -5,20 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart'
     show AsyncNotifierProviderFamily, ProviderListenable;
 import 'package:meta/meta.dart';
+import 'package:trendline/data/food_logs/food_log_notifier.dart';
 import 'package:trendline/data/foods/foods_notifier.dart';
 import 'package:trendline/data/goals/targets_provider.dart';
 import 'package:trendline/data/meal_rules/meal_rules_notifier.dart';
 import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/data/plans/planner_catalogue.dart';
 import 'package:trendline/data/preferences/food_preferences_notifier.dart';
+import 'package:trendline/data/prep/prep_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/replan.dart';
 
 /// Raised when there's nothing to plan towards yet.
 class PlanNeedsTargets implements Exception {
@@ -27,6 +31,16 @@ class PlanNeedsTargets implements Exception {
   String get message =>
       'Set up your profile, goal and a weigh-in first: the plan is sized '
       'to your targets.';
+}
+
+/// Raised when a day is re-planned or logged from a plan that isn't saved
+/// (or no longer matches the user's foods and recipes).
+class PlanNotSaved implements Exception {
+  const new();
+
+  String get message =>
+      'Save the week’s plan first, then its meals can be logged and '
+      're-planned.';
 }
 
 /// A week's plan as shown: saved, or freshly made and not saved yet.
@@ -93,6 +107,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
       foodPreferencesProvider,
       mealRulesProvider,
       targetsProvider,
+      prepProvider,
     ]) {
       ref.listen(source, (_, _) {});
     }
@@ -225,6 +240,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
   /// Saves the plan. Library and template dishes it uses are copied into
   /// the user's recipes first (template ones stay out of the Recipes list
   /// until kept), so the saved plan only points at the user's own data.
+  /// The database lays out its prep sessions from the batches as it saves.
   Future<void> save() async {
     final current = state.value;
     final plan = current?.plan;
@@ -257,7 +273,6 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     }
 
     final items = <SavedPlanItem>[];
-    final saved = <PlannedItem>[];
     for (final i in plan.items) {
       final foodId = i.key.startsWith('food:')
           ? i.key.substring('food:'.length)
@@ -278,40 +293,133 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
           mealRuleId: i.ruleId,
         ),
       );
-      saved.add(
-        PlannedItem(
-          day: i.day,
-          slot: i.slot,
-          key: foodId != null ? i.key : 'recipe:$recipeId',
-          name: i.name,
-          amount: i.amount,
-          isDish: i.isDish,
-          perUnit: i.perUnit,
-          minAmount: i.minAmount,
-          maxAmount: i.maxAmount,
-          locked: i.locked,
-          batch: i.batch,
-          ruleId: i.ruleId,
-        ),
-      );
     }
-    await ref
-        .read(mealPlanRepositoryProvider)
-        .save(
-          SavedPlan(
-            weekStart: weekStart,
-            targets: targets,
-            notes: plan.notes,
-            items: items,
-          ),
-        );
+    final repository = ref.read(mealPlanRepositoryProvider);
+    await repository.save(
+      SavedPlan(
+        weekStart: weekStart,
+        targets: targets,
+        notes: plan.notes,
+        items: items,
+      ),
+    );
+    // Saving lays out the plan's prep sessions.
+    ref.invalidate(prepProvider);
+    // Read it back for the items' IDs, which re-planning a day needs.
+    final saved = await repository.fetchWeek(weekStart);
+    if (saved == null) return;
     state = AsyncData(
       PlanState(
         weekStart: weekStart,
-        targets: targets,
-        plan: WeekPlan(items: saved, notes: plan.notes),
+        targets: saved.targets,
+        plan: _fromSaved(saved, await ref.read(recipesProvider.future), {
+          for (final f in await ref.read(foodsProvider.future)) f.id: f,
+        }),
         saved: true,
       ),
+    );
+  }
+
+  /// Re-plans the rest of [date] around what's been [eaten]: the saved
+  /// plan's items not yet eaten are refitted to [targetKcal] within their
+  /// ranges, and saved. Portions of batches already cooked stay as boxed.
+  /// Returns the outcome, with a note when the day can't land near its
+  /// target.
+  Future<DayReplan> replanDay({
+    required DateTime date,
+    required List<FoodLogEntry> eaten,
+    required double targetKcal,
+  }) async {
+    final current = state.value;
+    final plan = current?.plan;
+    if (current == null || plan == null || !current.saved) {
+      throw const PlanNotSaved();
+    }
+    final day = daysBetween(weekStart, date);
+    final remaining = remainingItems(plan.itemsOn(day), eaten);
+    final boxed = <(String, MealSlot)>{
+      for (final s in await ref.read(prepProvider.future))
+        if (s.cooked)
+          for (final p in s.openPortions)
+            if (p.day == date) ('recipe:${s.recipeId}', p.slot!),
+    };
+    final result = replanRestOfDay(
+      remaining: remaining,
+      eaten: Nutrition.sum(eaten.map((e) => e.nutrition)),
+      targetKcal: targetKcal,
+      fixed: (i) => boxed.contains((i.key, i.slot)),
+    );
+    final changed = {
+      for (final i in result.changedFrom(remaining)) ?i.id: i.amount,
+    };
+    if (changed.isEmpty) return result;
+    await ref.read(mealPlanRepositoryProvider).updateAmounts(changed);
+    // Prep for batches not yet cooked follows the new amounts.
+    ref.invalidate(prepProvider);
+    final latest = state.value ?? current;
+    state = AsyncData(
+      PlanState(
+        weekStart: weekStart,
+        targets: latest.targets,
+        saved: true,
+        plan: WeekPlan(
+          items: [
+            for (final i in latest.plan?.items ?? const <PlannedItem>[])
+              if (changed[i.id] case final amount?)
+                i.copyWith(amount: amount)
+              else
+                i,
+          ],
+          notes: latest.plan?.notes ?? const [],
+        ),
+      ),
+    );
+    return result;
+  }
+
+  /// Logs [item] as eaten on [date], as planned: a food by its grams; a
+  /// dish by its portion of the cooked batch (or of the recipe's weighed
+  /// batch when it isn't prepped).
+  Future<void> logPlanned(PlannedItem item, DateTime date) async {
+    final log = ref.read(foodLogProvider(date).notifier);
+    final foods = {
+      for (final f in await ref.read(foodsProvider.future)) f.id: f,
+    };
+    if (item.key.startsWith('food:')) {
+      final food = foods[item.key.substring('food:'.length)];
+      if (food == null) throw const PlanNotSaved();
+      await log.add(slot: item.slot, food: food, grams: item.amount);
+      return;
+    }
+    final recipeId = item.key.substring('recipe:'.length);
+    final recipes = await ref.read(recipesProvider.future);
+    final recipe = recipes.where((r) => r.id == recipeId).firstOrNull;
+    if (recipe == null) throw const PlanNotSaved();
+    for (final s in await ref.read(prepProvider.future)) {
+      if (s.recipeId != recipeId) continue;
+      for (final p in s.openPortions) {
+        if (p.day != date || p.slot != item.slot) continue;
+        await ref
+            .read(prepProvider.notifier)
+            .eat(
+              session: s,
+              portion: p,
+              recipe: recipe,
+              foods: foods,
+              day: date,
+              slot: item.slot,
+            );
+        return;
+      }
+    }
+    final per100g = recipeNutrition(recipe, foods).per100gCooked;
+    final portionG = recipe.portionG;
+    if (per100g == null || portionG == null) throw const PrepNotWeighed();
+    await log.addRecipe(
+      slot: item.slot,
+      recipe: recipe,
+      per100gCooked: per100g,
+      grams: (item.amount * portionG * 10).round() / 10,
     );
   }
 }
@@ -342,6 +450,7 @@ WeekPlan _fromSaved(
           locked: i.locked,
           batch: i.batch,
           ruleId: i.mealRuleId,
+          id: i.id,
         ),
       );
     } else if (foods[i.foodId] case final f?) {
@@ -358,6 +467,7 @@ WeekPlan _fromSaved(
           maxAmount: i.amountMax,
           locked: i.locked,
           ruleId: i.mealRuleId,
+          id: i.id,
         ),
       );
     }
