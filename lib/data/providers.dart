@@ -7,10 +7,12 @@ import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
 import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
+import 'package:trendline/data/meal_rules/meal_rule_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/preferences/food_preferences_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
+import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
 import 'package:trendline/platform/health_source.dart';
@@ -49,6 +51,14 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
 
 final foodPreferencesRepositoryProvider = Provider<FoodPreferencesRepository>(
   (ref) => SupabaseFoodPreferencesRepository(ref.watch(supabaseClientProvider)),
+);
+
+final scheduleRepositoryProvider = Provider<ScheduleRepository>(
+  (ref) => SupabaseScheduleRepository(ref.watch(supabaseClientProvider)),
+);
+
+final mealRuleRepositoryProvider = Provider<MealRuleRepository>(
+  (ref) => SupabaseMealRuleRepository(ref.watch(supabaseClientProvider)),
 );
 
 final foodLogRepositoryProvider = Provider<FoodLogRepository>(

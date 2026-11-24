@@ -6,10 +6,12 @@ import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
 import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
+import 'package:trendline/data/meal_rules/meal_rule_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/preferences/food_preferences_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
+import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
 import 'package:trendline/domain/dates.dart';
@@ -17,10 +19,12 @@ import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
+import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
+import 'package:trendline/domain/schedule.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
@@ -185,6 +189,51 @@ class FakeRecipeRepository implements RecipeRepository {
     items
       ..removeWhere((x) => x.id == saved.id)
       ..add(saved);
+    return saved;
+  }
+
+  @override
+  Future<void> delete(String id) async => items.removeWhere((r) => r.id == id);
+}
+
+/// Day schedules in memory, by weekday.
+class FakeScheduleRepository implements ScheduleRepository {
+  final saved = <int, DaySchedule>{};
+
+  @override
+  Future<List<DaySchedule>> fetchAll() async => saved.values.toList();
+
+  @override
+  Future<void> save(DaySchedule schedule) async =>
+      saved[schedule.weekday] = schedule;
+}
+
+/// Meal rules in memory. New ones get IDs m0, m1, ...
+class FakeMealRuleRepository implements MealRuleRepository {
+  final items = <MealRule>[];
+  int _next = 0;
+
+  @override
+  Future<List<MealRule>> fetchAll() async => List.of(items);
+
+  @override
+  Future<MealRule> save(MealRule r) async {
+    final saved = MealRule(
+      id: r.id.isEmpty ? 'm${_next++}' : r.id,
+      foodId: r.foodId,
+      recipeId: r.recipeId,
+      slot: r.slot,
+      frequency: r.frequency,
+      timesPerWeek: r.timesPerWeek,
+      amountMin: r.amountMin,
+      amountMax: r.amountMax,
+    );
+    final i = items.indexWhere((x) => x.id == saved.id);
+    if (i < 0) {
+      items.add(saved);
+    } else {
+      items[i] = saved;
+    }
     return saved;
   }
 

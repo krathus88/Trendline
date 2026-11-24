@@ -11,9 +11,11 @@ import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/goals/goal_screen.dart';
+import 'package:trendline/ui/meal_rules/meal_rules_screen.dart';
 import 'package:trendline/ui/preferences/food_preferences_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
 import 'package:trendline/ui/progress/energy_card.dart';
+import 'package:trendline/ui/schedule/day_schedule_screen.dart';
 import 'package:trendline/ui/settings/health_connect_sheet.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
@@ -60,6 +62,26 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) => GoalScreen(existing: goal),
               ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.schedule),
+            title: const Text('Day schedule'),
+            subtitle: const Text('When you wake and sleep, and meal times'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const DayScheduleScreen(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.rule),
+            title: const Text('Meal rules'),
+            subtitle: const Text('Things you always or often have'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const MealRulesScreen()),
             ),
           ),
           ListTile(
