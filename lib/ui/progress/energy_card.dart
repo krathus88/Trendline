@@ -13,9 +13,10 @@ import 'package:trendline/ui/theme/typography.dart';
 /// The estimated daily burn, how sure the app is of it, and where the goal
 /// stands.
 class EnergyCard extends ConsumerWidget {
-  const new({required this.unit, super.key});
+  const new({required this.unit, required this.strengthTraining, super.key});
 
   final WeightUnit unit;
+  final bool strengthTraining;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -85,7 +86,12 @@ class EnergyCard extends ConsumerWidget {
             ),
             const Divider(height: Space.xl),
             Text(goalSummary(t, unit), style: text.bodyMedium),
-            for (final n in goalNotes(t.plan, t.targets, unit)) ...[
+            for (final n in goalNotes(
+              t.plan,
+              t.targets,
+              unit,
+              strengthTraining: strengthTraining,
+            )) ...[
               const SizedBox(height: Space.xs),
               Text(
                 n,
@@ -125,13 +131,15 @@ String energyExplanation(
 String goalSummary(TodayTargets t, WeightUnit unit) {
   final target = t.plan.targetWeightKg;
   final date = t.projectedDate;
+  final change = changeLabel(t.targets.weeklyChangeKg, unit);
   return switch (t.plan.status) {
     GoalStatus.reached => 'Goal reached. Maintaining.',
     GoalStatus.datePassed => 'Goal date passed. Maintaining.',
     GoalStatus.maintaining => 'Maintaining your weight.',
-    GoalStatus.losing when target != null && date != null =>
-      '${formatWeight(target, unit)} around ${formatLongDate(date)}, '
-          'losing ${formatPace(t.targets.kgPerWeek, unit)}.',
-    GoalStatus.losing => 'Losing ${formatPace(t.targets.kgPerWeek, unit)}.',
+    GoalStatus.losing || GoalStatus.gaining
+        when target != null && date != null =>
+      '${formatWeight(target, unit)} around ${formatLongDate(date)}. '
+          '$change.',
+    GoalStatus.losing || GoalStatus.gaining => '$change.',
   };
 }

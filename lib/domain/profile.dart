@@ -13,6 +13,8 @@ class Profile {
     required this.weightUnit,
     required this.disclaimerAcceptedAt,
     this.useLeanMass = false,
+    this.strengthTraining = false,
+    this.healthScreenedAt,
   });
 
   static const double minHeightCm = 100;
@@ -24,7 +26,16 @@ class Profile {
   final ActivityLevel activityLevel;
   final WeightUnit weightUnit;
   final bool useLeanMass;
+
+  /// Does regular strength (weights or resistance) training. Raises the
+  /// protein target, since training is what builds and keeps muscle.
+  final bool strengthTraining;
   final DateTime disclaimerAcceptedAt;
+
+  /// When the user confirmed that none of the conditions needing medical
+  /// supervision apply to them. Null until then. Which condition applied
+  /// (if any did) is never stored.
+  final DateTime? healthScreenedAt;
 
   static bool isValidHeight(double cm) =>
       cm >= minHeightCm && cm <= maxHeightCm;
@@ -40,6 +51,8 @@ class Profile {
     ActivityLevel? activityLevel,
     WeightUnit? weightUnit,
     bool? useLeanMass,
+    bool? strengthTraining,
+    DateTime? healthScreenedAt,
   }) => Profile(
     sex: sex ?? this.sex,
     birthYear: birthYear ?? this.birthYear,
@@ -47,6 +60,8 @@ class Profile {
     activityLevel: activityLevel ?? this.activityLevel,
     weightUnit: weightUnit ?? this.weightUnit,
     useLeanMass: useLeanMass ?? this.useLeanMass,
+    strengthTraining: strengthTraining ?? this.strengthTraining,
     disclaimerAcceptedAt: disclaimerAcceptedAt,
+    healthScreenedAt: healthScreenedAt ?? this.healthScreenedAt,
   );
 }

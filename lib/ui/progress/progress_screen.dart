@@ -120,7 +120,11 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
         children: [
           _Summary(trend: trend, unit: _unit),
           const SizedBox(height: Space.md),
-          EnergyCard(unit: _unit),
+          EnergyCard(
+            unit: _unit,
+            strengthTraining:
+                ref.watch(profileProvider).value?.strengthTraining ?? false,
+          ),
           const SizedBox(height: Space.lg),
           SegmentedButton<_Range>(
             segments: [

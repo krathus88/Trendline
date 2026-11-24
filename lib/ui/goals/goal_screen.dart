@@ -14,8 +14,9 @@ import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
 
-/// Sets the goal: any two of target weight, pace and date, or maintenance.
-/// Shows what will actually be planned, including any cap or floor.
+/// Sets the goal: lose, maintain or gain, and for losing or gaining any two
+/// of target weight, pace and date. Shows what will actually be planned,
+/// including any cap or floor.
 class GoalScreen extends ConsumerStatefulWidget {
   const new({super.key, this.existing, this.onboarding = false});
 
@@ -28,10 +29,20 @@ class GoalScreen extends ConsumerStatefulWidget {
   ConsumerState<GoalScreen> createState() => _GoalScreenState();
 }
 
+enum _Aim { lose, maintain, gain }
+
 /// Pace entry: the user's weight unit per week, or percent per week.
 enum _PaceUnit { weight, percent }
 
+/// The kinds that fix two values (maintenance is chosen with [_Aim]).
+const List<GoalKind> _twoOfThree = [
+  GoalKind.targetAndPace,
+  GoalKind.targetAndDate,
+  GoalKind.paceAndDate,
+];
+
 class _GoalScreenState extends ConsumerState<GoalScreen> {
+  late _Aim _aim;
   late GoalKind _kind;
   late _PaceUnit _paceUnit;
   final _target = TextEditingController(); // kg, lb or stones
@@ -39,21 +50,28 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
   final _pace = TextEditingController();
   DateTime? _date;
   bool _saving = false;
+  bool _filled = false;
 
   @override
   void initState() {
     super.initState();
     final g = widget.existing;
-    _kind = g?.kind ?? GoalKind.targetAndPace;
+    _aim = switch (g) {
+      null => _Aim.lose,
+      Goal(kind: GoalKind.maintain) => _Aim.maintain,
+      Goal(direction: GoalDirection.gain) => _Aim.gain,
+      _ => _Aim.lose,
+    };
+    _kind = g == null || g.kind == GoalKind.maintain
+        ? GoalKind.targetAndPace
+        : g.kind;
     _paceUnit = g?.paceMode == PaceMode.percentPerWeek
         ? _PaceUnit.percent
         : _PaceUnit.weight;
     _date = g?.goalDate;
-    // Filled in once the profile's unit is known (first build).
   }
 
-  bool _filled = false;
-
+  /// Fills the fields from the existing goal, once the unit is known.
   void _fill(WeightUnit unit) {
     if (_filled) return;
     _filled = true;
@@ -86,12 +104,19 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
     super.dispose();
   }
 
+  GoalDirection get _direction =>
+      _aim == _Aim.gain ? GoalDirection.gain : GoalDirection.lose;
+  bool get _maintaining => _aim == _Aim.maintain;
   bool get _usesTarget =>
-      _kind == GoalKind.targetAndPace || _kind == GoalKind.targetAndDate;
+      !_maintaining &&
+      (_kind == GoalKind.targetAndPace || _kind == GoalKind.targetAndDate);
   bool get _usesPace =>
-      _kind == GoalKind.targetAndPace || _kind == GoalKind.paceAndDate;
+      !_maintaining &&
+      (_kind == GoalKind.targetAndPace || _kind == GoalKind.paceAndDate);
   bool get _usesDate =>
-      _kind == GoalKind.targetAndDate || _kind == GoalKind.paceAndDate;
+      !_maintaining &&
+      (_kind == GoalKind.targetAndDate || _kind == GoalKind.paceAndDate);
+  double get _capPercent => maxPacePercent(_direction);
 
   double? _targetKg(WeightUnit unit) {
     switch (unit) {
@@ -116,23 +141,34 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
   double? _paceValue(WeightUnit unit) {
     final v = parseDecimal(_pace.text);
     if (v == null || v < 0) return null;
-    if (_paceUnit == _PaceUnit.percent) return v > maxPacePercent ? null : v;
+    if (_paceUnit == _PaceUnit.percent) return v > _capPercent ? null : v;
     final kg = unit == WeightUnit.kg ? v : lbToKg(v);
     return kg > 4 ? null : kg;
   }
 
   /// The goal as entered, or null with the reason it can't be saved.
-  (Goal?, String?) _goal(WeightUnit unit) {
+  (Goal?, String?) _goal(WeightUnit unit, double? trendKg) {
+    if (_maintaining) return (Goal.maintenance, null);
     final target = _usesTarget ? _targetKg(unit) : null;
     final pace = _usesPace ? _paceValue(unit) : null;
     if (_usesTarget && (target == null || !WeighIn.isValidWeight(target))) {
       return (null, 'Enter a target weight.');
     }
+    if (target != null && trendKg != null) {
+      final now = formatWeight(trendKg, unit);
+      if (_aim == _Aim.lose && target >= trendKg) {
+        return (null, 'To lose weight, aim below your trend weight ($now).');
+      }
+      if (_aim == _Aim.gain && target <= trendKg) {
+        return (null, 'To gain weight, aim above your trend weight ($now).');
+      }
+    }
     if (_usesPace && pace == null) {
+      final cap = _trim(_capPercent);
       return (
         null,
         _paceUnit == _PaceUnit.percent
-            ? 'Enter a pace up to 1% a week.'
+            ? 'Enter a pace up to $cap% a week.'
             : 'Enter a weekly pace.',
       );
     }
@@ -140,6 +176,7 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
     return (
       Goal(
         kind: _kind,
+        direction: _direction,
         targetWeightKg: target,
         paceMode: _paceUnit == _PaceUnit.percent
             ? PaceMode.percentPerWeek
@@ -178,10 +215,13 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final profile = ref.watch(profileProvider).value;
+    final energy = ref.watch(energyProvider).value;
     final unit = profile?.weightUnit ?? WeightUnit.kg;
     _fill(unit);
-    final (goal, problem) = _goal(unit);
+    final (goal, problem) = _goal(unit, energy?.trendKg);
     final weightUnitLabel = unit == WeightUnit.kg ? 'kg' : 'lb';
+    final verb = _aim == _Aim.gain ? 'gain' : 'lose';
+    final cap = _trim(_capPercent);
 
     return Scaffold(
       appBar: AppBar(
@@ -196,27 +236,49 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
           Space.xxl,
         ),
         children: [
-          Text(
-            'Set any two of target weight, pace and date. Trendline works '
-            'out the third, and your daily calories.',
-            style: text.bodyMedium,
+          SegmentedButton<_Aim>(
+            segments: const [
+              ButtonSegment(value: _Aim.lose, label: Text('Lose')),
+              ButtonSegment(value: _Aim.maintain, label: Text('Maintain')),
+              ButtonSegment(value: _Aim.gain, label: Text('Gain')),
+            ],
+            selected: {_aim},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => setState(() => _aim = s.first),
           ),
-          const SizedBox(height: Space.md),
-          RadioGroup<GoalKind>(
-            groupValue: _kind,
-            onChanged: (v) => setState(() => _kind = v ?? _kind),
-            child: Column(
-              children: [
-                for (final kind in GoalKind.values)
-                  RadioListTile<GoalKind>(
-                    value: kind,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(_kindTitle(kind)),
-                    subtitle: Text(_kindDetail(kind), style: text.bodySmall),
-                  ),
-              ],
+          const SizedBox(height: Space.lg),
+          if (_maintaining)
+            Text(
+              'Eat at your estimated burn. Good for holding a new weight or '
+              'a break from dieting.',
+              style: text.bodyMedium,
+            )
+          else ...[
+            Text(
+              'Set any two of target weight, pace and date. Trendline works '
+              'out the third, and your daily calories.',
+              style: text.bodyMedium,
             ),
-          ),
+            const SizedBox(height: Space.sm),
+            RadioGroup<GoalKind>(
+              groupValue: _kind,
+              onChanged: (v) => setState(() => _kind = v ?? _kind),
+              child: Column(
+                children: [
+                  for (final kind in _twoOfThree)
+                    RadioListTile<GoalKind>(
+                      value: kind,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(_kindTitle(kind)),
+                      subtitle: Text(
+                        _kindDetail(kind, verb),
+                        style: text.bodySmall,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
           if (_usesTarget) ...[
             const SizedBox(height: Space.lg),
             if (unit == WeightUnit.stLb)
@@ -278,8 +340,8 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
                   ? '% of body weight a week'
                   : '$weightUnitLabel a week',
               helper: _paceUnit == _PaceUnit.percent
-                  ? 'Up to 1%. A percentage slows down as you lose weight.'
-                  : 'Plans above 1% of your weight a week are capped.',
+                  ? 'Up to $cap%. A percentage changes with your weight.'
+                  : 'Plans above $cap% of your weight a week are capped.',
               onChanged: () => setState(() {}),
             ),
           ],
@@ -317,14 +379,14 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
     GoalKind.targetAndPace => 'Target weight and pace',
     GoalKind.targetAndDate => 'Target weight and date',
     GoalKind.paceAndDate => 'Pace and date',
-    GoalKind.maintain => 'Maintain my weight',
+    GoalKind.maintain => 'Maintain',
   };
 
-  static String _kindDetail(GoalKind k) => switch (k) {
+  static String _kindDetail(GoalKind k, String verb) => switch (k) {
     GoalKind.targetAndPace => 'Trendline works out when you get there.',
-    GoalKind.targetAndDate => 'Trendline works out the weekly pace.',
+    GoalKind.targetAndDate => 'Trendline works out how fast to $verb.',
     GoalKind.paceAndDate => 'Trendline works out where you end up.',
-    GoalKind.maintain => 'Eat at your estimated burn. Good for a diet break.',
+    GoalKind.maintain => '',
   };
 }
 
@@ -384,31 +446,24 @@ class _Preview extends ConsumerWidget {
       );
     }
 
-    final now = DateTime.now();
-    final plan = resolveGoal(goal, trendKg: energy.trendKg, today: now);
-    final targets = computeTargets(
+    final outlook = outlookFor(
+      goal: goal,
       profile: profile,
       tdeeKcal: energy.tdeeKcal,
       bmrKcal: energy.bmrKcal,
       trendKg: energy.trendKg,
-      kgPerWeek: plan.kgPerWeek,
       leanMassKg: energy.leanMassKg,
+      today: DateTime.now(),
     );
-    final target = plan.targetWeightKg;
-    final date = target != null && targets.kgPerWeek > 0
-        ? (targets.limitedByFloor
-              ? projectDate(
-                  trendKg: energy.trendKg,
-                  targetKg: target,
-                  mode: PaceMode.kgPerWeek,
-                  kgPerWeekNow: targets.kgPerWeek,
-                  from: now,
-                )
-              : plan.projectedDate)
-        : null;
-
+    final target = outlook.plan.targetWeightKg;
+    final date = outlook.projectedDate;
     final notes = <String>[
-      ...goalNotes(plan, targets, unit),
+      ...goalNotes(
+        outlook.plan,
+        outlook.targets,
+        unit,
+        strengthTraining: profile.strengthTraining,
+      ),
       if (date != null && target != null)
         'Reach ${formatWeight(target, unit)} around ${formatLongDate(date)}.',
     ];
@@ -422,16 +477,16 @@ class _Preview extends ConsumerWidget {
             Text('Daily target', style: text.bodySmall),
             const SizedBox(height: Space.xs),
             Text(
-              '${formatKcal(targets.kcal)} kcal',
+              '${formatKcal(outlook.targets.kcal)} kcal',
               style: text.headlineSmall?.tabular,
             ),
             const SizedBox(height: Space.xs),
             Text(
-              targets.kgPerWeek > 0
-                  ? 'Losing ${formatPace(targets.kgPerWeek, unit)}'
-                  : 'Maintaining',
+              changeLabel(outlook.targets.weeklyChangeKg, unit),
               style: text.bodyMedium,
             ),
+            const SizedBox(height: Space.sm),
+            Text(proteinLabel(outlook.targets), style: text.bodySmall),
             for (final n in notes) ...[
               const SizedBox(height: Space.sm),
               Text(n, style: text.bodySmall),
@@ -443,19 +498,57 @@ class _Preview extends ConsumerWidget {
   }
 }
 
-/// Plain-language notes on how the plan differs from what was asked.
-List<String> goalNotes(GoalPlan plan, DailyTargets t, WeightUnit unit) {
+/// "Losing 0.5 kg/week", "Gaining 0.25 kg/week" or "Maintaining".
+String changeLabel(double weeklyChangeKg, WeightUnit unit) {
+  if (weeklyChangeKg.abs() < 1e-6) return 'Maintaining';
+  final pace = formatPace(weeklyChangeKg.abs(), unit);
+  return weeklyChangeKg < 0 ? 'Losing $pace' : 'Gaining $pace';
+}
+
+/// "Protein: at least 130 g a day, based on your lean mass".
+String proteinLabel(DailyTargets t) {
+  final basis = switch (t.proteinBasis) {
+    ProteinBasis.leanMass => 'your lean mass from your scale',
+    ProteinBasis.bodyWeight => 'your weight',
+  };
+  return 'Protein: at least ${t.proteinG.round()} g a day, based on $basis.';
+}
+
+/// Plain-language notes on how the plan differs from what was asked, and
+/// anything worth knowing about it.
+List<String> goalNotes(
+  GoalPlan plan,
+  DailyTargets t,
+  WeightUnit unit, {
+  required bool strengthTraining,
+}) {
   final capped = formatPace(plan.kgPerWeek, unit);
-  final floored = formatPace(t.kgPerWeek, unit);
+  final cap = _trim(maxPacePercent(plan.direction));
+  final cappedNote =
+      'That pace is over $cap% of your weight a week, so it is capped at '
+      '$capped.';
+  final floored = changeLabel(t.weeklyChangeKg, unit).toLowerCase();
   final floor = formatKcal(t.floorKcal);
   return [
     if (plan.status == GoalStatus.reached)
-      "You're at your target weight, so this plans maintenance.",
+      "You've reached your target weight, so this plans maintenance.",
     if (plan.status == GoalStatus.datePassed)
       'The goal date has passed, so this plans maintenance. Set a new date.',
-    if (plan.cappedByPace)
-      'That pace is over 1% of your weight a week, so it is capped at $capped.',
+    if (plan.cappedByPace) cappedNote,
     if (t.limitedByFloor)
-      "Calories can't go below $floor kcal, so the pace is $floored.",
+      "Calories can't go below $floor kcal, so you'll be $floored.",
+    if (plan.direction == GoalDirection.gain &&
+        plan.status == GoalStatus.gaining) ...[
+      if (!strengthTraining) _gainWithoutTraining,
+      _gainWhenExperienced,
+    ],
   ];
 }
+
+const String _gainWithoutTraining =
+    'Without strength training, most of the weight gained will be fat. '
+    'Training is what turns the extra food into muscle.';
+
+const String _gainWhenExperienced =
+    'If you have been lifting for years, gain more slowly than this: '
+    'about 0.25% a week.';

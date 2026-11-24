@@ -28,6 +28,7 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
   Sex? _sex;
   ActivityLevel _activity = ActivityLevel.light;
   WeightUnit _unit = WeightUnit.kg;
+  bool _training = false;
   bool _acceptedDisclaimer = false;
   bool _saving = false;
 
@@ -42,6 +43,7 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
     _sex = p?.sex;
     _activity = p?.activityLevel ?? ActivityLevel.light;
     _unit = p?.weightUnit ?? WeightUnit.kg;
+    _training = p?.strengthTraining ?? false;
     _acceptedDisclaimer = p != null;
   }
 
@@ -63,8 +65,10 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
       activityLevel: _activity,
       weightUnit: _unit,
       useLeanMass: widget.existing?.useLeanMass ?? false,
+      strengthTraining: _training,
       disclaimerAcceptedAt:
           widget.existing?.disclaimerAcceptedAt ?? DateTime.now(),
+      healthScreenedAt: widget.existing?.healthScreenedAt,
     );
 
     setState(() => _saving = true);
@@ -180,6 +184,18 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: Space.sm),
+            SwitchListTile(
+              value: _training,
+              onChanged: (v) => setState(() => _training = v),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('I do strength training'),
+              subtitle: Text(
+                'Weights or resistance work most weeks. Raises your '
+                'protein target to build and keep muscle.',
+                style: text.bodySmall,
+              ),
+            ),
             const SizedBox(height: Space.lg),
             const _Label('Show weights in'),
             SegmentedButton<WeightUnit>(
@@ -210,7 +226,8 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
                         'you have a health condition, are pregnant or '
                         'breastfeeding, or have a history of disordered '
                         'eating, talk to your GP before changing how you '
-                        'eat.',
+                        'eat. If you have kidney disease, check with your '
+                        'GP before following high-protein targets.',
                         style: text.bodySmall,
                       ),
                       CheckboxListTile(

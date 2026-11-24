@@ -4,13 +4,10 @@ import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/weigh_ins/weigh_ins_notifier.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
+import 'package:trendline/domain/body_composition.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/energy.dart';
 import 'package:trendline/domain/trend.dart';
-import 'package:trendline/domain/weigh_in.dart';
-
-/// How recent a lean mass reading must be to use it.
-const int leanMassMaxAgeDays = 30;
 
 /// The current estimate of daily energy use, and where it came from.
 @immutable
@@ -67,7 +64,7 @@ class EnergyNotifier extends AsyncNotifier<EnergyState?> {
     final today = dayOf(now);
     final trend = computeTrend(weighIns, until: now);
     final trendKg = trend.last.trendKg;
-    final lean = _recentLeanMass(weighIns, today);
+    final lean = recentLeanMassKg(weighIns, today: today);
     final bmr = estimateBmr(
       profile,
       weightKg: trendKg,
@@ -126,14 +123,5 @@ class EnergyNotifier extends AsyncNotifier<EnergyState?> {
       lastUpdatedOn: updatedOn,
       lastAttempt: attempt,
     );
-  }
-
-  static double? _recentLeanMass(List<WeighIn> weighIns, DateTime today) {
-    for (final w in weighIns) {
-      // Newest first.
-      if (daysBetween(dayOf(w.measuredAt), today) > leanMassMaxAgeDays) break;
-      if (w.leanMassKg != null) return w.leanMassKg;
-    }
-    return null;
   }
 }

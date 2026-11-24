@@ -16,7 +16,7 @@ class SupabaseGoalRepository implements GoalRepository {
   final SupabaseClient _db;
 
   static const _columns =
-      'kind, target_weight_kg, pace_mode, pace_value, goal_date';
+      'kind, direction, target_weight_kg, pace_mode, pace_value, goal_date';
 
   @override
   Future<Goal?> fetchActive() async {
@@ -57,6 +57,7 @@ Map<String, Object?> goalToRow(Goal g) {
       g.kind == GoalKind.targetAndDate || g.kind == GoalKind.paceAndDate;
   return {
     'kind': _kinds[g.kind],
+    'direction': g.direction == GoalDirection.gain ? 'gain' : 'lose',
     'target_weight_kg': usesTarget ? g.targetWeightKg : null,
     'pace_mode': g.paceMode == PaceMode.percentPerWeek ? 'pct' : 'kg',
     'pace_value': usesPace ? g.paceValue : null,
@@ -71,6 +72,9 @@ Goal goalFromRow(Map<String, dynamic> row) => Goal(
         orElse: () => const MapEntry(GoalKind.maintain, 'maintain'),
       )
       .key,
+  direction: row['direction'] == 'gain'
+      ? GoalDirection.gain
+      : GoalDirection.lose,
   targetWeightKg: readDoubleOrNull(row['target_weight_kg']),
   paceMode: row['pace_mode'] == 'pct'
       ? PaceMode.percentPerWeek

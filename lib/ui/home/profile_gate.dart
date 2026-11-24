@@ -5,9 +5,11 @@ import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/goals/goal_screen.dart';
 import 'package:trendline/ui/home/home_shell.dart';
+import 'package:trendline/ui/profile/health_screen_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
 
-/// Sends new users through onboarding (profile, then goal) before the app.
+/// Sends new users through onboarding (profile, health check, then goal)
+/// before the app.
 class ProfileGate extends ConsumerWidget {
   const new({super.key});
 
@@ -15,6 +17,8 @@ class ProfileGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (ref.watch(profileProvider)) {
       AsyncData(value: null) => const ProfileFormScreen(),
+      AsyncData(:final value?) when value.healthScreenedAt == null =>
+        const HealthScreenScreen(),
       AsyncData() => const _GoalGate(),
       AsyncError(:final error) => Scaffold(
         body: ErrorView(

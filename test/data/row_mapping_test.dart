@@ -36,19 +36,32 @@ void main() {
       heightCm: 165.5,
       activityLevel: ActivityLevel.moderate,
       weightUnit: WeightUnit.stLb,
+      strengthTraining: true,
       disclaimerAcceptedAt: DateTime.utc(2026, 11, 24, 9),
+      healthScreenedAt: DateTime.utc(2026, 11, 28, 9),
     );
     final row = profileToRow(profile);
     expect(row['weight_unit'], 'st_lb');
+    expect(row['strength_training'], isTrue);
 
     final back = profileFromRow({
       ...row,
       'height_cm': '165.5',
       'disclaimer_accepted_at': '2026-11-24T09:00:00+00:00',
+      'health_screened_at': '2026-11-28T09:00:00+00:00',
     });
     expect(back.sex, Sex.female);
     expect(back.heightCm, 165.5);
     expect(back.weightUnit, WeightUnit.stLb);
+    expect(back.strengthTraining, isTrue);
+    expect(
+      back.healthScreenedAt!.isAtSameMomentAs(profile.healthScreenedAt!),
+      isTrue,
+    );
+    expect(
+      profileFromRow({...row, 'health_screened_at': null}).healthScreenedAt,
+      isNull,
+    );
     expect(
       back.disclaimerAcceptedAt.isAtSameMomentAs(profile.disclaimerAcceptedAt),
       isTrue,

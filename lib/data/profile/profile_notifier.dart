@@ -14,6 +14,14 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
     return await ref.watch(profileRepositoryProvider).fetch();
   }
 
+  /// Records that none of the conditions needing medical supervision
+  /// apply. Only the date is kept.
+  Future<void> confirmHealthScreen() async {
+    final profile = state.value;
+    if (profile == null) return;
+    await save(profile.copyWith(healthScreenedAt: DateTime.now()));
+  }
+
   Future<void> save(Profile profile) async {
     final saved = await ref.read(profileRepositoryProvider).save(profile);
     state = AsyncData(saved);

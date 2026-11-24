@@ -29,6 +29,7 @@ final testProfile = Profile(
   activityLevel: ActivityLevel.light,
   weightUnit: WeightUnit.kg,
   disclaimerAcceptedAt: DateTime(2026),
+  healthScreenedAt: DateTime(2026),
 );
 
 class FakeProfileRepository implements ProfileRepository {

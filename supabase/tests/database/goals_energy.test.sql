@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(19);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a@test.local'),
@@ -105,6 +105,20 @@ select lives_ok(
   $$insert into public.goals (kind) values ('maintain')$$,
   'maintenance needs no values'
 );
+select lives_ok(
+  $$insert into public.goals
+      (kind, direction, target_weight_kg, pace_mode, pace_value)
+    values ('target_and_pace', 'gain', 75, 'pct', 0.25)$$,
+  'A sets a gain goal'
+);
+select throws_ok(
+  $$insert into public.goals
+      (kind, direction, pace_mode, pace_value, goal_date)
+    values ('pace_and_date', 'gain', 'pct', 0.75, current_date + 90)$$,
+  '23514',
+  null,
+  'a percent gain pace above 0.5% a week is refused'
+);
 
 -- ---------------------------------------------------------------------------
 -- B sees and touches none of it
@@ -133,7 +147,7 @@ reset role;
 select is(
   (select pace_value from public.goals
    where user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-     and kind = 'target_and_pace'),
+     and kind = 'target_and_pace' and direction = 'lose'),
   0.75::numeric,
   'B cannot change A''s goal'
 );

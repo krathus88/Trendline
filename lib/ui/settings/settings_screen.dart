@@ -89,7 +89,9 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(Space.gutter),
             child: Text(
               'Trendline gives estimates, not medical advice. Talk to your '
-              'GP if you have a health condition.\n\n'
+              'GP if you have a health condition. If you have kidney '
+              'disease, check with your GP before following high-protein '
+              'targets.\n\n'
               'Contains information from Open Food Facts '
               '(openfoodfacts.org), made available under the Open '
               'Database License (ODbL).\n\nVersion $appVersion',

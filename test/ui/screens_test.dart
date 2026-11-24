@@ -8,6 +8,7 @@ import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/home/home_shell.dart';
@@ -41,6 +42,8 @@ void main() {
         reason: 'disabled until the disclaimer is accepted',
       );
 
+      await tester.tap(find.text('I do strength training'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('I understand'));
       await tester.pumpAndSettle();
       await tester.tap(continueButton);
@@ -48,7 +51,42 @@ void main() {
 
       expect(backend.profiles.saves, 1);
       expect(backend.profiles.profile!.weightUnit, WeightUnit.stLb);
+      expect(backend.profiles.profile!.strengthTraining, isTrue);
+
+      // Then the health check, before anything else.
+      expect(find.text('Do any of these apply to you?'), findsOneWidget);
+      await tester.tap(find.text('None of these apply'));
+      await tester.pumpAndSettle();
+      expect(backend.profiles.profile!.healthScreenedAt, isNotNull);
       expect(find.byType(HomeShell), findsOneWidget);
+    });
+
+    testWidgets('stops if a screened condition applies, saving nothing', (
+      tester,
+    ) async {
+      final backend = TestBackend(
+        profile: Profile(
+          sex: Sex.female,
+          birthYear: 1990,
+          heightCm: 165,
+          activityLevel: ActivityLevel.light,
+          weightUnit: WeightUnit.kg,
+          disclaimerAcceptedAt: DateTime(2026),
+        ),
+      );
+      await backend.pump(tester);
+      expect(find.text('Kidney disease'), findsOneWidget);
+
+      await tester.tap(find.text('One or more apply'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining("isn't suitable"), findsOneWidget);
+      expect(backend.profiles.saves, 0);
+      expect(backend.profiles.profile!.healthScreenedAt, isNull);
+
+      await tester.tap(find.text('Sign out'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeShell), findsNothing);
+      expect(find.text('Your goal'), findsNothing);
     });
 
     testWidgets('rejects under-18s', (tester) async {
@@ -374,6 +412,46 @@ void main() {
       expect(find.byType(HomeShell), findsOneWidget);
     });
 
+    testWidgets('gaining: needs a higher target, and caps at 0.5%', (
+      tester,
+    ) async {
+      final backend = await withWeighIn(tester);
+      await tester.tap(find.text('Gain'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Target weight'),
+        '85',
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'Pace'), '1');
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('aim above your trend weight'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Target weight'),
+        '95',
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('over 0.5% of your weight'), findsOneWidget);
+      expect(find.textContaining('Gaining 0.45 kg/week'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.pumpAndSettle();
+      expect(backend.goals.goal!.direction, GoalDirection.gain);
+    });
+
+    testWidgets('maintain needs no values', (tester) async {
+      final backend = await withWeighIn(tester);
+      await tester.tap(find.text('Maintain'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.pumpAndSettle();
+      expect(backend.goals.goal!.kind, GoalKind.maintain);
+    });
+
     testWidgets('a percent pace above 1% cannot be saved', (tester) async {
       await withWeighIn(tester);
       await tester.enterText(
@@ -418,7 +496,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Daily burn estimate'), findsOneWidget);
       expect(find.textContaining('From a formula for now.'), findsOneWidget);
-      expect(find.textContaining('losing 0.5 kg/week'), findsOneWidget);
+      expect(find.textContaining('Losing 0.5 kg/week'), findsOneWidget);
     });
   });
 }

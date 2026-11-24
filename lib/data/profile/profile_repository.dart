@@ -18,7 +18,8 @@ class SupabaseProfileRepository implements ProfileRepository {
 
   static const _columns =
       'sex, birth_year, height_cm, activity_level, weight_unit, '
-      'use_lean_mass, disclaimer_accepted_at';
+      'use_lean_mass, strength_training, disclaimer_accepted_at, '
+      'health_screened_at';
 
   @override
   Future<Profile?> fetch() async {
@@ -45,7 +46,11 @@ Profile profileFromRow(Map<String, dynamic> row) => Profile(
   activityLevel: ActivityLevel.values.byName(row['activity_level'] as String),
   weightUnit: weightUnitFromDb(row['weight_unit'] as String),
   useLeanMass: row['use_lean_mass'] as bool? ?? false,
+  strengthTraining: row['strength_training'] as bool? ?? false,
   disclaimerAcceptedAt: readDateTime(row['disclaimer_accepted_at']),
+  healthScreenedAt: row['health_screened_at'] == null
+      ? null
+      : readDateTime(row['health_screened_at']),
 );
 
 Map<String, dynamic> profileToRow(Profile p) => {
@@ -55,7 +60,12 @@ Map<String, dynamic> profileToRow(Profile p) => {
   'activity_level': p.activityLevel.name,
   'weight_unit': weightUnitToDb(p.weightUnit),
   'use_lean_mass': p.useLeanMass,
+  'strength_training': p.strengthTraining,
   'disclaimer_accepted_at': writeTimestamp(p.disclaimerAcceptedAt),
+  'health_screened_at': switch (p.healthScreenedAt) {
+    final at? => writeTimestamp(at),
+    null => null,
+  },
 };
 
 WeightUnit weightUnitFromDb(String value) => switch (value) {
