@@ -19,6 +19,10 @@ dependencies:
   # Encrypted storage for the auth session (publisher: steenbakker.dev,
   # BSD-3). Auth tokens must never sit in plain storage.
   flutter_secure_storage: ^11.2.0
+  # Health Connect reads (weight, body fat, lean mass), Android only; used only
+  # inside lib/platform/android (publisher: carp.dk, MIT). Pinned exactly:
+  # every update gets a changelog review and a real-device test first.
+  health: 14.0.0
   # HTTP for the Open Food Facts API (publisher: dart.dev, BSD-3).
   http: ^1.6.0
   # Date and number formatting (publisher: dart.dev, BSD-3).

@@ -15,8 +15,10 @@ With the Supabase CLI (recommended; it applies every migration in order and trac
 ```sh
 npx supabase@3.3.0 login
 npx supabase@3.3.0 link --project-ref <your-project-ref>
-npx supabase@3.3.0 db push
+npx supabase@3.3.0 db push --remote
 ```
+
+(Without `--remote`, `db push` targets a local test database, not your project.)
 
 Or by hand: in **SQL Editor**, run each file in `supabase/migrations/` in filename order.
 
@@ -71,3 +73,12 @@ Sign in with your listed Discord account.
 
 - **It works:** done.
 - **"Not on the invite list" even though you're listed:** the hook couldn't find your Discord ID where it expected. Check **Authentication > Logs** for the hook's input, find where the Discord ID sits in it, and add that location to the lookup in `private.check_allowlist` (in a new migration).
+
+## 9. Health Connect (optional, Android)
+
+Trendline can import weight, body fat and lean mass that your scale's app saves to Health Connect.
+
+1. In your scale's app, turn on syncing to Health Connect (it's usually under its settings or connected apps).
+2. In Trendline: **Settings > Health Connect > Connect**, then allow weight (and body fat and lean mass if your scale measures them) and access to past data.
+
+Trendline only reads from Health Connect. Withdraw access at any time from **Settings > Health Connect > Disconnect** or from Health Connect itself; readings already imported stay in your account.

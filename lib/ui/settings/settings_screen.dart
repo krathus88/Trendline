@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/app_info.dart';
+import 'package:trendline/data/health/health_sync_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/units.dart';
+import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
+import 'package:trendline/ui/settings/health_connect_sheet.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 
@@ -16,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider).value;
+    final health = ref.watch(healthSyncProvider).value;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -34,6 +38,18 @@ class SettingsScreen extends ConsumerWidget {
                 MaterialPageRoute<void>(
                   builder: (_) => ProfileFormScreen(existing: profile),
                 ),
+              ),
+            ),
+          if (health != null &&
+              health.availability != HealthAvailability.unavailable)
+            ListTile(
+              leading: const Icon(Icons.monitor_weight_outlined),
+              title: const Text('Health Connect'),
+              subtitle: Text(healthConnectSummary(health)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showAppSheet<void>(
+                context,
+                builder: (_) => const HealthConnectSheet(),
               ),
             ),
           const Divider(),

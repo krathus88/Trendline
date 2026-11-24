@@ -23,6 +23,7 @@ class TestBackend {
   final foods = FakeFoodRepository();
   final foodLogs = FakeFoodLogRepository();
   final scanner = FakeBarcodeScanner();
+  final health = FakeHealthSource();
 
   /// Open Food Facts responses. Defaults to "not found" for everything.
   Future<http.Response> Function(http.Request) off = (_) async =>
@@ -35,6 +36,7 @@ class TestBackend {
     foodRepositoryProvider.overrideWithValue(foods),
     foodLogRepositoryProvider.overrideWithValue(foodLogs),
     barcodeScannerProvider.overrideWithValue(scanner),
+    healthSourceProvider.overrideWithValue(health),
     offClientProvider.overrideWith((ref) => fakeOffClient((r) => off(r))),
   ];
 

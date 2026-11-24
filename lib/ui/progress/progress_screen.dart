@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/health/health_sync_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/weigh_ins/weigh_ins_notifier.dart';
 import 'package:trendline/domain/dates.dart';
@@ -44,6 +45,26 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
   Future<void> _delete(WeighIn w) async {
     try {
       await ref.read(weighInsProvider.notifier).delete(w.id);
+      if (mounted && w.source == WeighInSource.healthConnect) {
+        showMessageSnack(
+          context,
+          "Deleted. It won't be imported from Health Connect again.",
+        );
+      }
+    } on Object catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  /// Pull to refresh: imports from Health Connect if connected, otherwise
+  /// reloads from the server.
+  Future<void> _refresh() async {
+    final health = ref.read(healthSyncProvider).value;
+    try {
+      if (health != null && health.connected) {
+        await ref.read(healthSyncProvider.notifier).sync();
+      }
+      await ref.read(weighInsProvider.notifier).reload();
     } on Object catch (e) {
       if (mounted) showErrorSnack(context, e);
     }
@@ -86,41 +107,44 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
         if (!p.day.isBefore(start)) p,
     ];
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        Space.gutter,
-        Space.sm,
-        Space.gutter,
-        96, // clear of the floating button
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          Space.gutter,
+          Space.sm,
+          Space.gutter,
+          96, // clear of the floating button
+        ),
+        children: [
+          _Summary(trend: trend, unit: _unit),
+          const SizedBox(height: Space.lg),
+          SegmentedButton<_Range>(
+            segments: [
+              for (final r in _Range.values)
+                ButtonSegment(value: r, label: Text(r.label)),
+            ],
+            selected: {_range},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => setState(() => _range = s.first),
+          ),
+          const SizedBox(height: Space.lg),
+          SizedBox(
+            height: 220,
+            child: visible.length < 2
+                ? const EmptyState(
+                    title: 'Not enough data yet',
+                    message: 'The chart appears after two days of weigh-ins.',
+                  )
+                : TrendChart(points: visible, unit: _unit),
+          ),
+          const SizedBox(height: Space.xl),
+          Text('Weigh-ins', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: Space.xs),
+          for (final w in weighIns)
+            _WeighInTile(weighIn: w, unit: _unit, onDelete: () => _delete(w)),
+        ],
       ),
-      children: [
-        _Summary(trend: trend, unit: _unit),
-        const SizedBox(height: Space.lg),
-        SegmentedButton<_Range>(
-          segments: [
-            for (final r in _Range.values)
-              ButtonSegment(value: r, label: Text(r.label)),
-          ],
-          selected: {_range},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) => setState(() => _range = s.first),
-        ),
-        const SizedBox(height: Space.lg),
-        SizedBox(
-          height: 220,
-          child: visible.length < 2
-              ? const EmptyState(
-                  title: 'Not enough data yet',
-                  message: 'The chart appears after two days of weigh-ins.',
-                )
-              : TrendChart(points: visible, unit: _unit),
-        ),
-        const SizedBox(height: Space.xl),
-        Text('Weigh-ins', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: Space.xs),
-        for (final w in weighIns)
-          _WeighInTile(weighIn: w, unit: _unit, onDelete: () => _delete(w)),
-      ],
     );
   }
 }
@@ -208,6 +232,7 @@ class _WeighInTile extends StatelessWidget {
         [
           formatDateTime(weighIn.measuredAt),
           if (fat != null) '${fat.toStringAsFixed(1)}% body fat',
+          if (weighIn.source == WeighInSource.healthConnect) 'Health Connect',
         ].join(' · '),
         style: text.bodySmall?.tabular.copyWith(color: colors.textTertiary),
       ),

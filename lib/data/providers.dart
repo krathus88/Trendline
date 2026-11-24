@@ -8,6 +8,7 @@ import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
+import 'package:trendline/platform/health_source.dart';
 
 // ---------------------------------------------------------------------------
 // Infrastructure. Overridden in main.dart (real) and in tests (fakes).
@@ -45,6 +46,10 @@ final offClientProvider = Provider<OffClient>((ref) {
 
 final barcodeScannerProvider = Provider<BarcodeScanner>(
   (ref) => createBarcodeScanner(),
+);
+
+final healthSourceProvider = Provider<HealthSource>(
+  (ref) => createHealthSource(),
 );
 
 // ---------------------------------------------------------------------------

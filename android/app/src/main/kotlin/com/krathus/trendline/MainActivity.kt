@@ -1,5 +1,6 @@
 package com.krathus.trendline
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// A fragment activity: Health Connect's permission screen needs one.
+class MainActivity : FlutterFragmentActivity()

@@ -7,10 +7,12 @@ import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
+import 'package:trendline/platform/health_source.dart';
 
 /// Thrown by fakes to simulate a failed network call.
 class FakeNetworkError implements Exception;
@@ -67,10 +69,40 @@ class FakeWeighInRepository implements WeighInRepository {
     return w;
   }
 
+  /// IDs of imported readings the user deleted, as the database keeps them.
+  final dismissed = <String>{};
+
   @override
   Future<void> delete(String id) async {
     if (failDeletes) throw FakeNetworkError();
+    for (final w in items.where((w) => w.id == id)) {
+      if (w.externalId != null) dismissed.add(w.externalId!);
+    }
     items.removeWhere((w) => w.id == id);
+  }
+
+  @override
+  Future<int> importHealthConnect(List<ImportedWeighIn> readings) async {
+    var added = 0;
+    for (final r in readings) {
+      if (dismissed.contains(r.externalId) ||
+          items.any((w) => w.externalId == r.externalId)) {
+        continue;
+      }
+      items.add(
+        WeighIn(
+          id: 'w${_next++}',
+          measuredAt: r.measuredAt,
+          weightKg: r.weightKg,
+          bodyFatPct: r.bodyFatPct,
+          leanMassKg: r.leanMassKg,
+          source: WeighInSource.healthConnect,
+          externalId: r.externalId,
+        ),
+      );
+      added++;
+    }
+    return added;
   }
 }
 
@@ -170,6 +202,47 @@ class FakeBarcodeScanner implements BarcodeScanner {
 
   @override
   Future<String?> scan(BuildContext context) async => result;
+}
+
+class FakeHealthSource implements HealthSource {
+  new({
+    this.status = HealthAvailability.available,
+    this.granted = false,
+    this.grantOnRequest = true,
+  });
+
+  HealthAvailability status;
+  bool granted;
+  bool grantOnRequest;
+  BodyReadings readings = const BodyReadings();
+  Exception? readError;
+  final reads = <({DateTime start, DateTime end})>[];
+  int installs = 0;
+
+  @override
+  String get name => 'Health Connect';
+
+  @override
+  Future<HealthAvailability> availability() async => status;
+
+  @override
+  Future<void> install() async => installs++;
+
+  @override
+  Future<bool> hasAccess() async => granted;
+
+  @override
+  Future<bool> requestAccess() async => granted = grantOnRequest;
+
+  @override
+  Future<void> disconnect() async => granted = false;
+
+  @override
+  Future<BodyReadings> read(DateTime start, DateTime end) async {
+    reads.add((start: start, end: end));
+    if (readError case final e?) throw e;
+    return readings;
+  }
 }
 
 /// An [OffClient] whose HTTP calls are answered by [handler].

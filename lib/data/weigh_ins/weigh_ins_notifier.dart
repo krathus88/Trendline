@@ -43,6 +43,14 @@ class WeighInsNotifier extends AsyncNotifier<List<WeighIn>> {
     state = AsyncData(_newestFirst([...current, created]));
   }
 
+  /// Fetches the list again, keeping the current one on screen meanwhile.
+  Future<void> reload() async {
+    final since = addDays(dayOf(DateTime.now()), -historyDays);
+    state = AsyncData(
+      await ref.read(weighInRepositoryProvider).fetchSince(since),
+    );
+  }
+
   /// Removes the weigh-in straight away; puts it back if the delete fails.
   Future<void> delete(String id) async {
     final before = state.value ?? const <WeighIn>[];

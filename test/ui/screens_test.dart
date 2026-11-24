@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/units.dart';
+import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/home/home_shell.dart';
 
 import '../helpers/fakes.dart';
@@ -285,6 +287,57 @@ void main() {
         find.textContaining('Open Database License (ODbL)'),
         findsOneWidget,
       );
+    });
+  });
+  group('Health Connect', () {
+    testWidgets('connects from Settings and shows the imported reading', (
+      tester,
+    ) async {
+      final backend = TestBackend(profile: testProfile);
+      backend.health.readings = BodyReadings(
+        weightKg: [
+          HealthReading(
+            id: 'hc-1',
+            at: DateTime.now().subtract(const Duration(hours: 1)),
+            value: 90,
+          ),
+        ],
+      );
+      await backend.pump(tester);
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Import weigh-ins from your scale'), findsOneWidget);
+      await tester.tap(find.text('Health Connect'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+      await tester.pumpAndSettle();
+
+      expect(backend.weighIns.items.single.externalId, 'hc-1');
+      expect(find.text('Added 1 weigh-in from Health Connect'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Sync now'), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10)); // close the sheet
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Progress'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Health Connect'), findsWidgets);
+
+      await tester.tap(find.byTooltip('Delete weigh-in'));
+      await tester.pumpAndSettle();
+      expect(backend.weighIns.dismissed, {'hc-1'});
+      expect(find.textContaining("won't be imported"), findsOneWidget);
+    });
+
+    testWidgets('is hidden where Health Connect is unavailable', (
+      tester,
+    ) async {
+      final backend = TestBackend(profile: testProfile);
+      backend.health.status = HealthAvailability.unavailable;
+      await backend.pump(tester);
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Health Connect'), findsNothing);
     });
   });
 }
