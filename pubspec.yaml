@@ -48,3 +48,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # The built-in recipe library (see lib/domain/recipe_library.dart).
+    - assets/recipe_library.json

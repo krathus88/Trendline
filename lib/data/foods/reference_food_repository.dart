@@ -9,6 +9,12 @@ abstract interface class ReferenceFoodRepository {
   /// Basic foods matching [query], best first. Results are drafts: choosing
   /// one copies it into the user's own foods.
   Future<List<FoodDraft>> search(String query);
+
+  /// The basic foods with these CoFID codes and names (codes alone aren't
+  /// unique), as drafts. Keys with no match are left out.
+  Future<Map<({String code, String name}), FoodDraft>> fetchByKeys(
+    Set<({String code, String name})> keys,
+  );
 }
 
 class SupabaseReferenceFoodRepository implements ReferenceFoodRepository {
@@ -21,8 +27,29 @@ class SupabaseReferenceFoodRepository implements ReferenceFoodRepository {
   final _cache = <String, List<FoodDraft>>{};
 
   static const _columns =
-      'cofid_code, display_name, kcal_100g, protein_100g, carbs_100g, '
+      'cofid_code, name, display_name, kcal_100g, protein_100g, carbs_100g, '
       'fat_100g, fibre_100g, sugar_100g, salt_100g';
+
+  @override
+  Future<Map<({String code, String name}), FoodDraft>> fetchByKeys(
+    Set<({String code, String name})> keys,
+  ) async {
+    if (keys.isEmpty) return const {};
+    final rows = await _db
+        .from('reference_foods')
+        .select(_columns)
+        .inFilter('cofid_code', {for (final k in keys) k.code}.toList());
+    final found = <({String code, String name}), FoodDraft>{};
+    for (final row in rows) {
+      final code = row['cofid_code'];
+      final name = row['name'];
+      if (code is! String || name is! String) continue;
+      final key = (code: code, name: name);
+      final draft = referenceFoodFromRow(row);
+      if (keys.contains(key) && draft != null) found[key] = draft;
+    }
+    return found;
+  }
 
   @override
   Future<List<FoodDraft>> search(String query) async {

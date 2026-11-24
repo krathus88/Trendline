@@ -22,6 +22,9 @@ class RecipeIngredient {
   int get hashCode => Object.hash(foodId, rawGrams);
 }
 
+/// Where a recipe came from.
+enum RecipeOrigin { user, library, template }
+
 /// A batch-cookable recipe. Portions are eaten in cooked grams, measured
 /// against the batch's [cookedWeightG] once the user has weighed it.
 @immutable
@@ -35,6 +38,9 @@ class Recipe {
     this.fridgeDays = 3,
     this.freezable = true,
     this.method,
+    this.origin = RecipeOrigin.user,
+    this.sourceId,
+    this.sourceVersion,
   });
 
   static const int maxPortions = 50;
@@ -53,6 +59,12 @@ class Recipe {
 
   /// Cooking steps, optional.
   final String? method;
+
+  final RecipeOrigin origin;
+
+  /// The library recipe or template it was copied from, and its version.
+  final String? sourceId;
+  final int? sourceVersion;
 
   double get rawWeightG => ingredients.fold(0, (sum, i) => sum + i.rawGrams);
 

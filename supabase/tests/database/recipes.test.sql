@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(19);
+select plan(23);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a@test.local'),
@@ -86,6 +86,37 @@ select is(
   0,
   'a failed save leaves no half-saved recipe'
 );
+
+-- Library copies remember where they came from, and keep it on edits.
+select lives_ok(
+  $$select public.save_recipe(
+      null, 'Oats', 2::smallint, null, 3::smallint, false, null,
+      '[{"food_id": "11111111-1111-1111-1111-111111111111", "raw_grams": 80}]',
+      'library', 'overnight-oats-berries', 1::smallint)$$,
+  'A can save a copy of a library recipe'
+);
+select lives_ok(
+  $$select public.save_recipe(
+      (select id from public.recipes where name = 'Oats'), 'My oats',
+      2::smallint, null, 3::smallint, false, null,
+      '[{"food_id": "11111111-1111-1111-1111-111111111111", "raw_grams": 90}]')$$,
+  'A can edit the copy'
+);
+select is(
+  (select origin || ' ' || source_id || ' v' || source_version
+   from public.recipes where name = 'My oats'),
+  'library overnight-oats-berries v1',
+  'an edited copy still records its source'
+);
+select throws_ok(
+  $$select public.save_recipe(
+      null, 'Odd', 2::smallint, null, 3::smallint, false, null,
+      '[{"food_id": "11111111-1111-1111-1111-111111111111", "raw_grams": 80}]',
+      'library', null, null)$$,
+  '23514', null,
+  'a library copy needs its source'
+);
+delete from public.recipes where name = 'My oats';
 
 -- ---------------------------------------------------------------------------
 -- Logging, and what deleting does

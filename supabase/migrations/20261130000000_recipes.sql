@@ -27,8 +27,18 @@ create table public.recipes (
   -- How long it keeps in the fridge; after that, the freezer (if freezable).
   fridge_days smallint not null default 3 check (fridge_days between 0 and 7),
   freezable boolean not null default true,
+  -- Where it came from: entered by the user, or copied from the app's
+  -- recipe library or a dish template (which ship with the app). Library
+  -- and template copies remember which one, and which version.
+  origin text not null default 'user'
+    check (origin in ('user', 'library', 'template')),
+  source_id text check (source_id ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
+                        and char_length(source_id) <= 80),
+  source_version smallint check (source_version >= 1),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  check ((origin = 'user') = (source_id is null)),
+  check ((source_id is null) = (source_version is null))
 );
 
 create index recipes_user_name_idx on public.recipes (user_id, name);
@@ -153,9 +163,11 @@ create policy "own food logs: update" on public.food_logs
 -- save_recipe: a recipe and its ingredients in one transaction
 -- ---------------------------------------------------------------------------
 -- Creates the recipe (recipe_id null) or updates it, and replaces its
--- ingredients, so a failed save never leaves half a recipe. Runs as the
--- caller (security invoker): every statement is subject to the RLS policies
--- above. All values are bound parameters.
+-- ingredients, so a failed save never leaves half a recipe. Origin and
+-- source are set when the recipe is created and kept on updates (an edited
+-- library copy still came from the library). Runs as the caller (security
+-- invoker): every statement is subject to the RLS policies above. All
+-- values are bound parameters.
 
 create function public.save_recipe(
   recipe_id uuid,
@@ -166,7 +178,10 @@ create function public.save_recipe(
   freezable boolean,
   method text,
   -- [{"food_id": uuid, "raw_grams": number}, ...] in order
-  ingredients jsonb
+  ingredients jsonb,
+  origin text default 'user',
+  source_id text default null,
+  source_version smallint default null
 )
 returns uuid
 language plpgsql
@@ -187,11 +202,13 @@ begin
 
   if recipe_id is null then
     insert into public.recipes
-      (name, portions, cooked_weight_g, fridge_days, freezable, method)
+      (name, portions, cooked_weight_g, fridge_days, freezable, method,
+       origin, source_id, source_version)
     values
       (btrim(save_recipe.name), save_recipe.portions,
        save_recipe.cooked_weight_g, save_recipe.fridge_days,
-       save_recipe.freezable, save_recipe.method)
+       save_recipe.freezable, save_recipe.method, save_recipe.origin,
+       save_recipe.source_id, save_recipe.source_version)
     returning id into saved_id;
   else
     update public.recipes r
@@ -221,8 +238,10 @@ end;
 $$;
 
 revoke execute on function public.save_recipe(
-  uuid, text, smallint, numeric, smallint, boolean, text, jsonb
+  uuid, text, smallint, numeric, smallint, boolean, text, jsonb, text, text,
+  smallint
 ) from public, anon;
 grant execute on function public.save_recipe(
-  uuid, text, smallint, numeric, smallint, boolean, text, jsonb
+  uuid, text, smallint, numeric, smallint, boolean, text, jsonb, text, text,
+  smallint
 ) to authenticated;

@@ -174,6 +174,9 @@ class FakeRecipeRepository implements RecipeRepository {
       fridgeDays: r.fridgeDays,
       freezable: r.freezable,
       method: r.method,
+      origin: r.origin,
+      sourceId: r.sourceId,
+      sourceVersion: r.sourceVersion,
     );
     items
       ..removeWhere((x) => x.id == saved.id)
@@ -189,6 +192,17 @@ class FakeRecipeRepository implements RecipeRepository {
 class FakeReferenceFoodRepository implements ReferenceFoodRepository {
   final items = <FoodDraft>[];
   final queries = <String>[];
+
+  /// Basic foods by CoFID code and (CoFID) name, for library recipes.
+  final byKey = <({String code, String name}), FoodDraft>{};
+
+  @override
+  Future<Map<({String code, String name}), FoodDraft>> fetchByKeys(
+    Set<({String code, String name})> keys,
+  ) async => {
+    for (final k in keys)
+      if (byKey.containsKey(k)) k: byKey[k]!,
+  };
 
   @override
   Future<List<FoodDraft>> search(String query) async {

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
+import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
@@ -13,6 +14,7 @@ String userMessage(Object error) => switch (error) {
   AuthFailure(:final message) => message,
   HealthSourceException(:final message) => message,
   FoodInUse(:final message) => message,
+  LibraryFoodMissing(:final message) => message,
   _ => 'Something went wrong. Check your connection and try again.',
 };
 

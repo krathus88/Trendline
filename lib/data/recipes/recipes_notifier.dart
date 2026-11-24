@@ -1,8 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trendline/data/foods/foods_notifier.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/recipe_library.dart';
+
+/// Raised when a library recipe uses a basic food the database doesn't
+/// have (the app and its data are out of step).
+class LibraryFoodMissing implements Exception {
+  const new(this.food);
+
+  final String food;
+
+  String get message =>
+      'This recipe needs a basic food that isn’t available ($food). '
+      'Try updating the app.';
+}
 
 /// The user's recipes, by name, cached in memory.
 final recipesProvider = AsyncNotifierProvider<RecipesNotifier, List<Recipe>>(
@@ -35,6 +49,45 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
       ]),
     );
     return saved;
+  }
+
+  /// The user's copy of a library recipe, if they've added it.
+  Recipe? copyOf(LibraryRecipe library) {
+    for (final r in state.value ?? const <Recipe>[]) {
+      if (r.origin == RecipeOrigin.library && r.sourceId == library.id) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  /// Copies [library] into the user's recipes: its basic foods are saved to
+  /// their foods (reusing ones already saved), so the copy, its logs and
+  /// its prep only ever point at the user's own data.
+  Future<Recipe> addFromLibrary(LibraryRecipe library) async {
+    final drafts = await ref.read(libraryFoodsProvider.future);
+    final foods = ref.read(foodsProvider.notifier);
+    final ingredients = <RecipeIngredient>[];
+    for (final i in library.ingredients) {
+      final draft = drafts[i.key];
+      if (draft == null) throw LibraryFoodMissing(i.cofidName);
+      final food = await foods.save(draft);
+      ingredients.add(RecipeIngredient(foodId: food.id, rawGrams: i.rawGrams));
+    }
+    return await save(
+      Recipe(
+        id: '',
+        name: library.name,
+        ingredients: ingredients,
+        portions: library.portions,
+        fridgeDays: library.fridgeDays,
+        freezable: library.freezable,
+        method: library.method,
+        origin: RecipeOrigin.library,
+        sourceId: library.id,
+        sourceVersion: library.version,
+      ),
+    );
   }
 
   /// Removes the recipe straight away; puts it back if the delete fails.

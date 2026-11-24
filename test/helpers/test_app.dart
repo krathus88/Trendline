@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/app.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/profile.dart';
 
@@ -30,6 +31,9 @@ class TestBackend {
   final goals = FakeGoalRepository(goal: Goal.maintenance);
   final energy = FakeEnergyRepository();
 
+  /// The recipe library file's contents. Null uses the real one.
+  String? library;
+
   /// Open Food Facts responses. Defaults to "not found" for everything.
   Future<http.Response> Function(http.Request) off = (_) async =>
       http.Response('{}', 404);
@@ -47,6 +51,8 @@ class TestBackend {
     goalRepositoryProvider.overrideWithValue(goals),
     energyRepositoryProvider.overrideWithValue(energy),
     offClientProvider.overrideWith((ref) => fakeOffClient((r) => off(r))),
+    if (library case final source?)
+      recipeLibrarySourceProvider.overrideWithValue(() async => source),
   ];
 
   Future<void> pump(WidgetTester tester) async {

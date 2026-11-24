@@ -66,6 +66,36 @@ void main() {
       ]);
     });
 
+    test('origin and source round-trip; user recipes send none', () {
+      final copy = recipeFromRow({
+        'id': 'r1',
+        'name': 'Oats',
+        'portions': 2,
+        'fridge_days': 3,
+        'freezable': false,
+        'origin': 'library',
+        'source_id': 'overnight-oats',
+        'source_version': 2,
+        'recipe_ingredients': <Object>[],
+      });
+      expect(copy.origin, RecipeOrigin.library);
+      expect(copy.sourceId, 'overnight-oats');
+      expect(saveRecipeParams(copy)['source_version'], 2);
+
+      final mine = saveRecipeParams(
+        const Recipe(
+          id: '',
+          name: 'Mine',
+          ingredients: [],
+          sourceId: 'stray',
+          sourceVersion: 1,
+        ),
+      );
+      expect(mine['origin'], 'user');
+      expect(mine['source_id'], isNull);
+      expect(mine['source_version'], isNull);
+    });
+
     test('a logged recipe portion snapshots the recipe', () {
       final row = recipeLogToRow(
         day: DateTime(2026, 11, 24),

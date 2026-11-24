@@ -1,0 +1,222 @@
+{
+  "format": 1,
+  "recipes": [
+    {
+      "id": "chicken-chickpea-curry",
+      "version": 1,
+      "name": "Chicken and chickpea curry with rice",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "indian",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "ingredients": [
+        {"cofid": "18-290", "name": "Chicken, light meat, raw", "grams": 500, "role": "protein"},
+        {"cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained", "grams": 240, "role": "protein"},
+        {"cofid": "11-857", "name": "Rice, white, basmati, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "13-521", "name": "Spinach, baby, raw", "grams": 100, "role": "veg"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 15, "role": "flavour"},
+        {"cofid": "13-890", "name": "Ginger, fresh", "grams": 15, "role": "flavour"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 15, "role": "fat"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 4, "role": "flavour"},
+        {"cofid": "13-861", "name": "Turmeric, ground", "grams": 3, "role": "flavour"},
+        {"cofid": "13-829", "name": "Garam masala", "grams": 6, "role": "flavour"},
+        {"cofid": "13-873", "name": "Chilli powder", "grams": 2, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "chilli-con-carne",
+      "version": 1,
+      "name": "Chilli con carne with brown rice",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "mexican",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "ingredients": [
+        {"cofid": "18-508", "name": "Beef, mince, raw, extra lean", "grams": 500, "role": "protein"},
+        {"cofid": "13-660", "name": "Beans, red kidney, canned in water, re-heated, drained", "grams": 240, "role": "protein"},
+        {"cofid": "11-866", "name": "Rice, brown, basmati, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-524", "name": "Pepper, capsicum, red, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "13-531", "name": "Tomato puree", "grams": 30, "role": "sauce"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "17-515", "name": "Stock cubes, beef", "grams": 7, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 10, "role": "fat"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 4, "role": "flavour"},
+        {"cofid": "13-879", "name": "Paprika", "grams": 4, "role": "flavour"},
+        {"cofid": "13-873", "name": "Chilli powder", "grams": 3, "role": "flavour"},
+        {"cofid": "13-878", "name": "Oregano, dried, ground", "grams": 2, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "spaghetti-bolognese",
+      "version": 1,
+      "name": "Wholewheat spaghetti bolognese",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "italian",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "ingredients": [
+        {"cofid": "18-508", "name": "Beef, mince, raw, extra lean", "grams": 450, "role": "protein"},
+        {"cofid": "11-718", "name": "Pasta, wholewheat, spaghetti, dried, raw", "grams": 320, "role": "carb"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-496", "name": "Carrots, old, raw", "grams": 100, "role": "veg"},
+        {"cofid": "13-636", "name": "Celery, raw", "grams": 80, "role": "veg"},
+        {"cofid": "13-505", "name": "Mushrooms, white, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "13-531", "name": "Tomato puree", "grams": 30, "role": "sauce"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 10, "role": "fat"},
+        {"cofid": "13-878", "name": "Oregano, dried, ground", "grams": 2, "role": "flavour"},
+        {"cofid": "13-880", "name": "Pepper, black", "grams": 1, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "red-lentil-soup",
+      "version": 1,
+      "name": "Red lentil and vegetable soup",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "british",
+      "portions": 4,
+      "fridge_days": 4,
+      "freezable": true,
+      "ingredients": [
+        {"cofid": "13-657", "name": "Lentils, red, split, dried, raw", "grams": 200, "role": "protein"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-496", "name": "Carrots, old, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-636", "name": "Celery, raw", "grams": 100, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "17-774", "name": "Stock cubes, chicken, made up with water", "grams": 1000, "role": "liquid"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 10, "role": "fat"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 3, "role": "flavour"},
+        {"cofid": "13-880", "name": "Pepper, black", "grams": 1, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "overnight-oats-berries",
+      "version": 1,
+      "name": "Overnight oats with yogurt and berries",
+      "meals": ["breakfast"],
+      "cuisine": "british",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "ingredients": [
+        {"cofid": "11-788", "name": "Porridge oats, unfortified", "grams": 200, "role": "carb"},
+        {"cofid": "12-313", "name": "Milk, semi-skimmed, pasteurised, average", "grams": 600, "role": "liquid"},
+        {"cofid": "12-555", "name": "Yogurt, Greek style, plain", "grams": 200, "role": "protein"},
+        {"cofid": "14-325", "name": "Blueberries", "grams": 200, "role": "fruit"},
+        {"cofid": "17-050", "name": "Honey", "grams": 20, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "salmon-potato-traybake",
+      "version": 1,
+      "name": "Salmon, new potato and broccoli traybake",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "british",
+      "portions": 2,
+      "fridge_days": 2,
+      "freezable": false,
+      "ingredients": [
+        {"cofid": "16-356", "name": "Salmon, farmed, flesh only, raw", "grams": 250, "role": "protein"},
+        {"cofid": "13-618", "name": "Potatoes, new and salad, flesh only, raw", "grams": 400, "role": "carb"},
+        {"cofid": "13-502", "name": "Broccoli, green, raw", "grams": 200, "role": "veg"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 10, "role": "fat"},
+        {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 15, "role": "flavour"},
+        {"cofid": "13-880", "name": "Pepper, black", "grams": 1, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "chicken-noodle-stir-fry",
+      "version": 1,
+      "name": "Chicken and vegetable noodle stir-fry",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "chinese",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "ingredients": [
+        {"cofid": "18-290", "name": "Chicken, light meat, raw", "grams": 500, "role": "protein"},
+        {"cofid": "11-719", "name": "Noodles, egg, dried, raw", "grams": 250, "role": "carb"},
+        {"cofid": "13-524", "name": "Pepper, capsicum, red, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-502", "name": "Broccoli, green, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-352", "name": "Spring onions, bulbs and tops, raw", "grams": 50, "role": "veg"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "13-890", "name": "Ginger, fresh", "grams": 10, "role": "flavour"},
+        {"cofid": "17-721", "name": "Soy sauce, light and dark varieties", "grams": 45, "role": "sauce"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 15, "role": "fat"}
+      ]
+    },
+    {
+      "id": "vegetable-omelette",
+      "version": 1,
+      "name": "Spinach, mushroom and cheese omelette",
+      "meals": ["breakfast", "lunch"],
+      "cuisine": "british",
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "ingredients": [
+        {"cofid": "12-937", "name": "Eggs, chicken, whole, raw", "grams": 180, "role": "protein"},
+        {"cofid": "13-521", "name": "Spinach, baby, raw", "grams": 40, "role": "veg"},
+        {"cofid": "13-505", "name": "Mushrooms, white, raw", "grams": 50, "role": "veg"},
+        {"cofid": "13-517", "name": "Tomatoes, standard, raw", "grams": 60, "role": "veg"},
+        {"cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'", "grams": 20, "role": "dairy"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 5, "role": "fat"}
+      ]
+    },
+    {
+      "id": "greek-chicken-rice-bowl",
+      "version": 1,
+      "name": "Greek-style chicken and rice bowl",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "mediterranean",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "ingredients": [
+        {"cofid": "18-290", "name": "Chicken, light meat, raw", "grams": 500, "role": "protein"},
+        {"cofid": "11-857", "name": "Rice, white, basmati, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-523", "name": "Cucumber, raw, flesh and skin", "grams": 200, "role": "veg"},
+        {"cofid": "13-517", "name": "Tomatoes, standard, raw", "grams": 200, "role": "veg"},
+        {"cofid": "12-525", "name": "Cheese, Feta", "grams": 100, "role": "dairy"},
+        {"cofid": "12-555", "name": "Yogurt, Greek style, plain", "grams": 150, "role": "sauce"},
+        {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 20, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 15, "role": "fat"},
+        {"cofid": "13-878", "name": "Oregano, dried, ground", "grams": 2, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "chickpea-sweet-potato-curry",
+      "version": 1,
+      "name": "Chickpea, sweet potato and spinach curry",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "indian",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "ingredients": [
+        {"cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained", "grams": 480, "role": "protein"},
+        {"cofid": "13-463", "name": "Sweet potato, raw, flesh only", "grams": 400, "role": "carb"},
+        {"cofid": "11-866", "name": "Rice, brown, basmati, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-521", "name": "Spinach, baby, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "14-890", "name": "Coconut milk, reduced fat, retail", "grams": 200, "role": "sauce"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "13-890", "name": "Ginger, fresh", "grams": 10, "role": "flavour"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 10, "role": "fat"},
+        {"cofid": "13-829", "name": "Garam masala", "grams": 6, "role": "flavour"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 3, "role": "flavour"},
+        {"cofid": "13-861", "name": "Turmeric, ground", "grams": 3, "role": "flavour"}
+      ]
+    }
+  ]
+}

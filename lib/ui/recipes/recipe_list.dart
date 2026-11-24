@@ -1,21 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/recipe_library.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
+import 'package:trendline/ui/recipes/library_recipe_sheet.dart';
 import 'package:trendline/ui/recipes/recipe_editor_screen.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
 
-/// The user's recipes, with a button to add one.
+/// The user's recipes, with a button to add one, then the built-in library.
 class RecipeList extends ConsumerWidget {
   const new({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recipes = ref.watch(recipesProvider);
+    final library = ref.watch(recipeLibraryProvider).value ?? const [];
 
     void open([Recipe? recipe]) => Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -61,7 +65,61 @@ class RecipeList extends ConsumerWidget {
             ],
           ),
         },
+        if (library.isNotEmpty) ...[
+          const SizedBox(height: Space.lg),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Space.gutter,
+              Space.sm,
+              Space.gutter,
+              Space.xs,
+            ),
+            child: Text(
+              'From the library',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
+          for (final r in library) _LibraryTile(recipe: r),
+        ],
       ],
+    );
+  }
+}
+
+class _LibraryTile extends ConsumerWidget {
+  const new({required this.recipe});
+
+  final LibraryRecipe recipe;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final foods = ref.watch(libraryFoodsProvider).value ?? const {};
+    final n = libraryRecipeNutrition(recipe, {
+      for (final e in foods.entries) e.key: e.value.per100g,
+    });
+    ref.watch(recipesProvider);
+    final added = ref.read(recipesProvider.notifier).copyOf(recipe) != null;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      title: Text(recipe.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        added ? '${librarySummary(recipe)} · added' : librarySummary(recipe),
+      ),
+      trailing: n == null
+          ? null
+          : Text(
+              '${formatKcal(n.perPortion.kcal)} kcal\nper portion',
+              textAlign: TextAlign.end,
+              style: text.labelSmall?.tabular.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+      onTap: () => showAppSheet<void>(
+        context,
+        builder: (_) => LibraryRecipeSheet(recipe: recipe),
+      ),
     );
   }
 }
