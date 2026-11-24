@@ -41,6 +41,7 @@ class Recipe {
     this.origin = RecipeOrigin.user,
     this.sourceId,
     this.sourceVersion,
+    this.estimatedCookedWeightG,
   });
 
   static const int maxPortions = 50;
@@ -65,6 +66,10 @@ class Recipe {
   /// The library recipe or template it was copied from, and its version.
   final String? sourceId;
   final int? sourceVersion;
+
+  /// What a planner-made dish is expected to weigh after cooking. Guidance
+  /// only: portions are logged against the measured [cookedWeightG].
+  final double? estimatedCookedWeightG;
 
   double get rawWeightG => ingredients.fold(0, (sum, i) => sum + i.rawGrams);
 

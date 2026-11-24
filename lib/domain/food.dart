@@ -53,6 +53,7 @@ class FoodDraft {
     this.saltG,
     this.servingG,
     this.referenceCode,
+    this.referenceName,
   });
 
   final String name;
@@ -67,6 +68,10 @@ class FoodDraft {
   /// The CoFID code, for a basic food. Set exactly when [source] is
   /// [FoodSource.cofid].
   final String? referenceCode;
+
+  /// CoFID's own name for a basic food ([name] is the friendlier one).
+  /// With [referenceCode], it identifies the food (codes aren't unique).
+  final String? referenceName;
 }
 
 enum MealSlot { breakfast, lunch, dinner, snack }

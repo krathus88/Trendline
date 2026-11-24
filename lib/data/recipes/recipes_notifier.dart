@@ -3,6 +3,7 @@ import 'package:trendline/data/foods/foods_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
 
@@ -63,15 +64,25 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
 
   /// Copies [library] into the user's recipes: its basic foods are saved to
   /// their foods (reusing ones already saved), so the copy, its logs and
-  /// its prep only ever point at the user's own data.
-  Future<Recipe> addFromLibrary(LibraryRecipe library) async {
-    final drafts = await ref.read(libraryFoodsProvider.future);
-    final foods = ref.read(foodsProvider.notifier);
+  /// its prep only ever point at the user's own data. A dish made from a
+  /// template is copied the same way, with [origin] template, its basic
+  /// foods in [foods] and its expected cooked weight.
+  Future<Recipe> addFromLibrary(
+    LibraryRecipe library, {
+    RecipeOrigin origin = RecipeOrigin.library,
+    Map<FoodKey, FoodDraft>? foods,
+    double? estimatedCookedWeightG,
+  }) async {
+    final drafts = switch (foods) {
+      final given? => given,
+      null => await ref.read(libraryFoodsProvider.future),
+    };
+    final saved = ref.read(foodsProvider.notifier);
     final ingredients = <RecipeIngredient>[];
     for (final i in library.ingredients) {
       final draft = drafts[i.key];
       if (draft == null) throw LibraryFoodMissing(i.cofidName);
-      final food = await foods.save(draft);
+      final food = await saved.save(draft);
       ingredients.add(RecipeIngredient(foodId: food.id, rawGrams: i.rawGrams));
     }
     return await save(
@@ -83,9 +94,10 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
         fridgeDays: library.fridgeDays,
         freezable: library.freezable,
         method: library.method,
-        origin: RecipeOrigin.library,
+        origin: origin,
         sourceId: library.id,
         sourceVersion: library.version,
+        estimatedCookedWeightG: estimatedCookedWeightG,
       ),
     );
   }

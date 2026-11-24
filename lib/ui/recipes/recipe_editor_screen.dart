@@ -267,9 +267,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           ),
           const SizedBox(height: Space.xs),
           Text(
-            warning ??
-                'After cooking, weigh everything in the pot (minus the pot). '
-                    'Until then, portions can’t be logged by weight.',
+            warning ?? _weighHint(widget.existing?.estimatedCookedWeightG),
             style: text.bodySmall?.copyWith(
               color: warning != null ? colors.error : colors.textTertiary,
             ),
@@ -367,3 +365,14 @@ class _NutritionSummary extends StatelessWidget {
 String _plain(double grams) => grams == grams.roundToDouble()
     ? grams.toStringAsFixed(0)
     : grams.toStringAsFixed(1);
+
+/// How to record the cooked weight, with the expected weight of a dish the
+/// planner made.
+String _weighHint(double? estimate) {
+  const weigh =
+      'After cooking, weigh everything in the pot (minus the pot). Until '
+      'then, portions can’t be logged by weight.';
+  return estimate == null
+      ? weigh
+      : 'Expected about ${formatGrams(estimate)}. $weigh';
+}

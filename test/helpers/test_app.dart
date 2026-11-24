@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/app.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/dish_template_providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/profile.dart';
@@ -25,6 +26,7 @@ class TestBackend {
   final foods = FakeFoodRepository();
   final referenceFoods = FakeReferenceFoodRepository();
   final recipes = FakeRecipeRepository();
+  final preferences = FakeFoodPreferencesRepository();
   final foodLogs = FakeFoodLogRepository();
   final scanner = FakeBarcodeScanner();
   final health = FakeHealthSource();
@@ -33,6 +35,9 @@ class TestBackend {
 
   /// The recipe library file's contents. Null uses the real one.
   String? library;
+
+  /// The dish template file's contents. Null uses the real one.
+  String? templates;
 
   /// Open Food Facts responses. Defaults to "not found" for everything.
   Future<http.Response> Function(http.Request) off = (_) async =>
@@ -45,6 +50,7 @@ class TestBackend {
     foodRepositoryProvider.overrideWithValue(foods),
     referenceFoodRepositoryProvider.overrideWithValue(referenceFoods),
     recipeRepositoryProvider.overrideWithValue(recipes),
+    foodPreferencesRepositoryProvider.overrideWithValue(preferences),
     foodLogRepositoryProvider.overrideWithValue(foodLogs),
     barcodeScannerProvider.overrideWithValue(scanner),
     healthSourceProvider.overrideWithValue(health),
@@ -53,6 +59,8 @@ class TestBackend {
     offClientProvider.overrideWith((ref) => fakeOffClient((r) => off(r))),
     if (library case final source?)
       recipeLibrarySourceProvider.overrideWithValue(() async => source),
+    if (templates case final source?)
+      dishTemplatesSourceProvider.overrideWithValue(() async => source),
   ];
 
   Future<void> pump(WidgetTester tester) async {

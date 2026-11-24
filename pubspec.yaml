@@ -51,3 +51,5 @@ flutter:
   assets:
     # The built-in recipe library (see lib/domain/recipe_library.dart).
     - assets/recipe_library.json
+    # Dish templates and flavour profiles (see lib/domain/dish_templates.dart).
+    - assets/dish_templates.json

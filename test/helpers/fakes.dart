@@ -7,17 +7,20 @@ import 'package:trendline/data/foods/food_repository.dart';
 import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
+import 'package:trendline/data/preferences/food_preferences_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/recipe_library.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
@@ -177,6 +180,7 @@ class FakeRecipeRepository implements RecipeRepository {
       origin: r.origin,
       sourceId: r.sourceId,
       sourceVersion: r.sourceVersion,
+      estimatedCookedWeightG: r.estimatedCookedWeightG,
     );
     items
       ..removeWhere((x) => x.id == saved.id)
@@ -186,6 +190,28 @@ class FakeRecipeRepository implements RecipeRepository {
 
   @override
   Future<void> delete(String id) async => items.removeWhere((r) => r.id == id);
+}
+
+/// Preferences in memory.
+class FakeFoodPreferencesRepository implements FoodPreferencesRepository {
+  final ingredients = <FoodKey, Preference>{};
+  final cuisines = <Cuisine, Preference>{};
+
+  @override
+  Future<FoodPreferences> fetch() async =>
+      FoodPreferences(ingredients: {...ingredients}, cuisines: {...cuisines});
+
+  @override
+  Future<void> setCuisine(Cuisine cuisine, Preference? preference) async =>
+      preference == null
+      ? cuisines.remove(cuisine)
+      : cuisines[cuisine] = preference;
+
+  @override
+  Future<void> setIngredient(FoodKey food, Preference? preference) async =>
+      preference == null
+      ? ingredients.remove(food)
+      : ingredients[food] = preference;
 }
 
 /// Basic foods whose name contains the query.

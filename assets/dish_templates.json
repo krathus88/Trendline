@@ -1,0 +1,289 @@
+{
+  "format": 1,
+  "flavours": [
+    {
+      "id": "indian",
+      "name": "Indian",
+      "cuisine": "indian",
+      "ingredients": [
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 40, "role": "veg"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 3, "role": "flavour"},
+        {"cofid": "13-890", "name": "Ginger, fresh", "grams": 3, "role": "flavour"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 1, "role": "flavour"},
+        {"cofid": "13-861", "name": "Turmeric, ground", "grams": 0.8, "role": "flavour"},
+        {"cofid": "13-829", "name": "Garam masala", "grams": 1.5, "role": "flavour"},
+        {"cofid": "13-873", "name": "Chilli powder", "grams": 0.5, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "mexican",
+      "name": "Mexican",
+      "cuisine": "mexican",
+      "ingredients": [
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 40, "role": "veg"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 2.5, "role": "flavour"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 1, "role": "flavour"},
+        {"cofid": "13-879", "name": "Paprika", "grams": 1, "role": "flavour"},
+        {"cofid": "13-873", "name": "Chilli powder", "grams": 0.8, "role": "flavour"},
+        {"cofid": "13-878", "name": "Oregano, dried, ground", "grams": 0.5, "role": "flavour"},
+        {"cofid": "14-279", "name": "Lime juice, fresh", "grams": 5, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "italian",
+      "name": "Italian",
+      "cuisine": "italian",
+      "ingredients": [
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 30, "role": "veg"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 2.5, "role": "flavour"},
+        {"cofid": "13-804", "name": "Basil, fresh", "grams": 3, "role": "flavour"},
+        {"cofid": "13-878", "name": "Oregano, dried, ground", "grams": 0.5, "role": "flavour"},
+        {"cofid": "13-880", "name": "Pepper, black", "grams": 0.3, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "mediterranean",
+      "name": "Mediterranean",
+      "cuisine": "mediterranean",
+      "ingredients": [
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 2, "role": "flavour"},
+        {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 5, "role": "flavour"},
+        {"cofid": "13-878", "name": "Oregano, dried, ground", "grams": 0.5, "role": "flavour"},
+        {"cofid": "13-880", "name": "Pepper, black", "grams": 0.3, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "chinese",
+      "name": "Chinese-style",
+      "cuisine": "chinese",
+      "ingredients": [
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 2.5, "role": "flavour"},
+        {"cofid": "13-890", "name": "Ginger, fresh", "grams": 2.5, "role": "flavour"},
+        {"cofid": "17-721", "name": "Soy sauce, light and dark varieties", "grams": 10, "role": "sauce"},
+        {"cofid": "13-352", "name": "Spring onions, bulbs and tops, raw", "grams": 10, "role": "veg"}
+      ]
+    },
+    {
+      "id": "british",
+      "name": "Herby",
+      "cuisine": "british",
+      "ingredients": [
+        {"cofid": "13-884", "name": "Mixed herbs, dried", "grams": 0.5, "role": "flavour"},
+        {"cofid": "13-880", "name": "Pepper, black", "grams": 0.3, "role": "flavour"}
+      ]
+    }
+  ],
+  "options": {
+    "lean-protein": [
+      {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+       "cooked": {"cofid": "18-323", "name": "Chicken, breast, grilled without skin, meat only"}},
+      {"label": "turkey", "cofid": "18-349", "name": "Turkey, light meat, raw",
+       "cooked": {"cofid": "18-359", "name": "Turkey, light meat, roasted"}},
+      {"label": "beef", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
+       "cooked": {"cofid": "18-507", "name": "Beef, mince, extra lean, stewed"}},
+      {"label": "salmon", "cofid": "16-356", "name": "Salmon, farmed, flesh only, raw",
+       "cooked": {"cofid": "16-359", "name": "Salmon, farmed, flesh only, baked"}},
+      {"label": "chickpea", "cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained"},
+      {"label": "tofu", "cofid": "13-570", "name": "Tofu, soya bean, steamed"}
+    ],
+    "rice": [
+      {"label": "rice", "cofid": "11-857", "name": "Rice, white, basmati, raw",
+       "cooked": {"cofid": "11-858", "name": "Rice, white, basmati, boiled in unsalted water"}},
+      {"label": "brown rice", "cofid": "11-866", "name": "Rice, brown, basmati, raw",
+       "cooked": {"cofid": "11-867", "name": "Rice, brown, basmati, boiled in unsalted water"}}
+    ],
+    "green-veg": [
+      {"label": "broccoli", "cofid": "13-502", "name": "Broccoli, green, raw"},
+      {"label": "green beans", "cofid": "13-514", "name": "Beans, green, raw"},
+      {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
+      {"label": "peas", "cofid": "13-527", "name": "Peas, frozen, raw"},
+      {"label": "courgette", "cofid": "13-627", "name": "Courgette, raw"}
+    ],
+    "colourful-veg": [
+      {"label": "red pepper", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"},
+      {"label": "carrot", "cofid": "13-496", "name": "Carrots, old, raw"},
+      {"label": "mushroom", "cofid": "13-505", "name": "Mushrooms, white, raw"},
+      {"label": "cauliflower", "cofid": "13-512", "name": "Cauliflower, raw"}
+    ],
+    "oil": [
+      {"label": "olive oil", "cofid": "17-038", "name": "Oil, olive"},
+      {"label": "rapeseed oil", "cofid": "17-041", "name": "Oil, rapeseed"}
+    ]
+  },
+  "templates": [
+    {
+      "id": "rice-bowl",
+      "version": 1,
+      "name": "{flavour} {protein} rice bowl",
+      "meals": ["lunch", "dinner"],
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "flavours": ["indian", "mexican", "mediterranean", "chinese"],
+      "slots": [
+        {"role": "protein", "grams": 130, "min": 90, "max": 200, "options": "lean-protein"},
+        {"role": "carb", "grams": 60, "min": 30, "max": 110, "options": "rice"},
+        {"role": "veg", "grams": 80, "min": 40, "max": 150, "options": "green-veg"},
+        {"role": "veg", "grams": 80, "min": 40, "max": 150, "options": "colourful-veg"},
+        {"role": "fat", "grams": 4, "min": 0, "max": 10, "options": "oil"}
+      ]
+    },
+    {
+      "id": "noodle-stir-fry",
+      "version": 1,
+      "name": "{flavour} {protein} noodle stir-fry",
+      "meals": ["lunch", "dinner"],
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "flavours": ["chinese"],
+      "slots": [
+        {"role": "protein", "grams": 130, "min": 90, "max": 200, "options": "lean-protein"},
+        {"role": "carb", "grams": 65, "min": 35, "max": 110, "options": [
+          {"label": "egg noodles", "cofid": "11-719", "name": "Noodles, egg, dried, raw",
+           "cooked": {"cofid": "11-724", "name": "Noodles, egg, medium, dried, boiled in unsalted water"}}
+        ]},
+        {"role": "veg", "grams": 80, "min": 40, "max": 150, "options": "green-veg"},
+        {"role": "veg", "grams": 80, "min": 40, "max": 150, "options": "colourful-veg"},
+        {"role": "fat", "grams": 4, "min": 0, "max": 10, "options": [
+          {"label": "rapeseed oil", "cofid": "17-041", "name": "Oil, rapeseed"}
+        ]}
+      ]
+    },
+    {
+      "id": "tomato-pasta",
+      "version": 1,
+      "name": "{flavour} {protein} tomato pasta",
+      "meals": ["lunch", "dinner"],
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "flavours": ["italian", "mediterranean"],
+      "slots": [
+        {"role": "protein", "grams": 120, "min": 80, "max": 190, "options": [
+          {"label": "beef", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
+           "cooked": {"cofid": "18-507", "name": "Beef, mince, extra lean, stewed"}},
+          {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+           "cooked": {"cofid": "18-323", "name": "Chicken, breast, grilled without skin, meat only"}},
+          {"label": "tuna", "cofid": "16-416", "name": "Tuna, canned in brine, drained"},
+          {"label": "lentil", "cofid": "13-657", "name": "Lentils, red, split, dried, raw",
+           "cooked": {"cofid": "13-658", "name": "Lentils, red, split, dried, boiled in unsalted water"}}
+        ]},
+        {"role": "carb", "grams": 75, "min": 40, "max": 120, "options": [
+          {"label": "wholewheat spaghetti", "cofid": "11-718", "name": "Pasta, wholewheat, spaghetti, dried, raw",
+           "cooked": {"cofid": "11-723", "name": "Pasta, wholewheat, spaghetti, dried, boiled in unsalted water"}},
+          {"label": "pasta", "cofid": "11-716", "name": "Pasta, white, dried, raw",
+           "cooked": {"cofid": "11-1129", "name": "Pasta, white, dried, boiled in unsalted water"}}
+        ]},
+        {"role": "sauce", "grams": 100, "min": 60, "max": 150, "options": [
+          {"label": "tomatoes", "cofid": "13-530", "name": "Tomatoes, canned, whole contents"}
+        ]},
+        {"role": "veg", "grams": 70, "min": 30, "max": 140, "options": [
+          {"label": "mushroom", "cofid": "13-505", "name": "Mushrooms, white, raw"},
+          {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
+          {"label": "red pepper", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"},
+          {"label": "courgette", "cofid": "13-627", "name": "Courgette, raw"}
+        ]},
+        {"role": "fat", "grams": 3, "min": 0, "max": 10, "options": [
+          {"label": "olive oil", "cofid": "17-038", "name": "Oil, olive"}
+        ]}
+      ]
+    },
+    {
+      "id": "traybake",
+      "version": 1,
+      "name": "{flavour} {protein} and {carb} traybake",
+      "meals": ["lunch", "dinner"],
+      "portions": 2,
+      "fridge_days": 2,
+      "freezable": false,
+      "flavours": ["mediterranean", "british", "mexican"],
+      "slots": [
+        {"role": "protein", "grams": 140, "min": 100, "max": 220, "options": [
+          {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+           "cooked": {"cofid": "18-330", "name": "Chicken, light meat, roasted"}},
+          {"label": "salmon", "cofid": "16-356", "name": "Salmon, farmed, flesh only, raw",
+           "cooked": {"cofid": "16-359", "name": "Salmon, farmed, flesh only, baked"}},
+          {"label": "cod", "cofid": "16-372", "name": "Cod, flesh only, raw",
+           "cooked": {"cofid": "16-373", "name": "Cod, flesh only, baked"}}
+        ]},
+        {"role": "carb", "grams": 180, "min": 100, "max": 300, "options": [
+          {"label": "new potato", "cofid": "13-618", "name": "Potatoes, new and salad, flesh only, raw"},
+          {"label": "sweet potato", "cofid": "13-463", "name": "Sweet potato, raw, flesh only",
+           "cooked": {"cofid": "13-672", "name": "Sweet potato, baked"}}
+        ]},
+        {"role": "veg", "grams": 100, "min": 50, "max": 180, "options": "green-veg"},
+        {"role": "veg", "grams": 80, "min": 40, "max": 150, "options": "colourful-veg"},
+        {"role": "fat", "grams": 5, "min": 0, "max": 12, "options": [
+          {"label": "olive oil", "cofid": "17-038", "name": "Oil, olive"}
+        ]}
+      ]
+    },
+    {
+      "id": "curry",
+      "version": 1,
+      "name": "{protein} curry with {carb}",
+      "meals": ["lunch", "dinner"],
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "flavours": ["indian"],
+      "slots": [
+        {"role": "protein", "grams": 130, "min": 90, "max": 200, "options": [
+          {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+           "cooked": {"cofid": "18-330", "name": "Chicken, light meat, roasted"}},
+          {"label": "chickpea", "cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained"},
+          {"label": "lentil", "cofid": "13-657", "name": "Lentils, red, split, dried, raw",
+           "cooked": {"cofid": "13-658", "name": "Lentils, red, split, dried, boiled in unsalted water"}},
+          {"label": "beef", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
+           "cooked": {"cofid": "18-507", "name": "Beef, mince, extra lean, stewed"}}
+        ]},
+        {"role": "carb", "grams": 60, "min": 30, "max": 110, "options": "rice"},
+        {"role": "sauce", "grams": 100, "min": 60, "max": 150, "options": [
+          {"label": "tomatoes", "cofid": "13-530", "name": "Tomatoes, canned, whole contents"}
+        ]},
+        {"role": "veg", "grams": 70, "min": 30, "max": 140, "options": [
+          {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
+          {"label": "cauliflower", "cofid": "13-512", "name": "Cauliflower, raw"},
+          {"label": "peas", "cofid": "13-527", "name": "Peas, frozen, raw"},
+          {"label": "green beans", "cofid": "13-514", "name": "Beans, green, raw"}
+        ]},
+        {"role": "fat", "grams": 4, "min": 0, "max": 10, "options": [
+          {"label": "rapeseed oil", "cofid": "17-041", "name": "Oil, rapeseed"}
+        ]}
+      ]
+    },
+    {
+      "id": "omelette",
+      "version": 1,
+      "name": "{flavour} {veg} omelette",
+      "meals": ["breakfast", "lunch"],
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "flavours": ["british", "mediterranean"],
+      "slots": [
+        {"role": "protein", "grams": 180, "min": 120, "max": 240, "options": [
+          {"label": "egg", "cofid": "12-937", "name": "Eggs, chicken, whole, raw",
+           "cooked": {"cofid": "12-963", "name": "Eggs, chicken, whole, scrambled, without milk"}}
+        ]},
+        {"role": "veg", "grams": 50, "min": 20, "max": 100, "options": [
+          {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
+          {"label": "mushroom", "cofid": "13-505", "name": "Mushrooms, white, raw"},
+          {"label": "red pepper", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"}
+        ]},
+        {"role": "veg", "grams": 50, "min": 20, "max": 100, "options": [
+          {"label": "tomato", "cofid": "13-517", "name": "Tomatoes, standard, raw"},
+          {"label": "courgette", "cofid": "13-627", "name": "Courgette, raw"}
+        ]},
+        {"role": "dairy", "grams": 20, "min": 0, "max": 40, "optional": true, "options": [
+          {"label": "cheese", "cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'"},
+          {"label": "feta", "cofid": "12-525", "name": "Cheese, Feta"}
+        ]},
+        {"role": "fat", "grams": 5, "min": 0, "max": 10, "options": [
+          {"label": "rapeseed oil", "cofid": "17-041", "name": "Oil, rapeseed"}
+        ]}
+      ]
+    }
+  ]
+}

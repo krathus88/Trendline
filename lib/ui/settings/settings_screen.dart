@@ -11,6 +11,7 @@ import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/goals/goal_screen.dart';
+import 'package:trendline/ui/preferences/food_preferences_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
 import 'package:trendline/ui/progress/energy_card.dart';
 import 'package:trendline/ui/settings/health_connect_sheet.dart';
@@ -58,6 +59,17 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => GoalScreen(existing: goal),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.thumbs_up_down_outlined),
+            title: const Text('Food preferences'),
+            subtitle: const Text('Likes, dislikes and never'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const FoodPreferencesScreen(),
               ),
             ),
           ),

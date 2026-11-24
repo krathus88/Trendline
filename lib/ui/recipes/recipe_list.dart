@@ -7,6 +7,7 @@ import 'package:trendline/domain/recipe_library.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/recipes/library_recipe_sheet.dart';
+import 'package:trendline/ui/recipes/make_dish_screen.dart';
 import 'package:trendline/ui/recipes/recipe_editor_screen.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
@@ -37,10 +38,28 @@ class RecipeList extends ConsumerWidget {
             Space.gutter,
             Space.sm,
           ),
-          child: FilledButton.tonalIcon(
-            onPressed: open,
-            icon: const Icon(Icons.add),
-            label: const Text('New recipe'),
+          child: Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: open,
+                  icon: const Icon(Icons.add),
+                  label: const Text('New recipe'),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MakeDishScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  label: const Text('Make a dish'),
+                ),
+              ),
+            ],
           ),
         ),
         switch (recipes) {

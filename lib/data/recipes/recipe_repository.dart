@@ -20,7 +20,7 @@ class SupabaseRecipeRepository implements RecipeRepository {
 
   static const _columns =
       'id, name, method, portions, cooked_weight_g, fridge_days, freezable, '
-      'origin, source_id, source_version, '
+      'origin, source_id, source_version, estimated_cooked_weight_g, '
       'recipe_ingredients(food_id, raw_grams, position)';
 
   @override
@@ -73,6 +73,7 @@ Recipe recipeFromRow(Map<String, dynamic> row) {
     origin: RecipeOrigin.values.byName(row['origin'] as String? ?? 'user'),
     sourceId: row['source_id'] as String?,
     sourceVersion: row['source_version'] as int?,
+    estimatedCookedWeightG: readDoubleOrNull(row['estimated_cooked_weight_g']),
     ingredients: [
       for (final i in items)
         RecipeIngredient(
@@ -97,6 +98,9 @@ Map<String, dynamic> saveRecipeParams(Recipe r) => {
   'origin': r.origin.name,
   'source_id': r.origin == RecipeOrigin.user ? null : r.sourceId,
   'source_version': r.origin == RecipeOrigin.user ? null : r.sourceVersion,
+  'estimated_cooked_weight_g': r.estimatedCookedWeightG == null
+      ? null
+      : (r.estimatedCookedWeightG! * 10).round() / 10,
   'ingredients': [
     for (final i in r.ingredients)
       {'food_id': i.foodId, 'raw_grams': (i.rawGrams * 10).round() / 10},

@@ -24,6 +24,12 @@ create table public.recipes (
   -- The whole batch after cooking. Null until the user weighs it.
   cooked_weight_g numeric(7, 1)
     check (cooked_weight_g > 0 and cooked_weight_g <= 50000),
+  -- What it's expected to weigh after cooking, for dishes the planner made
+  -- (from CoFID's raw and cooked forms). Guidance only: portions are logged
+  -- against the measured cooked_weight_g.
+  estimated_cooked_weight_g numeric(7, 1)
+    check (estimated_cooked_weight_g > 0
+           and estimated_cooked_weight_g <= 50000),
   -- How long it keeps in the fridge; after that, the freezer (if freezable).
   fridge_days smallint not null default 3 check (fridge_days between 0 and 7),
   freezable boolean not null default true,
@@ -163,8 +169,9 @@ create policy "own food logs: update" on public.food_logs
 -- save_recipe: a recipe and its ingredients in one transaction
 -- ---------------------------------------------------------------------------
 -- Creates the recipe (recipe_id null) or updates it, and replaces its
--- ingredients, so a failed save never leaves half a recipe. Origin and
--- source are set when the recipe is created and kept on updates (an edited
+-- ingredients, so a failed save never leaves half a recipe. Origin, source
+-- and the estimated cooked weight are set when the recipe is created and
+-- kept on updates (an edited
 -- library copy still came from the library). Runs as the caller (security
 -- invoker): every statement is subject to the RLS policies above. All
 -- values are bound parameters.
@@ -181,7 +188,8 @@ create function public.save_recipe(
   ingredients jsonb,
   origin text default 'user',
   source_id text default null,
-  source_version smallint default null
+  source_version smallint default null,
+  estimated_cooked_weight_g numeric default null
 )
 returns uuid
 language plpgsql
@@ -203,12 +211,13 @@ begin
   if recipe_id is null then
     insert into public.recipes
       (name, portions, cooked_weight_g, fridge_days, freezable, method,
-       origin, source_id, source_version)
+       origin, source_id, source_version, estimated_cooked_weight_g)
     values
       (btrim(save_recipe.name), save_recipe.portions,
        save_recipe.cooked_weight_g, save_recipe.fridge_days,
        save_recipe.freezable, save_recipe.method, save_recipe.origin,
-       save_recipe.source_id, save_recipe.source_version)
+       save_recipe.source_id, save_recipe.source_version,
+       save_recipe.estimated_cooked_weight_g)
     returning id into saved_id;
   else
     update public.recipes r
@@ -239,9 +248,9 @@ $$;
 
 revoke execute on function public.save_recipe(
   uuid, text, smallint, numeric, smallint, boolean, text, jsonb, text, text,
-  smallint
+  smallint, numeric
 ) from public, anon;
 grant execute on function public.save_recipe(
   uuid, text, smallint, numeric, smallint, boolean, text, jsonb, text, text,
-  smallint
+  smallint, numeric
 ) to authenticated;

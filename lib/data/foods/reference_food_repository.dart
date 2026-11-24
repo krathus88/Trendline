@@ -109,5 +109,6 @@ FoodDraft? referenceFoodFromRow(Map<String, dynamic> row) {
     saltG: readDoubleOrNull(row['salt_100g']),
     source: FoodSource.cofid,
     referenceCode: code,
+    referenceName: row['name'] as String?,
   );
 }
