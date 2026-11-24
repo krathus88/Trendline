@@ -45,8 +45,11 @@ class FakeAuthRepository implements AuthRepository {
     emit(const SignedOut());
   }
 
-  Future<void> dispose() async {
-    await _changes.close();
-    await _failures.close();
+  /// Closes the streams without waiting: Riverpod pauses subscriptions that
+  /// nothing is watching, and a paused subscription never receives the
+  /// "done" event, so awaiting close() would hang the test.
+  void dispose() {
+    unawaited(_changes.close());
+    unawaited(_failures.close());
   }
 }

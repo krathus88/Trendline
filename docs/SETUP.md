@@ -8,13 +8,19 @@ One-time setup for the cloud side of Trendline. Do the steps in order. Nothing h
 2. **Region: London (eu-west-2).** Health data is UK GDPR special category data and stays in the UK.
 3. Save the database password in your password manager. The app never needs it.
 
-## 2. Apply the database migration
+## 2. Apply the database migrations
 
-Until the Supabase CLI is set up:
+With the Supabase CLI (recommended; it applies every migration in order and tracks which have run):
 
-1. Open **SQL Editor** in the dashboard.
-2. Paste the whole of `supabase/migrations/20261124000000_private_allowlist.sql` and run it.
-3. Check **Settings > API (Data API) > Exposed schemas**. It must list only `public` (and `graphql_public`), **not `private`**.
+```sh
+npx supabase@3.3.0 login
+npx supabase@3.3.0 link --project-ref <your-project-ref>
+npx supabase@3.3.0 db push
+```
+
+Or by hand: in **SQL Editor**, run each file in `supabase/migrations/` in filename order.
+
+Then check **Settings > API (Data API) > Exposed schemas**. It must list only `public` (and `graphql_public`), **not `private`**.
 
 ## 3. Turn on the allowlist hook
 
@@ -52,7 +58,7 @@ Remove someone with `delete from private.allowed_users where discord_id = '…';
 ## 7. Configure the app
 
 1. In the dashboard: **Settings > API Keys**. Copy the **Project URL** and the **publishable key** (`sb_publishable_…`). **Never** use the secret / `service_role` key.
-2. Copy `dart_defines.example.json` to `dart_defines.json` (git-ignored) and fill both values in.
+2. Copy `dart_defines.example.json` to `dart_defines.json` (git-ignored) and fill in the URL and key.
 3. Run:
 
    ```sh

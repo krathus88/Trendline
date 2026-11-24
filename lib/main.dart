@@ -3,7 +3,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:trendline/app.dart';
-import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/supabase/secure_session_storage.dart';
 import 'package:trendline/data/supabase/supabase_config.dart';
@@ -31,11 +30,7 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(
-          SupabaseAuthRepository(supabase.client.auth),
-        ),
-      ],
+      overrides: [supabaseClientProvider.overrideWithValue(supabase.client)],
       child: const TrendlineApp(),
     ),
   );

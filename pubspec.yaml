@@ -10,6 +10,8 @@ environment:
 # Versions are locked by the committed pubspec.lock. Review any new package
 # (maintainer, activity, licence) before adding it, and say why it's needed.
 dependencies:
+  # Weight trend chart (publisher: flchart.dev, MIT).
+  fl_chart: ^1.3.1
   flutter:
     sdk: flutter
   # State management and in-memory cache (publisher: dash-overflow.net, MIT).
@@ -17,9 +19,18 @@ dependencies:
   # Encrypted storage for the auth session (publisher: steenbakker.dev,
   # BSD-3). Auth tokens must never sit in plain storage.
   flutter_secure_storage: ^11.2.0
+  # HTTP for the Open Food Facts API (publisher: dart.dev, BSD-3).
+  http: ^1.6.0
+  # Date and number formatting (publisher: dart.dev, BSD-3).
+  intl: ^0.20.3
   # Material widgets, split out of the Flutter SDK in 3.50 (publisher:
   # flutter.dev).
   material_ui: ^1.11.1
+  # @immutable for pure-Dart domain classes (publisher: dart.dev, BSD-3).
+  meta: ^1.19.0
+  # Barcode scanning, Android only; used only inside lib/platform/android
+  # (publisher: steenbakker.dev, BSD-3).
+  mobile_scanner: ^7.5.0
   # Supabase client: database, auth, Discord OAuth (publisher: supabase.io,
   # MIT).
   supabase_flutter: ^2.18.3
