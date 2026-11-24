@@ -1,0 +1,67 @@
+# Setup: Supabase and Discord sign-in
+
+One-time setup for the cloud side of Trendline. Do the steps in order. Nothing here goes in git except the migration, which is already in `supabase/migrations/`.
+
+## 1. Create the Supabase project
+
+1. At <https://supabase.com/dashboard>, create a new project.
+2. **Region: London (eu-west-2).** Health data is UK GDPR special category data and stays in the UK.
+3. Save the database password in your password manager. The app never needs it.
+
+## 2. Apply the database migration
+
+Until the Supabase CLI is set up:
+
+1. Open **SQL Editor** in the dashboard.
+2. Paste the whole of `supabase/migrations/20261124000000_private_allowlist.sql` and run it.
+3. Check **Settings > API (Data API) > Exposed schemas**. It must list only `public` (and `graphql_public`), **not `private`**.
+
+## 3. Turn on the allowlist hook
+
+1. Go to **Authentication > Hooks** and add a **Before User Created** hook.
+2. Type: **Postgres**. Schema: `private`. Function: `check_allowlist`.
+3. Save.
+
+## 4. Create the Discord application
+
+1. At <https://discord.com/developers/applications>, click **New Application** and name it "Trendline".
+2. Under **OAuth2**, copy the **Client ID** and reset/copy the **Client Secret**. Keep the secret in your password manager; it goes only into Supabase, never into the app or repo.
+3. Under **OAuth2 > Redirects**, add:
+   `https://<your-project-ref>.supabase.co/auth/v1/callback`
+   (your project ref is in the project URL.)
+
+## 5. Connect Discord to Supabase
+
+1. **Authentication > Sign In / Providers > Discord**: enable it, paste the Client ID and Client Secret, and save.
+2. Optional but recommended: disable the **Email** provider. The hook already rejects it, but turning it off removes it entirely.
+3. **Authentication > URL Configuration > Redirect URLs**: add
+   `com.krathus.trendline://login-callback`
+
+## 6. Add people to the allowlist
+
+1. In Discord: **Settings > Advanced > Developer Mode** on. Then right-click a user (or your own avatar) and choose **Copy User ID**.
+2. In the SQL Editor:
+
+   ```sql
+   insert into private.allowed_users (discord_id, note)
+   values ('YOUR_DISCORD_ID', 'me');
+   ```
+
+Remove someone with `delete from private.allowed_users where discord_id = '…';`. Removing them from the list stops new sign-ups only. To cut off an existing account, also delete the user under **Authentication > Users**.
+
+## 7. Configure the app
+
+1. In the dashboard: **Settings > API Keys**. Copy the **Project URL** and the **publishable key** (`sb_publishable_…`). **Never** use the secret / `service_role` key.
+2. Copy `dart_defines.example.json` to `dart_defines.json` (git-ignored) and fill both values in.
+3. Run:
+
+   ```sh
+   flutter run --dart-define-from-file=dart_defines.json
+   ```
+
+## 8. First sign-in check
+
+Sign in with your listed Discord account.
+
+- **It works:** done.
+- **"Not on the invite list" even though you're listed:** the hook couldn't find your Discord ID where it expected. Check **Authentication > Logs** for the hook's input, find where the Discord ID sits in it, and add that location to the lookup in `private.check_allowlist` (in a new migration).

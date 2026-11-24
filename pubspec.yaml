@@ -1,0 +1,35 @@
+name: trendline
+description: "Weight-loss and meal-planning app"
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.14.0
+
+# Versions are locked by the committed pubspec.lock. Review any new package
+# (maintainer, activity, licence) before adding it, and say why it's needed.
+dependencies:
+  flutter:
+    sdk: flutter
+  # State management and in-memory cache (publisher: dash-overflow.net, MIT).
+  flutter_riverpod: ^3.5.0
+  # Encrypted storage for the auth session (publisher: steenbakker.dev,
+  # BSD-3). Auth tokens must never sit in plain storage.
+  flutter_secure_storage: ^11.2.0
+  # Material widgets, split out of the Flutter SDK in 3.50 (publisher:
+  # flutter.dev).
+  material_ui: ^1.11.1
+  # Supabase client: database, auth, Discord OAuth (publisher: supabase.io,
+  # MIT).
+  supabase_flutter: ^2.18.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # Lint rules (publisher: verygood.ventures, MIT). Pinned exactly so that new
+  # lints arrive through a reviewed Dependabot PR, not a surprise CI failure.
+  very_good_analysis: 11.0.0
+
+flutter:
+  uses-material-design: true
