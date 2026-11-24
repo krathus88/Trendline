@@ -32,6 +32,7 @@ void main() {
   group('parseOffProduct', () {
     test('parses a complete product', () {
       final p = parseOffProduct(product())!;
+      expect(p.per100g.fibreUnknown, isFalse, reason: 'a stated 0 is known');
       expect(p.barcode, '01219494');
       expect(p.name, 'Semi skimmed milk');
       expect(p.brand, "Sainsbury's");
@@ -69,7 +70,7 @@ void main() {
       expect(p.per100g.kcal, 57);
       expect(p.per100g.proteinG, 2.9);
       expect(p.per100g.carbsG, 9.3);
-      expect(p.per100g.fibreG, 0, reason: 'missing fibre counts as zero');
+      expect(p.per100g.fibreUnknown, isTrue, reason: 'missing is unknown');
     });
 
     test('falls back to kJ when kcal is missing', () {

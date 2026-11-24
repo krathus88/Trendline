@@ -10,6 +10,7 @@ class Nutrition {
     required this.carbsG,
     required this.fatG,
     this.fibreG = 0,
+    this.fibreUnknown = false,
   });
 
   static const Nutrition zero = Nutrition(
@@ -23,7 +24,13 @@ class Nutrition {
   final double proteinG;
   final double carbsG;
   final double fatG;
+
+  /// The known fibre. With [fibreUnknown], the real amount may be higher.
   final double fibreG;
+
+  /// Whether some or all of the fibre isn't known: a food with no fibre
+  /// figure, or a total that includes one. Fibre is optional on UK labels.
+  final bool fibreUnknown;
 
   /// The nutrition in [grams] of a food whose per-100 g values are `this`,
   /// rounded to one decimal (what's stored in the food log).
@@ -35,6 +42,7 @@ class Nutrition {
       carbsG: _round1(carbsG * f),
       fatG: _round1(fatG * f),
       fibreG: _round1(fibreG * f),
+      fibreUnknown: fibreUnknown,
     );
   }
 
@@ -44,6 +52,7 @@ class Nutrition {
     carbsG: carbsG + other.carbsG,
     fatG: fatG + other.fatG,
     fibreG: fibreG + other.fibreG,
+    fibreUnknown: fibreUnknown || other.fibreUnknown,
   );
 
   static Nutrition sum(Iterable<Nutrition> items) =>
@@ -56,14 +65,17 @@ class Nutrition {
       other.proteinG == proteinG &&
       other.carbsG == carbsG &&
       other.fatG == fatG &&
-      other.fibreG == fibreG;
+      other.fibreG == fibreG &&
+      other.fibreUnknown == fibreUnknown;
 
   @override
-  int get hashCode => Object.hash(kcal, proteinG, carbsG, fatG, fibreG);
+  int get hashCode =>
+      Object.hash(kcal, proteinG, carbsG, fatG, fibreG, fibreUnknown);
 
   @override
   String toString() =>
-      'Nutrition(${kcal}kcal, P$proteinG C$carbsG F$fatG Fi$fibreG)';
+      'Nutrition(${kcal}kcal, P$proteinG C$carbsG F$fatG '
+      'Fi$fibreG${fibreUnknown ? '+?' : ''})';
 }
 
 double _round1(double v) => (v * 10).round() / 10;

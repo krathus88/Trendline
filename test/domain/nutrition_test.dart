@@ -45,6 +45,36 @@ void main() {
     });
   });
 
+  group('unknown fibre', () {
+    const banana = Nutrition(
+      kcal: 81,
+      proteinG: 1.2,
+      carbsG: 19.9,
+      fatG: 0.1,
+      fibreUnknown: true,
+    );
+
+    test('a portion of a food with unknown fibre is unknown too', () {
+      expect(banana.forGrams(120).fibreUnknown, isTrue);
+      expect(oats.forGrams(50).fibreUnknown, isFalse);
+    });
+
+    test('a total with any unknown fibre keeps the known part', () {
+      final total = Nutrition.sum([oats.forGrams(50), banana.forGrams(120)]);
+      expect(total.fibreG, 5);
+      expect(total.fibreUnknown, isTrue);
+    });
+
+    test('unknown and zero fibre are different', () {
+      expect(banana == banana.forGrams(100), isTrue);
+      expect(
+        banana ==
+            const Nutrition(kcal: 81, proteinG: 1.2, carbsG: 19.9, fatG: 0.1),
+        isFalse,
+      );
+    });
+  });
+
   group('validatePer100g', () {
     test('accepts real foods', () {
       expect(validatePer100g(oats), isNull);

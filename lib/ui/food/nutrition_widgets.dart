@@ -22,7 +22,7 @@ class MacroLine extends StatelessWidget {
             ?.tabular
             .copyWith(color: colors.textSecondary);
 
-    Widget item(String label, double grams, Color color) => Row(
+    Widget item(String label, String amount, Color color) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
@@ -31,7 +31,7 @@ class MacroLine extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: Space.xs),
-        Text('$label ${formatGrams(grams)}', style: style),
+        Text('$label $amount', style: style),
       ],
     );
 
@@ -39,13 +39,19 @@ class MacroLine extends StatelessWidget {
       spacing: Space.md,
       runSpacing: Space.xs,
       children: [
-        item('Protein', nutrition.proteinG, colors.protein),
-        item('Carbs', nutrition.carbsG, colors.carbs),
-        item('Fat', nutrition.fatG, colors.fat),
-        item('Fibre', nutrition.fibreG, colors.fibre),
+        item('Protein', formatGrams(nutrition.proteinG), colors.protein),
+        item('Carbs', formatGrams(nutrition.carbsG), colors.carbs),
+        item('Fat', formatGrams(nutrition.fatG), colors.fat),
+        item('Fibre', fibreAmount(nutrition), colors.fibre),
       ],
     );
   }
+}
+
+/// "5 g", "≥5 g" when some of it is unknown, or "unknown".
+String fibreAmount(Nutrition n) {
+  if (!n.fibreUnknown) return formatGrams(n.fibreG);
+  return n.fibreG > 0 ? '≥${formatGrams(n.fibreG)}' : 'unknown';
 }
 
 /// "379 kcal per 100 g"

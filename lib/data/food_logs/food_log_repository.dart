@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:trendline/data/supabase/row_parsing.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/recipe.dart';
 
 abstract interface class FoodLogRepository {
   /// Everything logged on the local calendar [day], oldest first.
@@ -12,6 +13,17 @@ abstract interface class FoodLogRepository {
     required DateTime day,
     required MealSlot slot,
     required Food food,
+    required double grams,
+  });
+
+  /// Logs [grams] (cooked) of [recipe] on [day], snapshotting its name and
+  /// nutrition ([per100gCooked]), so editing the recipe never rewrites
+  /// history.
+  Future<FoodLogEntry> addRecipe({
+    required DateTime day,
+    required MealSlot slot,
+    required Recipe recipe,
+    required Nutrition per100gCooked,
     required double grams,
   });
 
@@ -32,7 +44,8 @@ class SupabaseFoodLogRepository implements FoodLogRepository {
   final SupabaseClient _db;
 
   static const _columns =
-      'id, eaten_on, eaten_at, slot, food_id, food_name, food_brand, grams, '
+      'id, eaten_on, eaten_at, slot, food_id, recipe_id, food_name, '
+      'food_brand, grams, '
       'kcal, protein_g, carbs_g, fat_g, fibre_g';
 
   @override
@@ -87,6 +100,31 @@ class SupabaseFoodLogRepository implements FoodLogRepository {
   }
 
   @override
+  Future<FoodLogEntry> addRecipe({
+    required DateTime day,
+    required MealSlot slot,
+    required Recipe recipe,
+    required Nutrition per100gCooked,
+    required double grams,
+  }) async {
+    final row = await _db
+        .from('food_logs')
+        .insert(
+          recipeLogToRow(
+            day: day,
+            eatenAt: DateTime.now(),
+            slot: slot,
+            recipe: recipe,
+            per100gCooked: per100gCooked,
+            grams: grams,
+          ),
+        )
+        .select(_columns)
+        .single();
+    return foodLogFromRow(row);
+  }
+
+  @override
   Future<FoodLogEntry> updateGrams(FoodLogEntry entry, double grams) async {
     final n = rescale(entry.nutrition, from: entry.grams, to: grams);
     final row = await _db
@@ -110,6 +148,7 @@ FoodLogEntry foodLogFromRow(Map<String, dynamic> row) => FoodLogEntry(
   eatenAt: readDateTime(row['eaten_at']),
   slot: MealSlot.values.byName(row['slot'] as String),
   foodId: row['food_id'] as String?,
+  recipeId: row['recipe_id'] as String?,
   foodName: row['food_name'] as String,
   foodBrand: row['food_brand'] as String?,
   grams: readDouble(row['grams']),
@@ -119,6 +158,7 @@ FoodLogEntry foodLogFromRow(Map<String, dynamic> row) => FoodLogEntry(
     carbsG: readDouble(row['carbs_g']),
     fatG: readDouble(row['fat_g']),
     fibreG: readDoubleOrNull(row['fibre_g']) ?? 0,
+    fibreUnknown: readDoubleOrNull(row['fibre_g']) == null,
   ),
 );
 
@@ -139,6 +179,23 @@ Map<String, dynamic> foodLogToRow({
   ..._nutritionColumns(food.per100g.forGrams(grams)),
 };
 
+Map<String, dynamic> recipeLogToRow({
+  required DateTime day,
+  required DateTime eatenAt,
+  required MealSlot slot,
+  required Recipe recipe,
+  required Nutrition per100gCooked,
+  required double grams,
+}) => {
+  'eaten_on': writeDate(day),
+  'eaten_at': writeTimestamp(eatenAt),
+  'slot': slot.name,
+  'recipe_id': recipe.id,
+  'food_name': recipe.name.trim(),
+  'grams': _round1(grams),
+  ..._nutritionColumns(per100gCooked.forGrams(grams)),
+};
+
 /// [n] for [from] grams, rescaled to [to] grams.
 Nutrition rescale(Nutrition n, {required double from, required double to}) {
   if (from <= 0) return Nutrition.zero;
@@ -149,6 +206,7 @@ Nutrition rescale(Nutrition n, {required double from, required double to}) {
     carbsG: _round1(n.carbsG * f),
     fatG: _round1(n.fatG * f),
     fibreG: _round1(n.fibreG * f),
+    fibreUnknown: n.fibreUnknown,
   );
 }
 
@@ -157,7 +215,7 @@ Map<String, dynamic> _nutritionColumns(Nutrition n) => {
   'protein_g': n.proteinG,
   'carbs_g': n.carbsG,
   'fat_g': n.fatG,
-  'fibre_g': n.fibreG,
+  'fibre_g': n.fibreUnknown ? null : n.fibreG,
 };
 
 double _round1(double v) => (v * 10).round() / 10;

@@ -5,21 +5,38 @@ import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/food/food_browser.dart';
 import 'package:trendline/ui/food/nutrition_widgets.dart';
+import 'package:trendline/ui/recipes/recipe_list.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
 
-/// The food library: browse and manage saved foods, find new ones.
+/// The food library: saved foods (and finding new ones), and recipes.
 class FoodScreen extends ConsumerWidget {
   const new({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Food')),
-      body: FoodBrowser(
-        onChosen: (choice) => showAppSheet<void>(
-          context,
-          builder: (_) => _FoodDetails(choice: choice),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Food'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Foods'),
+              Tab(text: 'Recipes'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            FoodBrowser(
+              onChosen: (choice) => showAppSheet<void>(
+                context,
+                builder: (_) => _FoodDetails(choice: choice),
+              ),
+            ),
+            const RecipeList(),
+          ],
         ),
       ),
     );

@@ -1,9 +1,12 @@
 -- Every table in `public` holds user data, so it must have RLS enabled and
--- policies for select, insert, update and delete. Run with: supabase test db
+-- policies for select, insert, update and delete. The one exception is
+-- shared read-only reference data, listed here by name: it must still have
+-- RLS on, and is checked to be read-only below and in reference_foods.test.
+-- Run with: supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(3);
+select plan(4);
 
 -- Tables in `public` with RLS turned off.
 select is(
@@ -31,6 +34,7 @@ select is(
      from pg_class c
      join pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public' and c.relkind in ('r', 'p')
+       and c.relname not in ('reference_foods')
    ) t
    cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
      as r(required_cmd)
@@ -42,6 +46,28 @@ select is(
    )),
   null,
   'every public table has select, insert, update and delete policies'
+);
+
+-- The reference data exceptions: readable when signed in, never writable by
+-- an app role, and no write policies.
+select is(
+  (select array_agg(c.relname::text order by c.relname)
+   from pg_class c
+   join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname in ('reference_foods')
+     and (
+       has_table_privilege('anon', c.oid, 'SELECT, INSERT, UPDATE, DELETE')
+       or has_table_privilege('authenticated', c.oid, 'INSERT, UPDATE, DELETE')
+       or not has_table_privilege('authenticated', c.oid, 'SELECT')
+       or exists (
+         select 1 from pg_policies p
+         where p.schemaname = 'public' and p.tablename = c.relname
+           and p.cmd <> 'SELECT'
+       )
+     )),
+  null,
+  'reference tables are read-only for signed-in users and closed to anon'
 );
 
 -- Tables in `private` hold admin-only data (such as the allowlist) and must

@@ -67,7 +67,9 @@ OffProduct? parseOffProduct(Object? json) {
     proteinG: _round1(protein),
     carbsG: _round1(carbs),
     fatG: _round1(fat),
+    // Fibre is optional on UK labels: missing means unknown, not none.
     fibreG: _round1(_number(nutriments['fiber_100g']) ?? 0),
+    fibreUnknown: _number(nutriments['fiber_100g']) == null,
   );
   if (validatePer100g(per100g) != null) return null;
 

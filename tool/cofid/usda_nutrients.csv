@@ -1,0 +1,35 @@
+cofid_code,cofid_name,decision,usda_fdc_id,usda_description,kcal,protein_g,fat_g,carbs_by_difference_g,fibre_g,sugars_g,sodium_mg,water_g,note
+13-801,"Allspice, ground",usda,171315,"Spices, allspice, ground",263,6.09,8.69,72.12,21.6,,77,8.46,
+13-802,Anise seeds,usda,171316,"Spices, anise seed",337,17.6,15.9,50.02,14.6,,16,9.54,
+13-803,Asafoetida,unknown,,,,,,,,,,,not in USDA SR Legacy
+13-808,Caraway seeds,usda,170918,"Spices, caraway seed",333,19.77,14.59,49.9,38,0.64,17,9.87,
+13-809,"Cardamom, ground",usda,170919,"Spices, cardamom",311,10.76,6.7,68.47,28,,18,8.28,
+13-810,Celery seeds,usda,170920,"Spices, celery seed",392,18.07,25.27,41.35,11.8,0.67,160,6.04,
+12-491,"Cheese, Brie, rind only",unknown,,,,,,,,,,,USDA has whole Brie only
+13-873,Chilli powder,usda,171319,"Spices, chili powder",282,13.46,14.28,49.7,34.8,7.19,2867,10.75,"USDA chili powder is a blend (chilli, cumin, oregano), like most UK chilli powders"
+13-813,Chinese 5 spice,unknown,,,,,,,,,,,not in USDA SR Legacy
+13-874,"Cinnamon, ground",usda,171320,"Spices, cinnamon, ground",247,3.99,1.24,80.59,53.1,2.17,10,10.58,
+13-816,"Cloves, dried",usda,171321,"Spices, cloves, ground",274,5.97,13,65.53,33.9,2.38,277,9.87,USDA has ground cloves
+13-875,Coriander seeds,usda,170922,"Spices, coriander seed",298,12.37,17.77,54.99,41.9,,35,8.86,
+13-889,Cumin seeds,usda,170923,"Spices, cumin seed",375,17.81,22.27,44.24,10.5,2.25,168,8.06,
+13-826,Dill seeds,usda,170925,"Spices, dill seed",305,15.98,14.54,55.17,21.1,,20,7.7,
+13-827,Fennel seeds,usda,171323,"Spices, fennel seed",345,15.8,14.87,52.29,39.8,,88,8.81,
+13-828,Fenugreek seeds,usda,171324,"Spices, fenugreek seed",323,23,6.41,58.35,24.6,,67,8.84,
+14-337,Lemon peel,usda,167749,"Lemon peel, raw",47,1.5,0.3,16,10.6,4.17,6,81.6,
+13-833,Liquorice powder,unknown,,,,,,,,,,,not in USDA SR Legacy
+13-834,"Mace, ground",usda,170927,"Spices, mace, ground",475,6.71,32.38,50.5,20.2,,80,8.17,
+13-886,Mixed curry spices,usda,170924,"Spices, curry powder",325,14.29,14.01,55.83,53.2,2.76,52,8.8,"USDA curry powder, the nearest blend"
+13-839,Mustard seeds,usda,170929,"Spices, mustard seed, ground",508,26.08,36.24,28.09,12.2,6.79,13,5.27,USDA has ground mustard seed; same composition
+13-877,"Nutmeg, ground",usda,171326,"Spices, nutmeg, ground",525,5.84,36.31,49.29,20.8,2.99,16,6.23,
+13-878,"Oregano, dried, ground",usda,171328,"Spices, oregano, dried",265,9,4.28,68.92,42.5,4.09,25,9.93,
+13-891,"Oregano, fresh",unknown,,,,,,,,,,,USDA has dried oregano only
+13-879,Paprika,usda,171329,"Spices, paprika",282,14.14,12.89,53.99,34.9,10.34,68,11.24,
+13-880,"Pepper, black",usda,170931,"Spices, pepper, black",251,10.39,3.26,63.95,25.3,0.64,20,12.46,
+13-881,"Pepper, white",usda,170933,"Spices, pepper, white",296,10.4,2.12,68.61,26.2,,5,11.42,
+13-849,Poppy seeds,usda,171330,"Spices, poppy seed",525,17.99,41.56,28.13,19.5,2.99,26,5.95,
+18-499,"Pork, spare ribs, Chinese barbecue, takeaway",unknown,,,,,,,,,,,"USDA has plain spare ribs, not glazed takeaway ones"
+17-515,"Stock cubes, beef",usda,171561,"Soup, beef broth, cubed, dry",170,17.3,4,16.1,0,14.51,24000,3.3,
+17-726,"Stock cubes, chicken",usda,171563,"Soup, chicken broth cubes, dry",198,14.6,4.7,23.5,0,0,24000,2.5,
+17-774,"Stock cubes, chicken, made up with water",usda,174566,"Soup, chicken broth cubes, dry, prepared with water",5,0.39,0.12,0.62,0,,326,97.43,"USDA gives no fibre for the made-up stock; the dry cube has 0 g"
+17-727,"Stock cubes, vegetable",unknown,,,,,,,,,,,"USDA has only low-sodium cubes, which differ a lot in salt"
+13-861,"Turmeric, ground",usda,172231,"Spices, turmeric, ground",312,9.68,3.25,67.14,22.7,3.21,27,12.85,

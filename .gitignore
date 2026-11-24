@@ -20,6 +20,7 @@ supabase/.branches/
 *.class
 *.log
 *.pyc
+__pycache__/
 *.swp
 .buildlog/
 .history

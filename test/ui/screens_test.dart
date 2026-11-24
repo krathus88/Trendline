@@ -233,6 +233,44 @@ void main() {
       expect(backend.foodLogs.items.single.foodName, 'Semi skimmed milk');
     });
 
+    testWidgets('finds basic foods as you type and logs one', (tester) async {
+      final backend = TestBackend(profile: testProfile);
+      backend.referenceFoods.items.add(bananas);
+      var offSearches = 0;
+      backend.off = (_) async {
+        offSearches++;
+        return http.Response('{}', 404);
+      };
+      await backend.pump(tester);
+
+      await tester.tap(find.text('Add food').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'b');
+      await tester.enterText(find.byType(TextField), 'ba');
+      await tester.enterText(find.byType(TextField), 'banana');
+      await tester.pump(const Duration(milliseconds: 299));
+      expect(backend.referenceFoods.queries, isEmpty);
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(backend.referenceFoods.queries, [
+        'banana',
+      ], reason: 'one search once typing pauses');
+      expect(offSearches, 0);
+      expect(find.text('Basic foods'), findsOneWidget);
+      expect(find.textContaining('Open Government Licence'), findsOneWidget);
+
+      await tester.tap(find.text('Bananas, flesh only'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add to breakfast'));
+      await tester.pumpAndSettle();
+
+      final saved = backend.foods.items.single;
+      expect(saved.source, FoodSource.cofid);
+      expect(saved.referenceCode, '13-001');
+      expect(backend.foodLogs.items.single.foodName, 'Bananas, flesh only');
+    });
+
     testWidgets('an unknown barcode opens manual entry with it filled in', (
       tester,
     ) async {
@@ -318,12 +356,16 @@ void main() {
     });
   });
   group('Settings', () {
-    testWidgets('credits Open Food Facts', (tester) async {
+    testWidgets('credits Open Food Facts and CoFID', (tester) async {
       await TestBackend(profile: testProfile).pump(tester);
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Open Database License (ODbL)'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Open Government Licence v3.0'),
         findsOneWidget,
       );
     });
@@ -481,6 +523,60 @@ void main() {
       await tester.tap(find.text('Everything eaten is logged'));
       await tester.pumpAndSettle();
       expect(backend.energy.completeDays, {dayOf(DateTime.now())});
+    });
+
+    testWidgets('Today shows fibre as a minimum when some is unknown', (
+      tester,
+    ) async {
+      final backend = TestBackend(profile: testProfile);
+      backend.goals.goal = Goal.maintenance;
+      await backend.weighIns.add(
+        measuredAt: DateTime.now().subtract(const Duration(hours: 1)),
+        weightKg: 90,
+      );
+      final oats = await backend.foods.save(
+        const FoodDraft(
+          name: 'Oats',
+          per100g: Nutrition(
+            kcal: 379,
+            proteinG: 13,
+            carbsG: 60,
+            fatG: 7,
+            fibreG: 10,
+          ),
+          source: FoodSource.manual,
+        ),
+      );
+      final ackee = await backend.foods.save(
+        const FoodDraft(
+          name: 'Ackee',
+          per100g: Nutrition(
+            kcal: 151,
+            proteinG: 2.9,
+            carbsG: 0.7,
+            fatG: 15.2,
+            fibreUnknown: true,
+          ),
+          source: FoodSource.manual,
+        ),
+      );
+      final today = dayOf(DateTime.now());
+      await backend.foodLogs.add(
+        day: today,
+        slot: MealSlot.breakfast,
+        food: oats,
+        grams: 50,
+      );
+      await backend.foodLogs.add(
+        day: today,
+        slot: MealSlot.lunch,
+        food: ackee,
+        grams: 100,
+      );
+      await backend.pump(tester);
+
+      expect(find.textContaining('≥5 / at least 30 g'), findsOneWidget);
+      expect(find.textContaining('no fibre figure'), findsOneWidget);
     });
 
     testWidgets('Progress explains the estimate and the goal', (tester) async {

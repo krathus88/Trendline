@@ -94,7 +94,12 @@ class SettingsScreen extends ConsumerWidget {
               'targets.\n\n'
               'Contains information from Open Food Facts '
               '(openfoodfacts.org), made available under the Open '
-              'Database License (ODbL).\n\nVersion $appVersion',
+              'Database License (ODbL).\n\n'
+              'Basic foods from CoFID (McCance and Widdowson’s Composition '
+              'of Foods Integrated Dataset). Contains public sector '
+              'information licensed under the Open Government Licence '
+              'v3.0. Some fibre values from USDA FoodData Central.\n\n'
+              'Version $appVersion',
               style: text.bodySmall?.copyWith(color: colors.textTertiary),
             ),
           ),

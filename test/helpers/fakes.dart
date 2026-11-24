@@ -4,16 +4,20 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/energy/energy_repository.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
+import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
+import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
+import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/profile.dart';
+import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
@@ -133,14 +137,77 @@ class FakeFoodRepository implements FoodRepository {
       saltG: d.saltG,
       servingG: d.servingG,
       source: d.source,
+      referenceCode: d.referenceCode,
     );
     items.add(food);
     return food;
   }
 
+  /// Foods a recipe uses: deleting them fails, as in the database.
+  final inUse = <String>{};
+
   @override
-  Future<void> delete(String id) async => items.removeWhere((f) => f.id == id);
+  Future<void> delete(String id) async {
+    if (inUse.contains(id)) throw const FoodInUse();
+    items.removeWhere((f) => f.id == id);
+  }
 }
+
+/// Recipes in memory. New ones get IDs r0, r1, ...
+class FakeRecipeRepository implements RecipeRepository {
+  final items = <Recipe>[];
+  int saves = 0;
+  int _next = 0;
+
+  @override
+  Future<List<Recipe>> fetchAll() async => List.of(items);
+
+  @override
+  Future<Recipe> save(Recipe r) async {
+    saves++;
+    final saved = Recipe(
+      id: r.id.isEmpty ? 'r${_next++}' : r.id,
+      name: r.name.trim(),
+      ingredients: r.ingredients,
+      portions: r.portions,
+      cookedWeightG: r.cookedWeightG,
+      fridgeDays: r.fridgeDays,
+      freezable: r.freezable,
+      method: r.method,
+    );
+    items
+      ..removeWhere((x) => x.id == saved.id)
+      ..add(saved);
+    return saved;
+  }
+
+  @override
+  Future<void> delete(String id) async => items.removeWhere((r) => r.id == id);
+}
+
+/// Basic foods whose name contains the query.
+class FakeReferenceFoodRepository implements ReferenceFoodRepository {
+  final items = <FoodDraft>[];
+  final queries = <String>[];
+
+  @override
+  Future<List<FoodDraft>> search(String query) async {
+    queries.add(query);
+    final q = cleanReferenceQuery(query);
+    return [
+      for (final d in items)
+        if (d.name.toLowerCase().contains(q)) d,
+    ];
+  }
+}
+
+/// A basic food as the reference repository returns it.
+const bananas = FoodDraft(
+  name: 'Bananas, flesh only',
+  per100g: Nutrition(kcal: 81, proteinG: 1.2, carbsG: 20.3, fatG: 0.1),
+  source: FoodSource.cofid,
+  referenceCode: '13-001',
+);
 
 class FakeFoodLogRepository implements FoodLogRepository {
   final items = <FoodLogEntry>[];
@@ -196,6 +263,28 @@ class FakeFoodLogRepository implements FoodLogRepository {
   }
 
   @override
+  Future<FoodLogEntry> addRecipe({
+    required DateTime day,
+    required MealSlot slot,
+    required Recipe recipe,
+    required Nutrition per100gCooked,
+    required double grams,
+  }) async {
+    final e = FoodLogEntry(
+      id: 'l${_next++}',
+      eatenOn: day,
+      eatenAt: DateTime.now(),
+      slot: slot,
+      recipeId: recipe.id,
+      foodName: recipe.name,
+      grams: grams,
+      nutrition: per100gCooked.forGrams(grams),
+    );
+    items.add(e);
+    return e;
+  }
+
+  @override
   Future<FoodLogEntry> updateGrams(FoodLogEntry entry, double grams) async {
     if (failUpdates) throw FakeNetworkError();
     final updated = FoodLogEntry(
@@ -204,6 +293,7 @@ class FakeFoodLogRepository implements FoodLogRepository {
       eatenAt: entry.eatenAt,
       slot: entry.slot,
       foodId: entry.foodId,
+      recipeId: entry.recipeId,
       foodName: entry.foodName,
       foodBrand: entry.foodBrand,
       grams: grams,

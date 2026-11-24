@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/misc.dart' show AsyncNotifierProviderFamily;
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/recipe.dart';
 
 /// One local calendar day's food log, cached in memory per day. Pass a day
 /// from `dayOf(...)` so equal days share one cache entry.
@@ -34,6 +36,26 @@ class FoodLogNotifier extends AsyncNotifier<List<FoodLogEntry>> {
     state = AsyncData([...state.value ?? const <FoodLogEntry>[], entry]);
   }
 
+  /// Logs [grams] (cooked) of [recipe], whose nutrition per 100 g cooked is
+  /// [per100gCooked].
+  Future<void> addRecipe({
+    required MealSlot slot,
+    required Recipe recipe,
+    required Nutrition per100gCooked,
+    required double grams,
+  }) async {
+    final entry = await ref
+        .read(foodLogRepositoryProvider)
+        .addRecipe(
+          day: day,
+          slot: slot,
+          recipe: recipe,
+          per100gCooked: per100gCooked,
+          grams: grams,
+        );
+    state = AsyncData([...state.value ?? const <FoodLogEntry>[], entry]);
+  }
+
   /// Shows the new portion straight away; reverts if saving fails.
   Future<void> updateGrams(FoodLogEntry entry, double grams) async {
     final before = state.value ?? const <FoodLogEntry>[];
@@ -43,6 +65,7 @@ class FoodLogNotifier extends AsyncNotifier<List<FoodLogEntry>> {
       eatenAt: entry.eatenAt,
       slot: entry.slot,
       foodId: entry.foodId,
+      recipeId: entry.recipeId,
       foodName: entry.foodName,
       foodBrand: entry.foodBrand,
       grams: grams,

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trendline/app_info.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
+import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/supabase/row_parsing.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
@@ -80,6 +81,110 @@ void main() {
     expect(w.weightKg, 82.4);
     expect(w.bodyFatPct, isNull);
     expect(w.source, WeighInSource.healthConnect);
+  });
+
+  group('basic foods', () {
+    test('a reference row becomes a CoFID draft', () {
+      final draft = referenceFoodFromRow({
+        'cofid_code': '13-001',
+        'display_name': 'Bananas, flesh only',
+        'kcal_100g': '81.0',
+        'protein_100g': 1.2,
+        'carbs_100g': 20.3,
+        'fat_100g': 0.1,
+        'fibre_100g': null,
+        'sugar_100g': 18.1,
+        'salt_100g': '0.00',
+      })!;
+      expect(draft.source, FoodSource.cofid);
+      expect(draft.referenceCode, '13-001');
+      expect(draft.per100g.kcal, 81);
+      expect(draft.per100g.fibreUnknown, isTrue, reason: 'no figure anywhere');
+      expect(draft.sugarG, 18.1);
+      expect(draft.saltG, 0);
+      expect(draft.brand, isNull);
+    });
+
+    test('malformed reference rows are skipped', () {
+      expect(referenceFoodFromRow({'cofid_code': '13-001'}), isNull);
+      expect(
+        referenceFoodFromRow({
+          'cofid_code': '13-001',
+          'display_name': ' ',
+          'kcal_100g': 1,
+          'protein_100g': 1,
+          'carbs_100g': 1,
+          'fat_100g': 1,
+        }),
+        isNull,
+      );
+    });
+
+    test('a CoFID draft is saved with its code, others never are', () {
+      const draft = FoodDraft(
+        name: 'Bananas, flesh only',
+        per100g: Nutrition(kcal: 81, proteinG: 1.2, carbsG: 20.3, fatG: 0.1),
+        source: FoodSource.cofid,
+        referenceCode: '13-001',
+      );
+      final row = foodDraftToRow(draft);
+      expect(row['source'], 'cofid');
+      expect(row['reference_code'], '13-001');
+
+      final back = foodFromRow({...row, 'id': 'f1'});
+      expect(back.source, FoodSource.cofid);
+      expect(back.referenceCode, '13-001');
+
+      const manual = FoodDraft(
+        name: 'Oats',
+        per100g: Nutrition(kcal: 379, proteinG: 13, carbsG: 60, fatG: 7),
+        source: FoodSource.manual,
+        referenceCode: '13-001',
+      );
+      expect(foodDraftToRow(manual)['reference_code'], isNull);
+    });
+
+    test('unknown fibre is stored as null and read back as unknown', () {
+      const draft = FoodDraft(
+        name: 'Ackee, canned, drained',
+        per100g: Nutrition(
+          kcal: 151,
+          proteinG: 2.9,
+          carbsG: 0.7,
+          fatG: 15.2,
+          fibreUnknown: true,
+        ),
+        source: FoodSource.cofid,
+        referenceCode: '13-145',
+      );
+      final row = foodDraftToRow(draft);
+      expect(row['fibre_100g'], isNull);
+      expect(row.containsKey('fibre_100g'), isTrue);
+
+      final food = foodFromRow({...row, 'id': 'f1'});
+      expect(food.per100g.fibreUnknown, isTrue);
+
+      final log = foodLogToRow(
+        day: DateTime(2026, 11, 24),
+        eatenAt: DateTime(2026, 11, 24, 8),
+        slot: MealSlot.breakfast,
+        food: food,
+        grams: 80,
+      );
+      expect(log['fibre_g'], isNull);
+      final entry = foodLogFromRow({
+        ...log,
+        'id': 'l1',
+        'eaten_at': '2026-11-24T08:00:00Z',
+      });
+      expect(entry.nutrition.fibreUnknown, isTrue);
+      expect(rescale(entry.nutrition, from: 80, to: 40).fibreUnknown, isTrue);
+    });
+
+    test('queries are cleaned the way the database expects', () {
+      expect(cleanReferenceQuery('  Chicken   BREAST '), 'chicken breast');
+      expect(cleanReferenceQuery('a' * 150), hasLength(100));
+    });
   });
 
   test('food drafts are trimmed, rounded and tagged with their source', () {

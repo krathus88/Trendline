@@ -65,7 +65,9 @@ class _ManualFoodScreenState extends ConsumerState<ManualFoodScreen> {
       proteinG: parseDecimal(_protein.text)!,
       carbsG: parseDecimal(_carbs.text)!,
       fatG: parseDecimal(_fat.text)!,
+      // Fibre is optional on labels; blank means unknown, not none.
       fibreG: _opt(_fibre) ?? 0,
+      fibreUnknown: _opt(_fibre) == null,
     );
     final problem = validatePer100g(per100g);
     final sugar = _opt(_sugar);

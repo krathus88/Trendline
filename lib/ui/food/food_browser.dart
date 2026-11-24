@@ -1,19 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/foods/foods_notifier.dart';
 import 'package:trendline/data/off/off_product.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/food/manual_food_screen.dart';
+import 'package:trendline/ui/recipes/recipe_list.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
 
-/// A food the user picked: one they've saved, or a new one from Open Food
-/// Facts that isn't saved yet.
+/// A food the user picked: one they've saved, or a new one (from Open Food
+/// Facts or the basic foods) that isn't saved yet.
 sealed class FoodChoice {
   const new();
 
@@ -53,12 +58,15 @@ class NewFood extends FoodChoice {
   double? get servingG => draft.servingG;
 }
 
-/// Saved foods (filtered as you type), Open Food Facts search (on submit, to
-/// respect their rate limit), barcode scanning and manual entry.
+/// Saved foods and basic foods (both as you type), Open Food Facts search (on
+/// submit, to respect their rate limit), barcode scanning and manual entry.
 class FoodBrowser extends ConsumerStatefulWidget {
-  const new({required this.onChosen, super.key});
+  const new({required this.onChosen, super.key, this.onRecipeChosen});
 
   final ValueChanged<FoodChoice> onChosen;
+
+  /// When set, the user's recipes are listed too (for logging a portion).
+  final ValueChanged<Recipe>? onRecipeChosen;
 
   @override
   ConsumerState<FoodBrowser> createState() => _FoodBrowserState();
@@ -74,10 +82,61 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
   bool _searching = false;
   bool _scanning = false;
 
+  /// Basic foods (CoFID) for [_basicFor], searched as the user types.
+  static const _basicDebounce = Duration(milliseconds: 300);
+  static const _basicShown = 8;
+  Timer? _basicTimer;
+  String? _basicFor;
+  List<FoodDraft>? _basicResults;
+  Object? _basicError;
+  bool _showAllBasic = false;
+
   @override
   void dispose() {
+    _basicTimer?.cancel();
     _query.dispose();
     super.dispose();
+  }
+
+  void _onQueryChanged(String value) {
+    setState(() => _filter = value.trim());
+    _basicTimer?.cancel();
+    final query = value.trim();
+    if (query.length < 2) {
+      setState(() {
+        _basicFor = null;
+        _basicResults = null;
+        _basicError = null;
+      });
+      return;
+    }
+    _basicTimer = Timer(_basicDebounce, () => _searchBasic(query));
+  }
+
+  Future<void> _searchBasic(String query) async {
+    setState(() {
+      _basicFor = query;
+      _basicError = null;
+      _showAllBasic = false;
+    });
+    try {
+      final results = await ref
+          .read(referenceFoodRepositoryProvider)
+          .search(query);
+      // Ignore answers to a query the user has since changed.
+      if (mounted && _basicFor == query) {
+        setState(() => _basicResults = results);
+      }
+    } on Object catch (e) {
+      if (mounted && _basicFor == query) setState(() => _basicError = e);
+    }
+  }
+
+  void _chooseBasic(FoodDraft draft) {
+    final saved = ref
+        .read(foodsProvider.notifier)
+        .byReference(draft.referenceCode!, draft.name);
+    widget.onChosen(saved != null ? SavedFood(saved) : NewFood(draft));
   }
 
   Future<void> _search() async {
@@ -146,6 +205,14 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
           f,
     ];
     final canSearch = _query.text.trim().length >= 2;
+    final onRecipe = widget.onRecipeChosen;
+    final recipes = onRecipe == null
+        ? const <Recipe>[]
+        : [
+            for (final r
+                in ref.watch(recipesProvider).value ?? const <Recipe>[])
+              if (filter.isEmpty || r.name.toLowerCase().contains(filter)) r,
+          ];
 
     return ListView(
       padding: const EdgeInsets.only(bottom: Space.xxl),
@@ -161,10 +228,10 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
             controller: _query,
             textInputAction: TextInputAction.search,
             decoration: const InputDecoration(
-              hintText: 'Search your foods or UK products',
+              hintText: 'Search foods, basics or UK products',
               prefixIcon: Icon(Icons.search),
             ),
-            onChanged: (v) => setState(() => _filter = v.trim()),
+            onChanged: _onQueryChanged,
             onSubmitted: (_) => _search(),
           ),
         ),
@@ -188,6 +255,12 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
           ),
         ),
         const SizedBox(height: Space.md),
+        if (recipes.isNotEmpty) ...[
+          _Header(filter.isEmpty ? 'Your recipes' : 'Your recipes matching'),
+          for (final r in recipes)
+            RecipeTile(recipe: r, onTap: () => onRecipe!(r)),
+          const SizedBox(height: Space.md),
+        ],
         _Header(filter.isEmpty ? 'Your foods' : 'Your foods matching'),
         switch (saved) {
           AsyncError(:final error) => ErrorView(
@@ -217,6 +290,7 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
             ],
           ),
         },
+        if (_basicFor != null) ..._basicSection(text),
         if (canSearch && _searchedFor != _query.text.trim())
           ListTile(
             leading: const Icon(Icons.travel_explore),
@@ -261,6 +335,56 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
         ],
       ],
     );
+  }
+
+  List<Widget> _basicSection(TextTheme text) {
+    final results = _basicResults;
+    final loading = results == null && _basicError == null;
+    final shown = results == null
+        ? const <FoodDraft>[]
+        : _showAllBasic
+        ? results
+        : results.take(_basicShown).toList();
+    return [
+      const SizedBox(height: Space.md),
+      const _Header('Basic foods'),
+      if (_basicError != null)
+        ErrorView(error: _basicError!, onRetry: () => _searchBasic(_basicFor!))
+      else if (loading)
+        const Padding(
+          padding: EdgeInsets.all(Space.xl),
+          child: CenteredProgress(),
+        )
+      else if (results!.isEmpty)
+        const EmptyState(title: 'No basic foods match')
+      else ...[
+        for (final d in shown)
+          _FoodTile(
+            name: d.name,
+            per100g: d.per100g,
+            onTap: () => _chooseBasic(d),
+          ),
+        if (!_showAllBasic && results.length > _basicShown)
+          TextButton(
+            onPressed: () => setState(() => _showAllBasic = true),
+            child: Text('Show all ${results.length}'),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Space.gutter,
+            Space.xs,
+            Space.gutter,
+            0,
+          ),
+          child: Text(
+            'Basic foods from CoFID, UK government data. Contains public '
+            'sector information licensed under the Open Government Licence '
+            'v3.0.',
+            style: text.bodySmall?.copyWith(color: context.colors.textTertiary),
+          ),
+        ),
+      ],
+    ];
   }
 }
 

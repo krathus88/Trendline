@@ -22,11 +22,26 @@ class FoodsNotifier extends AsyncNotifier<List<Food>> {
     return null;
   }
 
-  /// Saves [draft], or returns the already-saved food with the same barcode.
+  /// The saved copy of a basic food, if there is one. CoFID codes aren't
+  /// unique on their own, so the name must match too.
+  Food? byReference(String code, String name) {
+    for (final food in state.value ?? const <Food>[]) {
+      if (food.referenceCode == code && food.name == name.trim()) return food;
+    }
+    return null;
+  }
+
+  /// Saves [draft], or returns the already-saved food with the same barcode
+  /// or copied from the same basic food.
   Future<Food> save(FoodDraft draft) async {
     final barcode = draft.barcode;
     if (barcode != null) {
       final existing = byBarcode(barcode);
+      if (existing != null) return existing;
+    }
+    final code = draft.referenceCode;
+    if (code != null) {
+      final existing = byReference(code, draft.name);
       if (existing != null) return existing;
     }
     final saved = await ref.read(foodRepositoryProvider).save(draft);

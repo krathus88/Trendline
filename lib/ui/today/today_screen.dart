@@ -47,6 +47,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             carbsG: entry.nutrition.carbsG * 100 / entry.grams,
             fatG: entry.nutrition.fatG * 100 / entry.grams,
             fibreG: entry.nutrition.fibreG * 100 / entry.grams,
+            fibreUnknown: entry.nutrition.fibreUnknown,
           );
     final result = await showAppSheet<PortionResult>(
       context,
@@ -273,7 +274,14 @@ class _Totals extends StatelessWidget {
               target: t.fibreG,
               color: colors.fibre,
               atLeast: true,
+              valueIsMinimum: total.fibreUnknown,
             ),
+            if (total.fibreUnknown)
+              Text(
+                'Some of today’s foods have no fibre figure, so the real '
+                'amount is likely higher.',
+                style: text.bodySmall?.copyWith(color: colors.textTertiary),
+              ),
           ],
         ),
       ),
@@ -307,6 +315,7 @@ class _MacroBar extends StatelessWidget {
     required this.target,
     required this.color,
     this.atLeast = false,
+    this.valueIsMinimum = false,
   });
 
   final String label;
@@ -316,6 +325,10 @@ class _MacroBar extends StatelessWidget {
 
   /// A minimum to reach (protein, fibre) rather than a budget.
   final bool atLeast;
+
+  /// The value leaves out foods with no figure for this nutrient, so the
+  /// real amount is at least this.
+  final bool valueIsMinimum;
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +346,7 @@ class _MacroBar extends StatelessWidget {
             children: [
               Expanded(child: Text(label, style: text.labelMedium)),
               Text(
-                '${value.round()} / $goal',
+                '${valueIsMinimum ? '≥' : ''}${value.round()} / $goal',
                 style: text.labelMedium?.tabular.copyWith(
                   color: colors.textSecondary,
                 ),

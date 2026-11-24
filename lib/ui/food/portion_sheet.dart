@@ -32,6 +32,8 @@ class PortionSheet extends StatefulWidget {
     this.servingG,
     this.initialGrams,
     this.allowDelete = false,
+    this.servingLabel = '1 serving',
+    this.deleteLabel = 'Remove from log',
   });
 
   final String title;
@@ -41,6 +43,10 @@ class PortionSheet extends StatefulWidget {
   final double? initialGrams;
   final String actionLabel;
   final bool allowDelete;
+
+  /// The chip for [servingG], e.g. "1 portion" for a recipe.
+  final String servingLabel;
+  final String deleteLabel;
 
   @override
   State<PortionSheet> createState() => _PortionSheetState();
@@ -103,7 +109,7 @@ class _PortionSheetState extends State<PortionSheet> {
           children: [
             if (serving != null)
               ActionChip(
-                label: Text('1 serving (${formatGrams(serving)})'),
+                label: Text('${widget.servingLabel} (${formatGrams(serving)})'),
                 onPressed: () => _set(serving),
               ),
             ActionChip(label: const Text('100 g'), onPressed: () => _set(100)),
@@ -127,7 +133,7 @@ class _PortionSheetState extends State<PortionSheet> {
           const SizedBox(height: Space.sm),
           TextButton(
             onPressed: () => Navigator.of(context).pop(const PortionDelete()),
-            child: const Text('Remove from log'),
+            child: Text(widget.deleteLabel),
           ),
         ],
       ],

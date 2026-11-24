@@ -1,6 +1,12 @@
 import 'package:trendline/domain/nutrition.dart';
 
-enum FoodSource { openFoodFacts, manual }
+enum FoodSource {
+  openFoodFacts,
+  manual,
+
+  /// A basic food from CoFID, the UK government's food composition data.
+  cofid,
+}
 
 /// A saved product. Nutrition is per 100 g.
 class Food {
@@ -14,6 +20,7 @@ class Food {
     this.sugarG,
     this.saltG,
     this.servingG,
+    this.referenceCode,
   });
 
   final String id;
@@ -27,6 +34,9 @@ class Food {
   /// One serving, if the label gives one (e.g. a sachet or a pot).
   final double? servingG;
   final FoodSource source;
+
+  /// The CoFID code of a basic food this was copied from.
+  final String? referenceCode;
 
   String get displayName => brand == null ? name : '$name · $brand';
 }
@@ -42,6 +52,7 @@ class FoodDraft {
     this.sugarG,
     this.saltG,
     this.servingG,
+    this.referenceCode,
   });
 
   final String name;
@@ -52,6 +63,10 @@ class FoodDraft {
   final double? saltG;
   final double? servingG;
   final FoodSource source;
+
+  /// The CoFID code, for a basic food. Set exactly when [source] is
+  /// [FoodSource.cofid].
+  final String? referenceCode;
 }
 
 enum MealSlot { breakfast, lunch, dinner, snack }
@@ -69,6 +84,7 @@ class FoodLogEntry {
     required this.nutrition,
     this.foodId,
     this.foodBrand,
+    this.recipeId,
   });
 
   static const double maxGrams = 4999;
@@ -80,6 +96,9 @@ class FoodLogEntry {
   final DateTime eatenAt;
   final MealSlot slot;
   final String? foodId;
+
+  /// The recipe it's a portion of, if it is one (then [foodId] is null).
+  final String? recipeId;
   final String foodName;
   final String? foodBrand;
   final double grams;

@@ -91,6 +91,38 @@ void main() {
       expect(container.read(foodsProvider).value, hasLength(1));
       expect(n.byBarcode('01219494')?.id, a.id);
     });
+
+    test('choosing the same basic food twice keeps one copy', () async {
+      keep(foodsProvider);
+      await container.read(foodsProvider.future);
+      final n = container.read(foodsProvider.notifier);
+      final a = await n.save(bananas);
+      final b = await n.save(bananas);
+
+      expect(b.id, a.id);
+      expect(foods.saves, 1);
+      expect(a.source, FoodSource.cofid);
+      expect(n.byReference('13-001', 'Bananas, flesh only')?.id, a.id);
+    });
+
+    test('another food sharing a CoFID code is a separate copy', () async {
+      // CoFID 2021 gives one code to two different foods.
+      keep(foodsProvider);
+      await container.read(foodsProvider.future);
+      final n = container.read(foodsProvider.notifier);
+      final a = await n.save(bananas);
+      final b = await n.save(
+        const FoodDraft(
+          name: 'Watercress, raw',
+          per100g: Nutrition(kcal: 10, proteinG: 1.9, carbsG: 0, fatG: 0.3),
+          source: FoodSource.cofid,
+          referenceCode: '13-001',
+        ),
+      );
+
+      expect(b.id, isNot(a.id));
+      expect(foods.saves, 2);
+    });
   });
 
   group('FoodLogNotifier', () {

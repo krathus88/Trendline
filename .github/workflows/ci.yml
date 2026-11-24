@@ -34,6 +34,11 @@ jobs:
       - name: Test
         run: flutter test
 
+      # The CoFID loader (standard-library Python) that generates the
+      # reference_foods data migration.
+      - name: Test CoFID loader
+        run: python3 -m unittest discover -s tool/cofid
+
   database:
     # Applies every migration to a throwaway local Supabase database, then
     # runs the pgTAP tests in supabase/tests (allowlist lock-down, RLS on

@@ -3,12 +3,20 @@ import 'package:trendline/data/supabase/row_parsing.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/nutrition.dart';
 
+/// Raised when deleting a food that a recipe still uses.
+class FoodInUse implements Exception {
+  const new();
+
+  String get message =>
+      'This food is in a recipe. Take it out of the recipe first.';
+}
+
 abstract interface class FoodRepository {
   /// All saved foods, by name.
   Future<List<Food>> fetchAll();
 
-  /// Saves a food. If one with the same barcode is already saved, returns
-  /// that instead of creating a duplicate.
+  /// Saves a food. If one with the same barcode, or a copy of the same
+  /// basic food, is already saved, returns that instead of a duplicate.
   Future<Food> save(FoodDraft draft);
 
   Future<void> delete(String id);
@@ -21,7 +29,8 @@ class SupabaseFoodRepository implements FoodRepository {
 
   static const _columns =
       'id, barcode, name, brand, kcal_100g, protein_100g, carbs_100g, '
-      'fat_100g, fibre_100g, sugar_100g, salt_100g, serving_g, source';
+      'fat_100g, fibre_100g, sugar_100g, salt_100g, serving_g, source, '
+      'reference_code';
 
   @override
   Future<List<Food>> fetchAll() async {
@@ -40,6 +49,18 @@ class SupabaseFoodRepository implements FoodRepository {
           .maybeSingle();
       if (existing != null) return foodFromRow(existing);
     }
+    final code = draft.referenceCode;
+    if (code != null) {
+      // CoFID codes aren't unique on their own, so the name must match too.
+      final existing = await _db
+          .from('foods')
+          .select(_columns)
+          .eq('reference_code', code)
+          .eq('name', draft.name.trim())
+          .limit(1)
+          .maybeSingle();
+      if (existing != null) return foodFromRow(existing);
+    }
     final row = await _db
         .from('foods')
         .insert(foodDraftToRow(draft))
@@ -51,7 +72,13 @@ class SupabaseFoodRepository implements FoodRepository {
   @override
   Future<void> delete(String id) async {
     // Log entries keep their snapshot; their food_id is set to null.
-    await _db.from('foods').delete().eq('id', id);
+    // Recipes block it (foreign key), so an ingredient never disappears.
+    try {
+      await _db.from('foods').delete().eq('id', id);
+    } on PostgrestException catch (e) {
+      if (e.code == '23503') throw const FoodInUse();
+      rethrow;
+    }
   }
 }
 
@@ -66,11 +93,17 @@ Food foodFromRow(Map<String, dynamic> row) => Food(
     carbsG: readDouble(row['carbs_100g']),
     fatG: readDouble(row['fat_100g']),
     fibreG: readDoubleOrNull(row['fibre_100g']) ?? 0,
+    fibreUnknown: readDoubleOrNull(row['fibre_100g']) == null,
   ),
   sugarG: readDoubleOrNull(row['sugar_100g']),
   saltG: readDoubleOrNull(row['salt_100g']),
   servingG: readDoubleOrNull(row['serving_g']),
-  source: row['source'] == 'off' ? FoodSource.openFoodFacts : FoodSource.manual,
+  source: switch (row['source']) {
+    'off' => FoodSource.openFoodFacts,
+    'cofid' => FoodSource.cofid,
+    _ => FoodSource.manual,
+  },
+  referenceCode: row['reference_code'] as String?,
 );
 
 Map<String, dynamic> foodDraftToRow(FoodDraft d) => {
@@ -81,11 +114,16 @@ Map<String, dynamic> foodDraftToRow(FoodDraft d) => {
   'protein_100g': _round1(d.per100g.proteinG),
   'carbs_100g': _round1(d.per100g.carbsG),
   'fat_100g': _round1(d.per100g.fatG),
-  'fibre_100g': _round1(d.per100g.fibreG),
+  'fibre_100g': d.per100g.fibreUnknown ? null : _round1(d.per100g.fibreG),
   'sugar_100g': d.sugarG == null ? null : _round1(d.sugarG!),
   'salt_100g': d.saltG == null ? null : _round1(d.saltG!),
   'serving_g': d.servingG == null ? null : _round1(d.servingG!),
-  'source': d.source == FoodSource.openFoodFacts ? 'off' : 'manual',
+  'source': switch (d.source) {
+    FoodSource.openFoodFacts => 'off',
+    FoodSource.manual => 'manual',
+    FoodSource.cofid => 'cofid',
+  },
+  'reference_code': d.source == FoodSource.cofid ? d.referenceCode : null,
 };
 
 String? _blankToNull(String? s) {

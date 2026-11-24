@@ -5,9 +5,11 @@ import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/energy/energy_repository.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
+import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
+import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
 import 'package:trendline/platform/health_source.dart';
@@ -34,6 +36,14 @@ final weighInRepositoryProvider = Provider<WeighInRepository>(
 
 final foodRepositoryProvider = Provider<FoodRepository>(
   (ref) => SupabaseFoodRepository(ref.watch(supabaseClientProvider)),
+);
+
+final referenceFoodRepositoryProvider = Provider<ReferenceFoodRepository>(
+  (ref) => SupabaseReferenceFoodRepository(ref.watch(supabaseClientProvider)),
+);
+
+final recipeRepositoryProvider = Provider<RecipeRepository>(
+  (ref) => SupabaseRecipeRepository(ref.watch(supabaseClientProvider)),
 );
 
 final foodLogRepositoryProvider = Provider<FoodLogRepository>(
