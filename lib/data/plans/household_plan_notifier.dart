@@ -324,17 +324,9 @@ class HouseholdPlanNotifier extends AsyncNotifier<HouseholdPlanState> {
     if (household == null || me == null || meals.isEmpty) return;
     final today = await ref.read(targetsProvider.future);
     if (today == null) throw const PlanNeedsTargets();
-    final t = today.targets;
-    final targets = targetsForMeals(
-      PlanTargets(
-        kcal: t.kcal,
-        proteinG: t.proteinG,
-        carbsG: t.carbsG,
-        fatG: t.fatG,
-        fibreG: t.fibreG,
-      ),
-      meals,
-    );
+    final targets = [
+      for (final t in today.forWeek(weekStart)) targetsForMeals(t, meals),
+    ];
     final catalogue = await _buildCatalogue();
     final eaters = household.members.length;
     final ordered = [
@@ -343,7 +335,7 @@ class HouseholdPlanNotifier extends AsyncNotifier<HouseholdPlanState> {
     ];
     final plan = await ref.read(planRunnerProvider)(
       PlannerInput(
-        targets: [targets],
+        targets: targets,
         dishes: [
           for (final d in catalogue.dishes)
             if (d.meals.any(meals.contains)) forEaters(d, eaters),

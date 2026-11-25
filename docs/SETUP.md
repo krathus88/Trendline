@@ -57,6 +57,23 @@ Then check **Settings > API (Data API) > Exposed schemas**. It must list only `p
 
 Remove someone with `delete from private.allowed_users where discord_id = '…';`. Removing them from the list stops new sign-ups only. To cut off an existing account, also delete the user under **Authentication > Users**.
 
+**Deletion requests from people who can't open the app** (`docs/DELETE_ACCOUNT.md` promises a reply within 30 days): confirm the request comes from the account's owner (for example a message from that Discord account), then run in **SQL Editor**:
+
+```sql
+-- Find the account by Discord username.
+select u.id, i.provider_id, u.raw_user_meta_data ->> 'full_name' as name
+from auth.users u
+join auth.identities i on i.user_id = u.id and i.provider = 'discord'
+where u.raw_user_meta_data ->> 'full_name' ilike '%USERNAME%'
+   or u.raw_user_meta_data ->> 'name' ilike '%USERNAME%';
+
+-- Then delete it, exactly as the app's "Delete my account" does.
+delete from private.allowed_users where discord_id = 'DISCORD_ID';
+delete from auth.users where id = 'USER_ID';
+```
+
+Everything else cascades from `auth.users`, and the household trigger hands shared recipes on first. Reply to say it's done.
+
 ## 7. Configure the app
 
 1. In the dashboard: **Settings > API Keys**. Copy the **Project URL** and the **publishable key** (`sb_publishable_…`). **Never** use the secret / `service_role` key.

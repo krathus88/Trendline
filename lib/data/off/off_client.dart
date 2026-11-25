@@ -22,6 +22,19 @@ class OffRateLimited extends OffException {
   final Duration retryAfter;
 }
 
+/// Barcode lookups kept between app starts, so a product scanned before
+/// needs no request (and works without signal). Lookups only, never
+/// searches.
+abstract interface class OffLookupCache {
+  /// What was found for [barcode] last time: a product, or null when it
+  /// wasn't found. Null when there's nothing fresh enough.
+  Future<({OffProduct? product})?> get(String barcode);
+
+  /// Remembers what a lookup of [barcode] found ([product] null: not
+  /// found or unusable).
+  Future<void> put(String barcode, OffProduct? product);
+}
+
 /// Client for the public Open Food Facts API.
 ///
 /// * Barcode lookups use API v3; text search uses search.openfoodfacts.org,
@@ -29,7 +42,8 @@ class OffRateLimited extends OffException {
 ///   nutrition comes from a barcode lookup when one is picked.
 /// * Their limits are 15 product reads and 10 searches per minute per user,
 ///   and no search-as-you-type. The client enforces both limits itself and
-///   caches results in memory, so repeated lookups cost nothing.
+///   caches results in memory (and barcode lookups in [deviceCache], when
+///   given), so repeated lookups cost nothing.
 /// * Every request identifies the app with a User-Agent, as they ask.
 class OffClient {
   new({
@@ -37,6 +51,7 @@ class OffClient {
     http.Client? httpClient,
     DateTime Function()? clock,
     this.timeout = const Duration(seconds: 10),
+    this.deviceCache,
   }) : _http = httpClient ?? http.Client(),
        _clock = clock ?? DateTime.now;
 
@@ -59,6 +74,9 @@ class OffClient {
 
   final String userAgent;
   final Duration timeout;
+
+  /// Where lookups are kept between app starts, if anywhere.
+  final OffLookupCache? deviceCache;
   final http.Client _http;
   final DateTime Function() _clock;
 
@@ -101,6 +119,10 @@ class OffClient {
       throw const OffException('That doesn’t look like a product barcode.');
     }
     if (_lookupCache.containsKey(code)) return _lookupCache[code];
+    if (await _fromDevice(code) case (:final product)) {
+      _lookupCache[code] = product;
+      return product;
+    }
 
     _checkLimit(_lookupTimes, lookupsPerMinute);
     final uri = Uri.https('world.openfoodfacts.org', '/api/v3/product/$code', {
@@ -109,7 +131,26 @@ class OffClient {
     final body = await _get(uri, notFoundIsNull: true);
     final product = body.isEmpty ? null : parseOffProduct(body['product']);
     _lookupCache[code] = product;
+    await _toDevice(code, product);
     return product;
+  }
+
+  // The device cache is only a convenience: if it fails, the lookup goes
+  // ahead as if it weren't there.
+  Future<({OffProduct? product})?> _fromDevice(String code) async {
+    try {
+      return await deviceCache?.get(code);
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<void> _toDevice(String code, OffProduct? product) async {
+    try {
+      await deviceCache?.put(code, product);
+    } on Object {
+      // Not kept; the next start looks it up again.
+    }
   }
 
   void close() => _http.close();

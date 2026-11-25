@@ -126,6 +126,28 @@ Food foodFromRow(Map<String, dynamic> row) => Food(
   referenceCode: row['reference_code'] as String?,
 );
 
+/// [f] as the row [foodFromRow] reads, for the on-device snapshot.
+Map<String, dynamic> foodToRow(Food f) => {
+  'id': f.id,
+  'barcode': f.barcode,
+  'name': f.name,
+  'brand': f.brand,
+  'kcal_100g': f.per100g.kcal,
+  'protein_100g': f.per100g.proteinG,
+  'carbs_100g': f.per100g.carbsG,
+  'fat_100g': f.per100g.fatG,
+  'fibre_100g': f.per100g.fibreUnknown ? null : f.per100g.fibreG,
+  'sugar_100g': f.sugarG,
+  'salt_100g': f.saltG,
+  'serving_g': f.servingG,
+  'source': switch (f.source) {
+    FoodSource.openFoodFacts => 'off',
+    FoodSource.cofid => 'cofid',
+    FoodSource.manual => 'manual',
+  },
+  'reference_code': f.referenceCode,
+};
+
 Map<String, dynamic> foodDraftToRow(FoodDraft d) => {
   'barcode': d.barcode,
   'name': d.name.trim(),

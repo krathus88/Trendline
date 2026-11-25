@@ -58,7 +58,9 @@ class SavedPlan {
   });
 
   final DateTime weekStart;
-  final PlanTargets targets;
+
+  /// Each day's targets, Monday first (seven).
+  final List<PlanTargets> targets;
   final List<String> notes;
   final List<SavedPlanItem> items;
 }
@@ -114,9 +116,9 @@ class SupabaseMealPlanRepository implements MealPlanRepository {
 
   static const _columns =
       'week_start, kcal_target, protein_target_g, carbs_target_g, '
-      'fat_target_g, fibre_target_g, notes, plan_items(id, day, slot, food_id, '
-      'recipe_id, amount, amount_min, amount_max, locked, batch, '
-      'meal_rule_id)';
+      'fat_target_g, fibre_target_g, day_targets, notes, '
+      'plan_items(id, day, slot, food_id, recipe_id, amount, amount_min, '
+      'amount_max, locked, batch, meal_rule_id)';
 
   // RLS shows the household's weeks too, so each query says which.
   @override
@@ -181,13 +183,7 @@ class SupabaseMealPlanRepository implements MealPlanRepository {
 
 SavedPlan savedPlanFromRow(Map<String, dynamic> row) => SavedPlan(
   weekStart: readDate(row['week_start']),
-  targets: PlanTargets(
-    kcal: readDouble(row['kcal_target']),
-    proteinG: readDouble(row['protein_target_g']),
-    carbsG: readDouble(row['carbs_target_g']),
-    fatG: readDouble(row['fat_target_g']),
-    fibreG: readDouble(row['fibre_target_g']),
-  ),
+  targets: _dayTargetsFromRow(row),
   notes: [
     for (final n in (row['notes'] as List? ?? const []))
       if (n is String) n,
@@ -197,6 +193,33 @@ SavedPlan savedPlanFromRow(Map<String, dynamic> row) => SavedPlan(
       ?_itemFromRow(i as Map<String, dynamic>),
   ],
 );
+
+/// Each day's saved targets; a plan saved before day targets were kept
+/// used the plan's own for every day.
+List<PlanTargets> _dayTargetsFromRow(Map<String, dynamic> row) {
+  final week = PlanTargets(
+    kcal: readDouble(row['kcal_target']),
+    proteinG: readDouble(row['protein_target_g']),
+    carbsG: readDouble(row['carbs_target_g']),
+    fatG: readDouble(row['fat_target_g']),
+    fibreG: readDouble(row['fibre_target_g']),
+  );
+  final days = row['day_targets'];
+  if (days is! List || days.length != 7) return List.filled(7, week);
+  return [
+    for (final d in days)
+      if (d is Map<String, dynamic>)
+        PlanTargets(
+          kcal: readDoubleOrNull(d['kcal']) ?? week.kcal,
+          proteinG: readDoubleOrNull(d['protein_g']) ?? week.proteinG,
+          carbsG: readDoubleOrNull(d['carbs_g']) ?? week.carbsG,
+          fatG: readDoubleOrNull(d['fat_g']) ?? week.fatG,
+          fibreG: readDoubleOrNull(d['fibre_g']) ?? week.fibreG,
+        )
+      else
+        week,
+  ];
+}
 
 HouseholdWeek householdWeekFromRow(Map<String, dynamic> row) => HouseholdWeek(
   weekStart: readDate(row['week_start']),
@@ -259,13 +282,25 @@ SavedPlanItem? _itemFromRow(Map<String, dynamic> row) {
 Map<String, dynamic> savePlanParams(SavedPlan plan) {
   double r1(double v) => (v * 10).round() / 10;
   double r2(double v) => (v * 100).round() / 100;
+  // The plan's own columns hold Monday's (today's, in the current week).
+  final first = plan.targets.first;
   return {
     'week_start': writeDate(plan.weekStart),
-    'kcal_target': r1(plan.targets.kcal),
-    'protein_target_g': r1(plan.targets.proteinG),
-    'carbs_target_g': r1(plan.targets.carbsG),
-    'fat_target_g': r1(plan.targets.fatG),
-    'fibre_target_g': r1(plan.targets.fibreG),
+    'kcal_target': r1(first.kcal),
+    'protein_target_g': r1(first.proteinG),
+    'carbs_target_g': r1(first.carbsG),
+    'fat_target_g': r1(first.fatG),
+    'fibre_target_g': r1(first.fibreG),
+    'day_targets': [
+      for (final t in plan.targets)
+        {
+          'kcal': r1(t.kcal),
+          'protein_g': r1(t.proteinG),
+          'carbs_g': r1(t.carbsG),
+          'fat_g': r1(t.fatG),
+          'fibre_g': r1(t.fibreG),
+        },
+    ],
     'notes': plan.notes,
     'items': [
       for (final i in plan.items)

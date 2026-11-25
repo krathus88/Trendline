@@ -14,7 +14,7 @@ class AuthGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Keeps the Today snapshot's owner check running for the app's whole
-    // life, so signing out deletes it straight away.
+    // life, so signing out deletes every snapshot straight away.
     ref.listen(todaySnapshotProvider, (_, _) {});
     return switch (ref.watch(authStatusProvider)) {
       AsyncData(value: SignedIn()) => const ConsentGate(),

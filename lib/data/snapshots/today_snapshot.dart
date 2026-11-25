@@ -1,40 +1,13 @@
 import 'dart:convert';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:meta/meta.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/planner.dart';
 
-/// Where on-device snapshots are kept. Only the screens the caching plan
-/// lists are snapshotted, and everything is deleted on sign-out.
-abstract interface class SnapshotStore {
-  Future<String?> read(String key);
-  Future<void> write(String key, String value);
-  Future<void> delete(String key);
-}
-
-/// Snapshots in the platform's encrypted storage (Android Keystore), like
-/// the auth session: they hold health data (what was eaten, targets), so
-/// they're never written to plain files.
-class SecureSnapshotStore implements SnapshotStore {
-  const new(this._storage);
-
-  static const String _prefix = 'trendline.snapshot.';
-
-  final FlutterSecureStorage _storage;
-
-  @override
-  Future<String?> read(String key) => _storage.read(key: '$_prefix$key');
-
-  @override
-  Future<void> write(String key, String value) =>
-      _storage.write(key: '$_prefix$key', value: value);
-
-  @override
-  Future<void> delete(String key) => _storage.delete(key: '$_prefix$key');
-}
+export 'package:trendline/data/snapshots/snapshot_store.dart'
+    show SecureSnapshotStore, SnapshotStore;
 
 /// The last Today screen loaded: the day's log, targets and plan, so the app
 /// can open on it straight away (or without signal) and then refresh.

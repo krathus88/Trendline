@@ -38,7 +38,7 @@ We use your data only to run the app for you: your trend, targets, meal plans an
 
 Your data is stored with Supabase, in their London data centre (AWS eu-west-2), and travels encrypted. Access is limited by rules in the database itself, so each account can reach only its own data and what others have shared with it.
 
-On your device, the app keeps your sign-in and a copy of today’s plan in encrypted storage, so it opens quickly. Both are deleted when you sign out.
+On your device, the app keeps your sign-in, and copies of today’s plan, your saved foods and recipes, your recent weigh-ins and the products you looked up by barcode, in encrypted storage, so it opens quickly and still shows them without signal. All of it is deleted when you sign out.
 
 ## Who can see it
 
@@ -52,13 +52,13 @@ There are no ads, analytics or crash-reporting services in the app, and your dat
 
 ## How long we keep it
 
-Until you delete it, or delete your account. Deleting your account removes everything at once, including your place on the invite list. Recipes you shared with a household stay with the household. Copies in Supabase’s backups disappear as the backups are replaced.
+Until you delete it, or delete your account. Deleting your account removes everything at once, including your place on the invite list. Recipes you shared with a household stay with the household. Supabase keeps no backups of Trendline’s database, so no copy remains after deletion.
 
 ## Your rights
 
 - See and copy your data: Settings → Privacy and your data → Export my data saves all of it as a JSON file, or your weigh-ins and food log as spreadsheets (CSV).
 - Correct it: edit or delete anything in the app.
-- Delete it: Settings → Privacy and your data → Delete my account.
+- Delete it: Settings → Privacy and your data → Delete my account. If you can’t open the app, see https://github.com/krathus88/Trendline/blob/main/docs/DELETE_ACCOUNT.md.
 - Withdraw your consent: deleting your account does this. To stop Health Connect imports only, turn Trendline’s access off in Health Connect.
 - Complain: you can contact the Information Commissioner’s Office (ico.org.uk) if you’re unhappy with how your data is handled.
 

@@ -113,4 +113,18 @@ WeighIn weighInFromRow(Map<String, dynamic> row) => WeighIn(
   externalId: row['external_id'] as String?,
 );
 
+/// [w] as the row [weighInFromRow] reads, for the on-device snapshot.
+Map<String, dynamic> weighInToRow(WeighIn w) => {
+  'id': w.id,
+  'measured_at': writeTimestamp(w.measuredAt),
+  'weight_kg': w.weightKg,
+  'body_fat_pct': w.bodyFatPct,
+  'lean_mass_kg': w.leanMassKg,
+  'source': switch (w.source) {
+    WeighInSource.healthConnect => 'health_connect',
+    WeighInSource.manual => 'manual',
+  },
+  'external_id': w.externalId,
+};
+
 double _round2(double v) => (v * 100).round() / 100;

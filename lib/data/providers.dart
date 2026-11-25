@@ -18,6 +18,8 @@ import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/sharing/sharing_repository.dart';
+import 'package:trendline/data/snapshots/off_lookup_cache.dart';
+import 'package:trendline/data/snapshots/snapshot_store.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
 import 'package:trendline/platform/file_saver.dart';
@@ -100,7 +102,13 @@ final energyRepositoryProvider = Provider<EnergyRepository>(
 );
 
 final offClientProvider = Provider<OffClient>((ref) {
-  final client = OffClient(userAgent: offUserAgent(appVersion, appContact));
+  final client = OffClient(
+    userAgent: offUserAgent(appVersion, appContact),
+    deviceCache: DeviceOffLookupCache(
+      store: ref.watch(snapshotStoreProvider),
+      userId: () => ref.read(currentUserIdProvider),
+    ),
+  );
   ref.onDispose(client.close);
   return client;
 });

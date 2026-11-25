@@ -54,7 +54,8 @@ Read-only. No write permissions are requested. Keep this list in step with `Andr
 - **Sharing between users** (households, read-only sharing) is started by the user and isn't "sharing" in Play's sense, but the privacy policy describes it.
 - **Encrypted in transit:** yes.
 - **Users can request deletion:** yes, in the app (Settings → Privacy and your data → Delete my account), which deletes everything immediately.
-- **Account deletion web link** (Play requires one for apps with accounts): use the privacy policy URL with `#your-rights`, which explains deletion in the app and gives the contact for anyone who can no longer open it.
+- **Account deletion web link** (Play requires one for apps with accounts): `https://github.com/krathus88/Trendline/blob/main/docs/DELETE_ACCOUNT.md`. It names the app and developer, gives the steps in the app and a way to ask without it, and says what is deleted and what is kept (household recipes only: Supabase's Free plan has no backups). Moving the project to a paid plan adds daily backups (Pro keeps 7 days): say how long on this page and in the policy's "How long we keep it" before that release (a change in meaning, so raise `privacyPolicyVersion` once the app is released). It's generated with the policy, from `lib/domain/privacy_policy.dart`. Requests that come in without the app are handled by hand: `docs/SETUP.md` section 6.
+- **Partial deletion** (deleting some data without the account): yes, anything can be deleted in the app.
 - **Ads:** none. **Analytics or crash reporting:** none.
 
 ## Target audience and content

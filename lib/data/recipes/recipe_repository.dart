@@ -113,6 +113,27 @@ Recipe recipeFromRow(Map<String, dynamic> row) {
   );
 }
 
+/// [r] as the row [recipeFromRow] reads, for the on-device snapshot.
+Map<String, dynamic> recipeToRow(Recipe r) => {
+  'id': r.id,
+  'name': r.name,
+  'method': r.method,
+  'portions': r.portions,
+  'cooked_weight_g': r.cookedWeightG,
+  'fridge_days': r.fridgeDays,
+  'freezable': r.freezable,
+  'origin': r.origin.name,
+  'source_id': r.sourceId,
+  'source_version': r.sourceVersion,
+  'estimated_cooked_weight_g': r.estimatedCookedWeightG,
+  'listed': r.listed,
+  'household_id': r.householdId,
+  'recipe_ingredients': [
+    for (final (n, i) in r.ingredients.indexed)
+      {'food_id': i.foodId, 'raw_grams': i.rawGrams, 'position': n},
+  ],
+};
+
 Map<String, dynamic> saveRecipeParams(Recipe r) => {
   'recipe_id': r.id.isEmpty ? null : r.id,
   'name': r.name.trim(),

@@ -16,7 +16,7 @@ flutter run -d windows --dart-define-from-file=dart_defines.json  # Windows
 
 ## Privacy
 
-What the app stores and why: [`docs/PRIVACY.md`](docs/PRIVACY.md) (generated from `lib/domain/privacy_policy.dart` with `dart run tool/write_privacy_policy.dart`).
+What the app stores and why: [`docs/PRIVACY.md`](docs/PRIVACY.md), and how to delete your account: [`docs/DELETE_ACCOUNT.md`](docs/DELETE_ACCOUNT.md) (both generated from `lib/domain/privacy_policy.dart` with `dart run tool/write_privacy_policy.dart`).
 
 ## Licence
 

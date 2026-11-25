@@ -240,13 +240,17 @@ void main() {
   test('plan rows round-trip', () {
     final plan = SavedPlan(
       weekStart: DateTime(2026, 12, 7),
-      targets: const PlanTargets(
-        kcal: 2000,
-        proteinG: 140,
-        carbsG: 200,
-        fatG: 65,
-        fibreG: 30,
-      ),
+      targets: [
+        for (var d = 0; d < 7; d++)
+          PlanTargets(
+            // Sunday is a maintenance day (the goal date fell on Saturday).
+            kcal: d == 6 ? 2600 : 2000.04,
+            proteinG: 140,
+            carbsG: 200,
+            fatG: 65,
+            fibreG: 30,
+          ),
+      ],
       notes: const ['A note'],
       items: [
         SavedPlanItem(
@@ -266,6 +270,11 @@ void main() {
     final items = params['items'] as List;
     expect((items.single as Map)['amount'], 1.25);
     expect((items.single as Map)['day'], '2026-12-08');
+    // The plan's own columns hold Monday's; every day goes in day_targets.
+    expect(params['kcal_target'], 2000);
+    final days = params['day_targets'] as List;
+    expect(days, hasLength(7));
+    expect((days.last as Map)['kcal'], 2600);
 
     final back = savedPlanFromRow({
       'week_start': '2026-12-07',
@@ -274,6 +283,7 @@ void main() {
       'carbs_target_g': 200,
       'fat_target_g': 65,
       'fibre_target_g': 30,
+      'day_targets': days,
       'notes': ['A note'],
       'plan_items': [
         {...(items.single as Map<String, dynamic>)},
@@ -283,5 +293,21 @@ void main() {
     expect(back.items.single.locked, isTrue);
     expect(back.items.single.batch, 2);
     expect(back.items.single.day, DateTime(2026, 12, 8));
+    expect(
+      [for (final t in back.targets) t.kcal],
+      [...List.filled(6, 2000), 2600],
+    );
+
+    // Plans saved before day targets were kept use their own every day.
+    final older = savedPlanFromRow({
+      'week_start': '2026-12-07',
+      'kcal_target': 1900,
+      'protein_target_g': 140,
+      'carbs_target_g': 200,
+      'fat_target_g': 65,
+      'fibre_target_g': 30,
+      'day_targets': null,
+    });
+    expect([for (final t in older.targets) t.kcal], List.filled(7, 1900));
   });
 }

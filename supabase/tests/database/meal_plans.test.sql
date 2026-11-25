@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(19);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a@test.local'),
@@ -103,6 +103,50 @@ select throws_ok(
 select is(
   (select count(*)::int from public.plan_items), 1,
   'a failed save leaves the plan as it was'
+);
+
+-- ---------------------------------------------------------------------------
+-- Each day's targets
+-- ---------------------------------------------------------------------------
+
+create function pg_temp.days(kcal_sunday numeric) returns jsonb
+language sql as $$
+  select jsonb_agg(jsonb_build_object(
+    'kcal', case when d = 7 then kcal_sunday else 2000 end,
+    'protein_g', 140, 'carbs_g', 200, 'fat_g', 65, 'fibre_g', 30))
+  from generate_series(1, 7) as d;
+$$;
+
+select lives_ok(
+  $$select public.save_meal_plan(
+      '2026-12-07', 2000, 140, 200, 65, 30, '[]', '[]', pg_temp.days(2500))$$,
+  'a plan saves each day''s targets'
+);
+select is(
+  (select (day_targets -> 6 ->> 'kcal')::numeric from public.meal_plans),
+  2500::numeric,
+  'Sunday''s targets are kept'
+);
+select throws_ok(
+  $$select public.save_meal_plan(
+      '2026-12-07', 2000, 140, 200, 65, 30, '[]', '[]', pg_temp.days(9000))$$,
+  '23514', null,
+  'day targets are range-checked like the plan''s own'
+);
+select throws_ok(
+  $$select public.save_meal_plan(
+      '2026-12-07', 2000, 140, 200, 65, 30, '[]', '[]',
+      '[{"kcal": 2000, "protein_g": 140, "carbs_g": 200, "fat_g": 65,
+         "fibre_g": 30}]')$$,
+  '23514', null,
+  'a week has seven days of targets'
+);
+select throws_ok(
+  $$select public.save_meal_plan(
+      '2026-12-07', 2000, 140, 200, 65, 30, '[]', '[]',
+      pg_temp.days(2000) - 0 || '[{"kcal": 2000}]')$$,
+  '23514', null,
+  'every day has all five targets'
 );
 
 -- ---------------------------------------------------------------------------

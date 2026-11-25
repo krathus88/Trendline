@@ -3,6 +3,9 @@ import 'package:trendline/data/foods/foods_notifier.dart';
 import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
+import 'package:trendline/data/recipes/recipe_repository.dart';
+import 'package:trendline/data/snapshots/list_snapshot.dart';
+import 'package:trendline/data/snapshots/snapshot_store.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/recipe.dart';
@@ -20,7 +23,7 @@ class LibraryFoodMissing implements Exception {
       'Try updating the app.';
 }
 
-/// The user's recipes, by name, cached in memory.
+/// The user's recipes, by name, cached in memory and on the device.
 final recipesProvider = AsyncNotifierProvider<RecipesNotifier, List<Recipe>>(
   RecipesNotifier.new,
 );
@@ -35,11 +38,23 @@ final foodsByIdProvider = Provider<Map<String, Food>>((ref) {
   };
 });
 
-class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
+class RecipesNotifier extends AsyncNotifier<List<Recipe>>
+    with ListSnapshotMixin<Recipe> {
+  @override
+  String get snapshotKey => SnapshotKeys.recipes;
+
+  @override
+  Map<String, dynamic> toSnapshotRow(Recipe item) => recipeToRow(item);
+
+  @override
+  Recipe fromSnapshotRow(Map<String, dynamic> row) => recipeFromRow(row);
+
   @override
   Future<List<Recipe>> build() async {
-    if (ref.watch(currentUserIdProvider) == null) return const [];
-    return await ref.watch(recipeRepositoryProvider).fetchAll();
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
+    final repository = ref.watch(recipeRepositoryProvider);
+    return await loadWithSnapshot(userId, repository.fetchAll);
   }
 
   /// Creates or updates [recipe] (an empty ID creates it) and returns it as

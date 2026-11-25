@@ -1,23 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/snapshots/snapshot_store.dart';
 import 'package:trendline/data/snapshots/today_snapshot.dart';
 
-/// Where snapshots are kept. Overridden in tests.
-final snapshotStoreProvider = Provider<SnapshotStore>(
-  (ref) => const SecureSnapshotStore(FlutterSecureStorage()),
-);
+export 'package:trendline/data/snapshots/snapshot_store.dart'
+    show snapshotStoreProvider;
 
 /// The Today snapshot of the signed-in user, or null. Kept alive by the
-/// auth gate, so signing out (or another account signing in) deletes it.
+/// auth gate, so signing out deletes it and every other snapshot, and
+/// another account signing in never sees it.
 final todaySnapshotProvider =
     AsyncNotifierProvider<TodaySnapshotNotifier, TodaySnapshot?>(
       TodaySnapshotNotifier.new,
     );
 
 class TodaySnapshotNotifier extends AsyncNotifier<TodaySnapshot?> {
-  static const String _key = 'today';
+  static const String _key = SnapshotKeys.today;
 
   /// What was last written, so an unchanged screen isn't written again.
   String? _written;
@@ -31,8 +30,9 @@ class TodaySnapshotNotifier extends AsyncNotifier<TodaySnapshot?> {
       case AsyncData(value: SignedIn(userId: final id)):
         userId = id;
       case AsyncData(value: SignedOut()):
-        // Signed out: nothing of theirs stays on the device.
-        await store.delete(_key);
+        // Signed out: nothing of theirs stays on the device, Today or any
+        // other snapshot.
+        await deleteAllSnapshots(store);
         return null;
       default:
         // Still finding out who's signed in: keep it, show nothing yet.

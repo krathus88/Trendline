@@ -63,7 +63,9 @@ class PlanState {
 
   /// Null until a plan is made.
   final WeekPlan? plan;
-  final PlanTargets? targets;
+
+  /// Each day's targets, Monday first (seven). Null until a plan is made.
+  final List<PlanTargets>? targets;
 
   /// Whether [plan] is what's saved.
   final bool saved;
@@ -253,14 +255,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
   Future<void> generate({int? seed}) async {
     final today = await ref.read(targetsProvider.future);
     if (today == null) throw const PlanNeedsTargets();
-    final t = today.targets;
-    final targets = PlanTargets(
-      kcal: t.kcal,
-      proteinG: t.proteinG,
-      carbsG: t.carbsG,
-      fatG: t.fatG,
-      fibreG: t.fibreG,
-    );
+    final targets = today.forWeek(weekStart);
     final catalogue = await _buildCatalogue();
     // Snack dishes only when the user wants a snack planned each day.
     final snacks = (await ref.read(profileProvider.future))?.planSnacks ?? true;
@@ -289,7 +284,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     }
     final plan = await ref.read(planRunnerProvider)(
       PlannerInput(
-        targets: [targets],
+        targets: targets,
         dishes: dishes,
         rules: catalogue.rules,
         locked: locked,
@@ -562,14 +557,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     if (targets == null) {
       final today = await ref.read(targetsProvider.future);
       if (today == null) throw const PlanNeedsTargets();
-      final t = today.targets;
-      targets = PlanTargets(
-        kcal: t.kcal,
-        proteinG: t.proteinG,
-        carbsG: t.carbsG,
-        fatG: t.fatG,
-        fibreG: t.fibreG,
-      );
+      targets = today.forWeek(weekStart);
     }
     final boxed = await _boxed();
     final today = dayOf(DateTime.now());
@@ -589,10 +577,12 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
           !i.shared || boxed.contains((date, i.slot, i.key));
       fitted.addAll(
         items.length > shared.length
-            ? fitToKcal(items, targets.kcal, fixed: fixed)
+            ? fitToKcal(items, targets[d].kcal, fixed: fixed)
             : fitToKcal(
                 shared,
-                targetsForMeals(targets, {for (final i in shared) i.slot}).kcal,
+                targetsForMeals(targets[d], {
+                  for (final i in shared) i.slot,
+                }).kcal,
                 fixed: fixed,
               ),
       );

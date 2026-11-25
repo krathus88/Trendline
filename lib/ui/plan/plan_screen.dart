@@ -287,7 +287,7 @@ class _PlanView extends ConsumerWidget {
             date: state.dayOf(d),
             items: plan.itemsOn(d),
             total: plan.totalOn(d),
-            targets: targets,
+            targets: targets?[d],
             schedule: schedules[state.dayOf(d).weekday - 1],
             weekStart: state.weekStart,
             leftovers: {

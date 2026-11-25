@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/snapshots/list_snapshot.dart';
+import 'package:trendline/data/snapshots/snapshot_store.dart';
+import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/trend.dart';
 import 'package:trendline/domain/weigh_in.dart';
 
 /// Weigh-ins from the last [WeighInsNotifier.historyDays] days, newest first,
-/// cached in memory.
+/// cached in memory and on the device.
 final weighInsProvider = AsyncNotifierProvider<WeighInsNotifier, List<WeighIn>>(
   WeighInsNotifier.new,
 );
@@ -16,15 +19,32 @@ final trendProvider = Provider<List<TrendPoint>>((ref) {
   return computeTrend(weighIns, until: DateTime.now());
 });
 
-class WeighInsNotifier extends AsyncNotifier<List<WeighIn>> {
+class WeighInsNotifier extends AsyncNotifier<List<WeighIn>>
+    with ListSnapshotMixin<WeighIn> {
+  @override
+  String get snapshotKey => SnapshotKeys.weighIns;
+
+  @override
+  Map<String, dynamic> toSnapshotRow(WeighIn item) => weighInToRow(item);
+
+  @override
+  WeighIn fromSnapshotRow(Map<String, dynamic> row) => weighInFromRow(row);
+
   /// Enough for a year's chart plus a lead-in for the trend to settle.
   static const int historyDays = 400;
 
   @override
   Future<List<WeighIn>> build() async {
-    if (ref.watch(currentUserIdProvider) == null) return const [];
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
     final since = addDays(dayOf(DateTime.now()), -historyDays);
-    return await ref.watch(weighInRepositoryProvider).fetchSince(since);
+    final repository = ref.watch(weighInRepositoryProvider);
+    // Older readings in the snapshot drop off as the window moves.
+    return await loadWithSnapshot(
+      userId,
+      () => repository.fetchSince(since),
+      keep: (w) => !w.measuredAt.isBefore(since),
+    );
   }
 
   Future<void> add({

@@ -75,6 +75,25 @@ const double _kjPerKcal = 4.184;
 /// untrusted: anything missing, malformed or physically impossible makes the
 /// product unusable (returns null) rather than letting bad numbers into
 /// someone's food log.
+/// [p] in the shape of the API's product, holding only what
+/// [parseOffProduct] reads: for the device cache, which reads it back with
+/// the same checks as a fresh lookup.
+Map<String, dynamic> offProductToJson(OffProduct p) => {
+  'code': p.barcode,
+  'product_name': p.name,
+  'brands': ?p.brand,
+  'serving_quantity': ?p.servingG,
+  'nutriments': {
+    'energy-kcal_100g': p.per100g.kcal,
+    'proteins_100g': p.per100g.proteinG,
+    'carbohydrates_100g': p.per100g.carbsG,
+    'fat_100g': p.per100g.fatG,
+    if (!p.per100g.fibreUnknown) 'fiber_100g': p.per100g.fibreG,
+    'sugars_100g': ?p.sugarG,
+    'salt_100g': ?p.saltG,
+  },
+};
+
 OffProduct? parseOffProduct(Object? json) {
   if (json is! Map<String, dynamic>) return null;
 

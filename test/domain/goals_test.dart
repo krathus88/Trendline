@@ -492,6 +492,104 @@ void main() {
     });
   });
 
+  group('weekTargets', () {
+    // Wednesday 25 Nov 2026: this week starts on the 23rd, next on the 30th.
+    final thisWeek = DateTime(2026, 11, 23);
+    final nextWeek = DateTime(2026, 11, 30);
+
+    List<double> kcal(Goal goal, DateTime weekStart) => [
+      for (final t in weekTargets(
+        goal: goal,
+        profile: male,
+        tdeeKcal: 3000,
+        bmrKcal: 1800,
+        trendKg: 100,
+        today: today,
+        weekStart: weekStart,
+      ))
+        t.kcal,
+    ];
+
+    test('maintenance is the same every day', () {
+      expect(kcal(Goal.maintenance, nextWeek), List.filled(7, 3000));
+    });
+
+    test('days up to today use today’s targets', () {
+      const goal = Goal(
+        kind: GoalKind.targetAndPace,
+        targetWeightKg: 90,
+        paceValue: 0.5,
+      );
+      final todays = outlookFor(
+        goal: goal,
+        profile: male,
+        tdeeKcal: 3000,
+        bmrKcal: 1800,
+        trendKg: 100,
+        today: today,
+      ).targets.kcal;
+      // 0.5 kg a week: 550 kcal a day under 3,000, every day of the week.
+      expect(todays, 2450);
+      expect(kcal(goal, thisWeek), List.filled(7, 2450));
+    });
+
+    test('a goal date inside the week turns the days after it to '
+        'maintenance', () {
+      // 1 kg in a week (the 1% cap) up to Wednesday 2 Dec.
+      final goal = Goal(
+        kind: GoalKind.targetAndDate,
+        targetWeightKg: 99,
+        goalDate: DateTime(2026, 12, 2),
+      );
+      // The trend is assumed to follow the plan until then, so the 1% cap
+      // shrinks with it (0.99 kg a week: 1,910 kcal rather than today's
+      // 1,900), and the goal date itself is maintenance.
+      expect(kcal(goal, nextWeek), [1910, 1910, 3000, 3000, 3000, 3000, 3000]);
+    });
+
+    test('reaching the target weight inside the week means maintenance '
+        'from then on', () {
+      const goal = Goal(
+        kind: GoalKind.targetAndPace,
+        targetWeightKg: 99.5,
+        paceValue: 0.5,
+      );
+      // 0.5 kg a week from 100 kg reaches 99.5 kg a week from today.
+      expect(kcal(goal, nextWeek), [2450, 2450, 3000, 3000, 3000, 3000, 3000]);
+    });
+
+    test('a gain stops at its target too', () {
+      const goal = Goal(
+        kind: GoalKind.targetAndPace,
+        direction: GoalDirection.gain,
+        targetWeightKg: 100.2,
+        paceValue: 0.25,
+      );
+      // +275 kcal a day, rounded to 10; 0.2 kg is reached on day 6.
+      expect(kcal(goal, nextWeek), [3280, 3000, 3000, 3000, 3000, 3000, 3000]);
+    });
+
+    test('floors still apply on every day', () {
+      final targets = weekTargets(
+        goal: const Goal(
+          kind: GoalKind.targetAndPace,
+          targetWeightKg: 80,
+          paceValue: 1,
+        ),
+        profile: male,
+        tdeeKcal: 2000,
+        bmrKcal: 1800,
+        trendKg: 100,
+        today: today,
+        weekStart: nextWeek,
+      );
+      for (final t in targets) {
+        expect(t.kcal, 1800);
+        expect(t.limitedByFloor, isTrue);
+      }
+    });
+  });
+
   group('outlookFor', () {
     GoalOutlook outlook(Goal goal, {double tdee = 2500}) => outlookFor(
       goal: goal,

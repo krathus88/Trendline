@@ -501,3 +501,51 @@ GoalOutlook outlookFor({
         : plan.projectedDate,
   );
 }
+
+/// Each day's targets for the seven days from [weekStart], for planning a
+/// week ahead.
+///
+/// Days up to [today] get today's targets. A later day gets the targets it
+/// would have if the trend keeps to today's planned change until then
+/// (never past the target weight), so a goal date or a target weight
+/// reached inside the week turns the days after it into maintenance, and
+/// a pace set by a date stays the pace that date needs. The energy
+/// estimate, BMR and lean mass stay as they are today: only a new
+/// weigh-in or estimate changes those.
+List<DailyTargets> weekTargets({
+  required Goal goal,
+  required Profile profile,
+  required double tdeeKcal,
+  required double bmrKcal,
+  required double trendKg,
+  required DateTime today,
+  required DateTime weekStart,
+  double? leanMassKg,
+}) {
+  final now = dayOf(today);
+  GoalOutlook on(DateTime day, double kg) => outlookFor(
+    goal: goal,
+    profile: profile,
+    tdeeKcal: tdeeKcal,
+    bmrKcal: bmrKcal,
+    trendKg: kg,
+    today: day,
+    leanMassKg: leanMassKg,
+  );
+  final current = on(now, trendKg);
+  final change = current.targets.weeklyChangeKg;
+  final target = current.plan.targetWeightKg;
+  return [
+    for (var d = 0; d < 7; d++)
+      () {
+        final day = addDays(dayOf(weekStart), d);
+        final ahead = daysBetween(now, day);
+        if (ahead <= 0) return current.targets;
+        var kg = trendKg + change * ahead / 7;
+        if (target != null && change != 0) {
+          kg = change < 0 ? math.max(kg, target) : math.min(kg, target);
+        }
+        return on(day, kg).targets;
+      }(),
+  ];
+}

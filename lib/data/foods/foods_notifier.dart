@@ -1,17 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:trendline/data/foods/food_repository.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/snapshots/list_snapshot.dart';
+import 'package:trendline/data/snapshots/snapshot_store.dart';
 import 'package:trendline/domain/food.dart';
 
-/// The user's saved foods, by name, cached in memory.
+/// The user's saved foods, by name, cached in memory and on the device.
 final foodsProvider = AsyncNotifierProvider<FoodsNotifier, List<Food>>(
   FoodsNotifier.new,
 );
 
-class FoodsNotifier extends AsyncNotifier<List<Food>> {
+class FoodsNotifier extends AsyncNotifier<List<Food>>
+    with ListSnapshotMixin<Food> {
+  @override
+  String get snapshotKey => SnapshotKeys.foods;
+
+  @override
+  Map<String, dynamic> toSnapshotRow(Food item) => foodToRow(item);
+
+  @override
+  Food fromSnapshotRow(Map<String, dynamic> row) => foodFromRow(row);
+
   @override
   Future<List<Food>> build() async {
-    if (ref.watch(currentUserIdProvider) == null) return const [];
-    return await ref.watch(foodRepositoryProvider).fetchAll();
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
+    final repository = ref.watch(foodRepositoryProvider);
+    return await loadWithSnapshot(userId, repository.fetchAll);
   }
 
   /// A saved food with [barcode], if there is one.

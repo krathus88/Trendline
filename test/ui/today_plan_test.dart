@@ -55,12 +55,15 @@ Future<TestBackend> _ready({bool stewCooked = false}) async {
   );
   backend.plans.weeks[_week] = SavedPlan(
     weekStart: _week,
-    targets: const PlanTargets(
-      kcal: 2000,
-      proteinG: 140,
-      carbsG: 200,
-      fatG: 65,
-      fibreG: 30,
+    targets: List.filled(
+      7,
+      const PlanTargets(
+        kcal: 2000,
+        proteinG: 140,
+        carbsG: 200,
+        fatG: 65,
+        fibreG: 30,
+      ),
     ),
     notes: const [],
     items: [
