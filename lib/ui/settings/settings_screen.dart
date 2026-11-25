@@ -18,6 +18,7 @@ import 'package:trendline/ui/goals/goal_screen.dart';
 import 'package:trendline/ui/household/household_screen.dart';
 import 'package:trendline/ui/meal_rules/meal_rules_screen.dart';
 import 'package:trendline/ui/preferences/food_preferences_screen.dart';
+import 'package:trendline/ui/privacy/your_data_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
 import 'package:trendline/ui/progress/energy_card.dart';
 import 'package:trendline/ui/schedule/day_schedule_screen.dart';
@@ -165,6 +166,15 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy and your data'),
+            subtitle: const Text('Privacy policy, export, delete account'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const YourDataScreen()),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Sign out'),

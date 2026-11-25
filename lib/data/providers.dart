@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:trendline/app_info.dart';
+import 'package:trendline/data/account/account_repository.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/energy/energy_repository.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
@@ -19,6 +20,7 @@ import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
+import 'package:trendline/platform/file_saver.dart';
 import 'package:trendline/platform/health_source.dart';
 
 // ---------------------------------------------------------------------------
@@ -31,6 +33,10 @@ final supabaseClientProvider = Provider<SupabaseClient>(
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => SupabaseAuthRepository(ref.watch(supabaseClientProvider).auth),
+);
+
+final accountRepositoryProvider = Provider<AccountRepository>(
+  (ref) => SupabaseAccountRepository(ref.watch(supabaseClientProvider)),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
@@ -102,6 +108,8 @@ final offClientProvider = Provider<OffClient>((ref) {
 final barcodeScannerProvider = Provider<BarcodeScanner>(
   (ref) => createBarcodeScanner(),
 );
+
+final fileSaverProvider = Provider<FileSaver>((ref) => const SystemFileSaver());
 
 final healthSourceProvider = Provider<HealthSource>(
   (ref) => createHealthSource(),

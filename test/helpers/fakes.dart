@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/account/account_repository.dart';
 import 'package:trendline/data/energy/energy_repository.dart';
 import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
@@ -19,6 +20,7 @@ import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/data/snapshots/today_snapshot.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
+import 'package:trendline/domain/consent.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
@@ -28,6 +30,7 @@ import 'package:trendline/domain/household.dart';
 import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/prep.dart';
+import 'package:trendline/domain/privacy_policy.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
@@ -36,6 +39,7 @@ import 'package:trendline/domain/sharing.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
+import 'package:trendline/platform/file_saver.dart';
 import 'package:trendline/platform/health_source.dart';
 
 /// Snapshots in memory.
@@ -1059,4 +1063,71 @@ class FakeSharingRepository implements SharingRepository {
               i,
         ]
       : const [];
+}
+
+class FakeAccountRepository implements AccountRepository {
+  /// Agreed to the current policy by default, so tests start in the app.
+  Consent? consent = Consent(
+    policyVersion: privacyPolicyVersion,
+    consentedAt: DateTime(2026, 11, 20),
+  );
+
+  /// What [exportData] returns.
+  Map<String, Object?> export = const {'format': 1, 'weigh_ins': <Object>[]};
+
+  int deletes = 0;
+
+  bool failFetch = false;
+  bool failDelete = false;
+
+  @override
+  Future<Consent?> fetchConsent() async {
+    if (failFetch) throw FakeNetworkError();
+    return consent;
+  }
+
+  @override
+  Future<Consent> recordConsent(int policyVersion) async {
+    return consent = Consent(
+      policyVersion: policyVersion,
+      consentedAt: DateTime(2026, 11, 25),
+    );
+  }
+
+  @override
+  Future<Map<String, Object?>> exportData() async {
+    return export;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    if (failDelete) throw FakeNetworkError();
+    deletes++;
+  }
+}
+
+class SavedFile {
+  const new(this.fileName, this.mimeType, this.contents);
+
+  final String fileName;
+  final String mimeType;
+  final String contents;
+}
+
+class FakeFileSaver implements FileSaver {
+  final saved = <SavedFile>[];
+
+  /// When true, the user cancels the save dialog.
+  bool cancel = false;
+
+  @override
+  Future<bool> save({
+    required String fileName,
+    required String mimeType,
+    required String contents,
+  }) async {
+    if (cancel) return false;
+    saved.add(SavedFile(fileName, mimeType, contents));
+    return true;
+  }
 }

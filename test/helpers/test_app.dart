@@ -52,6 +52,8 @@ class TestBackend {
   final energy = FakeEnergyRepository();
   final households = FakeHouseholdRepository();
   final sharing = FakeSharingRepository();
+  final account = FakeAccountRepository();
+  final files = FakeFileSaver();
 
   /// The recipe library file's contents. Null uses the real one.
   String? library;
@@ -65,6 +67,8 @@ class TestBackend {
 
   List<Override> get overrides => [
     authRepositoryProvider.overrideWithValue(auth),
+    accountRepositoryProvider.overrideWithValue(account),
+    fileSaverProvider.overrideWithValue(files),
     profileRepositoryProvider.overrideWithValue(profiles),
     weighInRepositoryProvider.overrideWithValue(weighIns),
     foodRepositoryProvider.overrideWithValue(foods),

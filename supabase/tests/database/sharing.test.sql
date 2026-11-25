@@ -342,8 +342,8 @@ select is(
    where n.nspname = 'public'
      and p.prosecdef
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
-  array['accept_share', 'create_household', 'household_food_preferences',
-        'join_household',
+  array['accept_share', 'create_household', 'delete_my_account',
+        'household_food_preferences', 'join_household',
         'shared_plan_items', 'shared_targets_of', 'shared_weigh_ins'],
   'the only security definer functions signed-in users can call'
 );

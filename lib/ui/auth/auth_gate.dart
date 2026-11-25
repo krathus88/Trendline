@@ -5,7 +5,7 @@ import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/snapshots/today_snapshot_notifier.dart';
 import 'package:trendline/ui/auth/sign_in_screen.dart';
 import 'package:trendline/ui/common/feedback.dart';
-import 'package:trendline/ui/home/profile_gate.dart';
+import 'package:trendline/ui/privacy/consent_gate.dart';
 
 /// Shows the sign-in screen or the app, depending on the auth status.
 class AuthGate extends ConsumerWidget {
@@ -17,7 +17,7 @@ class AuthGate extends ConsumerWidget {
     // life, so signing out deletes it straight away.
     ref.listen(todaySnapshotProvider, (_, _) {});
     return switch (ref.watch(authStatusProvider)) {
-      AsyncData(value: SignedIn()) => const ProfileGate(),
+      AsyncData(value: SignedIn()) => const ConsentGate(),
       AsyncLoading() => const Scaffold(body: CenteredProgress()),
       // Signed out, or the status couldn't be read: either way, sign in.
       _ => const SignInScreen(),

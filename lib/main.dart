@@ -8,7 +8,14 @@ import 'package:trendline/data/supabase/secure_session_storage.dart';
 import 'package:trendline/data/supabase/supabase_config.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Opened from Health Connect's permission screen: show the privacy policy
+  // only, without signing in.
+  if (binding.platformDispatcher.defaultRouteName == privacyPolicyRoute) {
+    runApp(const TrendlineApp.privacyPolicy());
+    return;
+  }
 
   final config = SupabaseConfig.fromEnvironment();
   if (config == null) {
