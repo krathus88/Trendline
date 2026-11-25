@@ -79,6 +79,19 @@ void main() {
     expect(week.map((d) => d.weekday), [1, 2, 3, 4, 5, 6, 7]);
     expect(week[5], saturday);
     expect(week[0], const DaySchedule.standard(1));
+    expect(
+      [for (final d in week) d.isSet],
+      [false, false, false, false, false, true, false],
+      reason: 'only the saved day counts as set',
+    );
+    // A saved day with the standard times is still set, and equal to it.
+    const savedStandard = DaySchedule(
+      weekday: 1,
+      wakeMinute: 7 * 60,
+      sleepMinute: 23 * 60,
+    );
+    expect(savedStandard.isSet, isTrue);
+    expect(savedStandard, const DaySchedule.standard(1));
   });
 
   group('meal rules', () {

@@ -9,6 +9,7 @@ import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/profile.dart';
+import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/home/home_shell.dart';
@@ -191,23 +192,39 @@ void main() {
     ) async {
       final backend = TestBackend(profile: testProfile);
       var searches = 0;
+      var lookups = 0;
       backend.off = (request) async {
-        searches++;
+        // Search hits carry no nutrition; picking one reads it by barcode.
+        if (request.url.host == 'search.openfoodfacts.org') {
+          searches++;
+          return http.Response(
+            jsonEncode({
+              'hits': [
+                {
+                  'code': '01219494',
+                  'product_name': 'Semi skimmed milk',
+                  'brands': ["Sainsbury's"],
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        lookups++;
+        expect(request.url.path, '/api/v3/product/01219494');
         return http.Response(
           jsonEncode({
-            'hits': [
-              {
-                'code': '01219494',
-                'product_name': 'Semi skimmed milk',
-                'brands': ["Sainsbury's"],
-                'nutriments': {
-                  'energy-kcal_100g': 50,
-                  'proteins_100g': 3.6,
-                  'carbohydrates_100g': 4.8,
-                  'fat_100g': 1.8,
-                },
+            'product': {
+              'code': '01219494',
+              'product_name': 'Semi skimmed milk',
+              'brands': "Sainsbury's",
+              'nutriments': {
+                'energy-kcal_100g': 50,
+                'proteins_100g': 3.6,
+                'carbohydrates_100g': 4.8,
+                'fat_100g': 1.8,
               },
-            ],
+            },
           }),
           200,
         );
@@ -223,14 +240,53 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
       expect(searches, 1);
+      expect(lookups, 0, reason: 'nutrition is read only for the pick');
 
       await tester.tap(find.text('Semi skimmed milk'));
       await tester.pumpAndSettle();
+      expect(lookups, 1);
       await tester.tap(find.widgetWithText(FilledButton, 'Add to breakfast'));
       await tester.pumpAndSettle();
 
       expect(backend.foods.items.single.barcode, '01219494');
       expect(backend.foodLogs.items.single.foodName, 'Semi skimmed milk');
+      expect(backend.foodLogs.items.single.nutrition.kcal, greaterThan(0));
+    });
+
+    testWidgets('a search result without usable nutrition opens manual entry', (
+      tester,
+    ) async {
+      final backend = TestBackend(profile: testProfile)
+        ..off = (request) async => http.Response(
+          jsonEncode(
+            request.url.host == 'search.openfoodfacts.org'
+                ? {
+                    'hits': [
+                      {'code': '7613032773540', 'product_name': 'Cappuccino'},
+                    ],
+                  }
+                : {
+                    'product': {
+                      'code': '7613032773540',
+                      'product_name': 'Cappuccino',
+                    },
+                  },
+          ),
+          200,
+        );
+      await backend.pump(tester);
+
+      await tester.tap(find.text('Add food').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'cappuccino');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cappuccino'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('no usable nutrition'), findsOneWidget);
+      expect(find.textContaining('7613032773540'), findsOneWidget);
+      expect(find.text('Save food'), findsOneWidget);
     });
 
     testWidgets('finds basic foods as you type and logs one', (tester) async {
@@ -287,6 +343,117 @@ void main() {
       expect(find.text('Save food'), findsOneWidget);
     });
 
+    testWidgets('a food made with milk is saved as a mix and logged', (
+      tester,
+    ) async {
+      final backend = TestBackend(profile: testProfile);
+      await backend.foods.save(
+        const FoodDraft(
+          name: 'Semi skimmed milk',
+          per100g: Nutrition(kcal: 50, proteinG: 3.6, carbsG: 4.8, fatG: 1.8),
+          source: FoodSource.manual,
+        ),
+      );
+      await backend.pump(tester);
+
+      await tester.tap(find.text('Add food').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enter from label'));
+      await tester.pumpAndSettle();
+
+      Future<void> fill(String label, String value) =>
+          tester.enterText(find.widgetWithText(TextFormField, label), value);
+      await fill('Name', 'Cappuccino sachet');
+      await fill('Energy', '387');
+      await fill('Fat', '8.4');
+      await fill('Carbohydrate', '67.1');
+      await fill('Protein', '8.4');
+      await fill('One serving (optional)', '15.5');
+
+      final madeWith = find.text('Made with…');
+      await tester.ensureVisible(madeWith);
+      await tester.tap(madeWith);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Semi skimmed milk'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, '200');
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      await tester.pumpAndSettle();
+
+      // One serving of the sachet goes in unless changed.
+      expect(
+        find.widgetWithText(TextFormField, 'This food in one portion'),
+        findsOneWidget,
+      );
+      expect(find.text('15.5'), findsWidgets);
+      expect(find.text('One portion: 160 kcal'), findsOneWidget);
+
+      final save = find.text('Save food and mix');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      final mix = backend.recipes.items.single;
+      expect(mix.name, 'Cappuccino sachet with Semi skimmed milk');
+      expect(mix.origin, RecipeOrigin.mix);
+      expect(mix.portions, 1);
+      expect(mix.cookedWeightG, 215.5);
+      expect(mix.ingredients.map((i) => i.rawGrams), [15.5, 200]);
+      expect(backend.foods.items, hasLength(2));
+
+      // The mix is what's eaten, so it's offered for logging straight away.
+      await tester.enterText(find.byType(TextField).last, '215.5');
+      await tester.tap(find.widgetWithText(FilledButton, 'Add to breakfast'));
+      await tester.pumpAndSettle();
+      final log = backend.foodLogs.items.single;
+      expect(log.recipeId, mix.id);
+      expect(log.nutrition.kcal, closeTo(160, 1));
+    });
+
+    testWidgets('a label per 100 ml made up is saved per 100 g of powder', (
+      tester,
+    ) async {
+      final backend = TestBackend(profile: testProfile);
+      await backend.pump(tester);
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enter from label'));
+      await tester.pumpAndSettle();
+
+      Future<void> fill(String label, String value) =>
+          tester.enterText(find.widgetWithText(TextFormField, label), value);
+      await fill('Name', 'Cappuccino');
+      await tester.tap(find.text('100 ml made up'));
+      await tester.pumpAndSettle();
+      // As printed: a 15.5 g sachet makes 220 ml; per 100 ml column.
+      await fill('One serving, dry', '15.5');
+      await fill('Makes', '220');
+      await fill('Energy', '27');
+      await fill('Fat', '0.6');
+      await fill('Carbohydrate', '4.7');
+      await fill('of which sugars', '3.6');
+      await fill('Fibre', '0.3');
+      await fill('Protein', '0.6');
+      await fill('Salt', '0.09');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Saved per 100 g: 383 kcal'), findsOneWidget);
+
+      final save = find.text('Save food');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      final food = backend.foods.items.single;
+      expect(food.per100g.kcal, closeTo(383.2, 0.1));
+      expect(food.per100g.carbsG, closeTo(66.7, 0.1));
+      expect(food.sugarG, closeTo(51.1, 0.1));
+      expect(food.saltG, closeTo(1.28, 0.01));
+      expect(food.servingG, 15.5);
+      // One sachet gives back the label's per-mug energy.
+      expect(food.per100g.forGrams(15.5).kcal, closeTo(59.4, 0.1));
+    });
+
     testWidgets('manual entry refuses impossible nutrition', (tester) async {
       await TestBackend(profile: testProfile).pump(tester);
       await tester.tap(find.text('Food'));
@@ -299,7 +466,7 @@ void main() {
       await fill('Name', 'Mystery bar');
       await fill('Energy', '400');
       await fill('Protein', '60');
-      await fill('Carbs', '60');
+      await fill('Carbohydrate', '60');
       await fill('Fat', '10');
       final save = find.text('Save food');
       await tester.ensureVisible(save);

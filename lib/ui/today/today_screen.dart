@@ -13,12 +13,14 @@ import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/replan.dart';
+import 'package:trendline/ui/common/desktop.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/food/food_picker_screen.dart';
 import 'package:trendline/ui/food/nutrition_widgets.dart';
 import 'package:trendline/ui/food/portion_sheet.dart';
 import 'package:trendline/ui/plan/plan_screen.dart';
+import 'package:trendline/ui/setup/setup_checklist.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
@@ -72,6 +74,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       if (mounted) setState(() => _replanning = false);
     }
   }
+
+  Future<void> _reload(DateTime day) =>
+      ref.refresh(foodLogProvider(day).future);
 
   void _move(int days) => setState(() => _day = addDays(_day, days));
 
@@ -178,6 +183,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       appBar: AppBar(
         title: Text(formatDayLabel(_day)),
         actions: [
+          RefreshAction(onRefresh: () => _reload(_day)),
           IconButton(
             tooltip: 'Previous day',
             onPressed: () => _move(-1),
@@ -205,7 +211,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           onRetry: () => ref.invalidate(foodLogProvider(_day)),
         ),
         AsyncValue(:final value?) => RefreshIndicator(
-          onRefresh: () => ref.refresh(foodLogProvider(_day).future),
+          onRefresh: () => _reload(_day),
           child: _DayLog(
             day: _day,
             entries: value,
@@ -336,6 +342,8 @@ class _DayLog extends StatelessWidget {
         Space.xxl,
       ),
       children: [
+        // Until a plan can be made (no weigh-in yet, say): what's left.
+        const SetupCard(),
         _Totals(total: total, targets: targets),
         if (onReplan != null) ...[
           const SizedBox(height: Space.sm),

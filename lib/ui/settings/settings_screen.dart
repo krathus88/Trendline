@@ -4,19 +4,23 @@ import 'package:trendline/app_info.dart';
 import 'package:trendline/data/goals/goal_notifier.dart';
 import 'package:trendline/data/goals/targets_provider.dart';
 import 'package:trendline/data/health/health_sync_notifier.dart';
+import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/setup/setup_status.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/goals/goal_screen.dart';
+import 'package:trendline/ui/household/household_screen.dart';
 import 'package:trendline/ui/meal_rules/meal_rules_screen.dart';
 import 'package:trendline/ui/preferences/food_preferences_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
 import 'package:trendline/ui/progress/energy_card.dart';
 import 'package:trendline/ui/schedule/day_schedule_screen.dart';
 import 'package:trendline/ui/settings/health_connect_sheet.dart';
+import 'package:trendline/ui/setup/setup_checklist.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 
@@ -29,6 +33,8 @@ class SettingsScreen extends ConsumerWidget {
     final health = ref.watch(healthSyncProvider).value;
     final goal = ref.watch(goalProvider).value;
     final targets = ref.watch(targetsProvider).value;
+    final setup = ref.watch(setupStatusProvider).value;
+    final household = ref.watch(householdProvider).value;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -37,6 +43,17 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: Space.sm),
         children: [
+          if (setup != null)
+            ListTile(
+              leading: const Icon(Icons.checklist),
+              title: const Text('Setup checklist'),
+              subtitle: Text(
+                '${setup.doneCount} of ${setup.steps.length} done'
+                '${setup.canPlan ? '' : ' · a step is needed to plan'}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showSetupSheet(context),
+            ),
           if (profile != null)
             ListTile(
               leading: const Icon(Icons.person_outline),
@@ -84,6 +101,22 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(builder: (_) => const MealRulesScreen()),
             ),
           ),
+          if (profile != null)
+            SwitchListTile(
+              secondary: const Icon(Icons.cookie_outlined),
+              title: const Text('Plan a snack each day'),
+              subtitle: const Text(
+                'Something quick between lunch and dinner, like yogurt '
+                'with berries',
+              ),
+              value: profile.planSnacks,
+              onChanged: (on) => ref
+                  .read(profileProvider.notifier)
+                  .save(profile.copyWith(planSnacks: on))
+                  .catchError((Object e) {
+                    if (context.mounted) showErrorSnack(context, e);
+                  }),
+            ),
           ListTile(
             leading: const Icon(Icons.thumbs_up_down_outlined),
             title: const Text('Food preferences'),
@@ -93,6 +126,17 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) => const FoodPreferencesScreen(),
               ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home_outlined),
+            title: const Text('Household'),
+            subtitle: Text(
+              household?.name ?? 'Share recipes with the people you live with',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const HouseholdScreen()),
             ),
           ),
           if (health != null &&

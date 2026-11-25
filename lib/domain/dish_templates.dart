@@ -73,19 +73,33 @@ class DishTemplate {
     required this.freezable,
     required this.flavourIds,
     required this.slots,
+    this.noCook = false,
+    this.label,
   });
 
   final String id;
   final int version;
 
-  /// With placeholders: {flavour}, {protein}, {carb}, {veg}.
+  /// The dish shape's name for pickers ("Yogurt bowl"), when its [name]
+  /// pattern says too little once the placeholders are taken out.
+  final String? label;
+
+  /// With placeholders: {flavour}, and any ingredient role ({protein},
+  /// {carb}, {veg}, {fruit}...) for the option picked for it.
   final String name;
   final Set<MealSlot> meals;
   final int portions;
   final int fridgeDays;
   final bool freezable;
+
+  /// Empty only for [noCook] templates, which have no flavour profile.
   final List<String> flavourIds;
   final List<TemplateSlot> slots;
+
+  /// Put together, not cooked (a snack like yogurt with berries): never
+  /// batch-cooked or prepped, and nothing cooks off, so a portion weighs
+  /// what goes in.
+  final bool noCook;
 }
 
 @immutable
@@ -240,6 +254,8 @@ DishTemplate _template(
   final portions = m['portions'];
   final fridgeDays = m['fridge_days'];
   final freezable = m['freezable'];
+  final noCook = m['no_cook'] ?? false;
+  if (noCook is! bool) throw FormatException('$id: bad no_cook');
   if (version is! int ||
       version < 1 ||
       portions is! int ||
@@ -251,13 +267,20 @@ DishTemplate _template(
       freezable is! bool) {
     throw FormatException('$id: values out of range');
   }
+  // A cooked dish needs a flavour profile; a no-cook one may go without.
+  final flavourList = noCook && (m['flavours'] == null)
+      ? const <Object?>[]
+      : _list(m['flavours'], '$id flavours');
   final flavourIds = [
-    for (final f in _list(m['flavours'], '$id flavours'))
+    for (final f in flavourList)
       if (f is String && flavours.containsKey(f))
         f
       else
         throw FormatException('$id: unknown flavour $f'),
   ];
+  if (noCook && (fridgeDays != 0 || freezable)) {
+    throw FormatException('$id: a no-cook dish is made fresh');
+  }
   final slots = [
     for (final s in _list(m['slots'], '$id slots'))
       () {
@@ -298,6 +321,8 @@ DishTemplate _template(
     freezable: freezable,
     flavourIds: flavourIds,
     slots: slots,
+    noCook: noCook,
+    label: m['label'] == null ? null : _string(m, 'label', id),
   );
 }
 
@@ -317,7 +342,9 @@ class GeneratedDish {
   });
 
   final DishTemplate template;
-  final FlavourProfile flavour;
+
+  /// Null for a no-cook template without flavour profiles.
+  final FlavourProfile? flavour;
 
   /// The option chosen for each slot, by slot index; null for a skipped
   /// optional slot.
@@ -339,7 +366,7 @@ class GeneratedDish {
       );
       roles.putIfAbsent(pick.raw, () => slot.role);
     }
-    for (final f in flavour.ingredients) {
+    for (final f in flavour?.ingredients ?? const <LibraryIngredient>[]) {
       final batch = f.rawGrams * template.portions;
       grams.update(f.key, (g) => g + batch, ifAbsent: () => batch);
       roles.putIfAbsent(f.key, () => f.role);
@@ -361,7 +388,7 @@ class GeneratedDish {
     version: template.version,
     name: name,
     meals: template.meals,
-    cuisine: flavour.cuisine,
+    cuisine: flavour?.cuisine,
     portions: template.portions,
     fridgeDays: template.fridgeDays,
     freezable: template.freezable,
@@ -391,11 +418,18 @@ class GeneratedDish {
       }
       total += raw * rawKcal / cookedKcal;
     }
-    for (final f in flavour.ingredients) {
+    for (final f in flavour?.ingredients ?? const <LibraryIngredient>[]) {
       total += f.rawGrams * template.portions;
     }
     return (total / 10).round() * 10;
   }
+
+  /// What the whole batch weighs as made, for a no-cook dish: nothing cooks
+  /// off, so it's the ingredients' total. Null for a cooked dish, which is
+  /// weighed after cooking.
+  double? get madeWeightG => template.noCook
+      ? ingredients.fold<double>(0, (s, i) => s + i.rawGrams)
+      : null;
 }
 
 /// Why a template couldn't make a dish.
@@ -432,8 +466,11 @@ Object generateDish(
     for (final id in template.flavourIds)
       if (flavourId == null || id == flavourId) flavours[id]!,
   ];
-  final flavour = _weightedPick(candidates, flavourWeight, random);
-  if (flavour == null) {
+  // A no-cook template may have no flavour profiles at all.
+  final flavour = template.flavourIds.isEmpty
+      ? null
+      : _weightedPick(candidates, flavourWeight, random);
+  if (flavour == null && template.flavourIds.isNotEmpty) {
     return const NoDish(
       'Every flavour for this dish uses a cuisine or ingredient you never '
       'want.',
@@ -482,7 +519,7 @@ Object generateDish(
 /// The template's name with its placeholders filled in.
 String dishName(
   DishTemplate template,
-  FlavourProfile flavour,
+  FlavourProfile? flavour,
   List<TemplateOption?> picks,
 ) {
   String labelFor(IngredientRole role) {
@@ -492,13 +529,11 @@ String dishName(
     return '';
   }
 
-  final name = template.name
-      .replaceAll('{flavour}', flavour.name)
-      .replaceAll('{protein}', labelFor(IngredientRole.protein))
-      .replaceAll('{carb}', labelFor(IngredientRole.carb))
-      .replaceAll('{veg}', labelFor(IngredientRole.veg))
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  var name = template.name.replaceAll('{flavour}', flavour?.name ?? '');
+  for (final role in IngredientRole.values) {
+    name = name.replaceAll('{${role.name}}', labelFor(role));
+  }
+  name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
   return name.isEmpty ? name : name[0].toUpperCase() + name.substring(1);
 }
 

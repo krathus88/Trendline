@@ -13,6 +13,7 @@ import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/data/plans/planner_catalogue.dart';
 import 'package:trendline/data/preferences/food_preferences_notifier.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
+import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
@@ -108,6 +109,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
       mealRulesProvider,
       targetsProvider,
       prepProvider,
+      profileProvider,
     ]) {
       ref.listen(source, (_, _) {});
     }
@@ -166,6 +168,12 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
       fibreG: t.fibreG,
     );
     final catalogue = await _buildCatalogue();
+    // Snack dishes only when the user wants a snack planned each day.
+    final snacks = (await ref.read(profileProvider.future))?.planSnacks ?? true;
+    final dishes = [
+      for (final d in catalogue.dishes)
+        if (snacks || !d.meals.contains(MealSlot.snack)) d,
+    ];
     final locked = [
       for (final i in state.value?.plan?.items ?? const <PlannedItem>[])
         if (i.locked) i,
@@ -173,7 +181,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     final plan = await ref.read(planRunnerProvider)(
       PlannerInput(
         targets: [targets],
-        dishes: catalogue.dishes,
+        dishes: dishes,
         rules: catalogue.rules,
         locked: locked,
       ),
@@ -259,11 +267,15 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
         id = (recipes.copyOf(library) ?? await recipes.addFromLibrary(library))
             .id;
       } else if (catalogue?.generated[key] case final option?) {
+        final made = option.dish.madeWeightG;
         final copy = await recipes.addFromLibrary(
           option.dish.toRecipe(),
           origin: RecipeOrigin.template,
           foods: await ref.read(templateFoodsProvider.future),
-          estimatedCookedWeightG: option.expectedCookedG,
+          // A no-cook snack weighs what goes in, so it can be logged by
+          // weight without weighing anything.
+          estimatedCookedWeightG: made == null ? option.expectedCookedG : null,
+          cookedWeightG: made,
         );
         await recipes.setListed(copy.id, listed: false);
         id = copy.id;

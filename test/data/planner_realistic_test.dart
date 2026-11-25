@@ -64,8 +64,10 @@ void main() {
     expect(catalogue.dishes.length, greaterThan(30));
 
     for (final targets in const [
-      // A typical loss target, and a smaller one near the 1,500 floor.
+      // A typical loss target, a larger one, and a smaller one near the
+      // 1,500 floor.
       PlanTargets(kcal: 2100, proteinG: 150, carbsG: 220, fatG: 70, fibreG: 30),
+      PlanTargets(kcal: 2360, proteinG: 157, carbsG: 250, fatG: 79, fibreG: 30),
       PlanTargets(kcal: 1550, proteinG: 120, carbsG: 150, fatG: 52, fibreG: 30),
     ]) {
       final plan = planWeek(
@@ -73,13 +75,33 @@ void main() {
         Random(1),
       );
       final dishes = plan.items.map((i) => i.key).toSet();
-      final batches = plan.items.map((i) => i.batch).toSet();
+      final batches = {for (final i in plan.items) ?i.batch};
+      final snacks = [
+        for (final i in plan.items)
+          if (i.slot == MealSlot.snack) i,
+      ];
       // Printed so a run shows what the planner made; tests have no logger.
       // ignore: avoid_print
       print(
         '${targets.kcal.round()} kcal: ${dishes.length} dishes, '
-        '${batches.length} cook sessions. Notes: ${plan.notes}',
+        '${batches.length} cook sessions, snacks '
+        '${snacks.map((s) => '${s.name} ${s.amount}').toSet()}. '
+        'Notes: ${plan.notes}',
       );
+      expect(snacks, hasLength(7), reason: 'a snack every day');
+      expect(
+        snacks.every((s) => s.batch == null),
+        isTrue,
+        reason: 'snacks are made fresh, never batch-cooked',
+      );
+      expect(
+        snacks.map((s) => s.key).toSet().length,
+        greaterThanOrEqualTo(3),
+        reason: 'snacks vary',
+      );
+      for (final s in snacks) {
+        expect(s.amount, inInclusiveRange(0.5, 1.5), reason: s.name);
+      }
       for (var d = 0; d < 7; d++) {
         final n = plan.totalOn(d);
         expect(

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/recipe.dart';
@@ -21,6 +22,8 @@ class RecipeList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recipes = ref.watch(recipesProvider);
     final library = ref.watch(recipeLibraryProvider).value ?? const [];
+    final household = ref.watch(householdProvider).value;
+    final shared = ref.watch(sharedRecipesProvider);
 
     void open([Recipe? recipe]) => Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -85,25 +88,57 @@ class RecipeList extends ConsumerWidget {
             ],
           ),
         },
+        if (household != null) ...[
+          const SizedBox(height: Space.lg),
+          _Heading('Shared with ${household.name}'),
+          switch (shared) {
+            AsyncError(:final error) => ErrorView(
+              error: error,
+              onRetry: () => ref.invalidate(sharedRecipesProvider),
+            ),
+            AsyncLoading() when shared.value == null => const Padding(
+              padding: EdgeInsets.all(Space.xl),
+              child: CenteredProgress(),
+            ),
+            _ when (shared.value ?? const []).isEmpty => const EmptyState(
+              title: 'Nothing shared yet',
+              message:
+                  'Open one of your recipes and tap Share to give the '
+                  'household a copy.',
+            ),
+            _ => Column(
+              children: [
+                for (final r in shared.value!)
+                  RecipeTile(recipe: r, onTap: () => open(r)),
+              ],
+            ),
+          },
+        ],
         if (library.isNotEmpty) ...[
           const SizedBox(height: Space.lg),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.gutter,
-              Space.sm,
-              Space.gutter,
-              Space.xs,
-            ),
-            child: Text(
-              'From the library',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ),
+          const _Heading('From the library'),
           for (final r in library) _LibraryTile(recipe: r),
         ],
       ],
     );
   }
+}
+
+class _Heading extends StatelessWidget {
+  const new(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      Space.gutter,
+      Space.sm,
+      Space.gutter,
+      Space.xs,
+    ),
+    child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+  );
 }
 
 class _LibraryTile extends ConsumerWidget {

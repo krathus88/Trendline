@@ -12,8 +12,11 @@ class FoodInUse implements Exception {
 }
 
 abstract interface class FoodRepository {
-  /// All saved foods, by name.
+  /// All the user's own saved foods, by name.
   Future<List<Food>> fetchAll();
+
+  /// The foods in the household's shared recipes (none outside one).
+  Future<List<Food>> fetchShared();
 
   /// Saves a food. If one with the same barcode, or a copy of the same
   /// basic food, is already saved, returns that instead of a duplicate.
@@ -32,9 +35,24 @@ class SupabaseFoodRepository implements FoodRepository {
       'fat_100g, fibre_100g, sugar_100g, salt_100g, serving_g, source, '
       'reference_code';
 
+  // RLS shows the household's shared foods too, so each query says which.
   @override
   Future<List<Food>> fetchAll() async {
-    final rows = await _db.from('foods').select(_columns).order('name');
+    final rows = await _db
+        .from('foods')
+        .select(_columns)
+        .isFilter('household_id', null)
+        .order('name');
+    return rows.map(foodFromRow).toList();
+  }
+
+  @override
+  Future<List<Food>> fetchShared() async {
+    final rows = await _db
+        .from('foods')
+        .select(_columns)
+        .not('household_id', 'is', null)
+        .order('name');
     return rows.map(foodFromRow).toList();
   }
 
@@ -46,6 +64,7 @@ class SupabaseFoodRepository implements FoodRepository {
           .from('foods')
           .select(_columns)
           .eq('barcode', barcode)
+          .isFilter('household_id', null)
           .maybeSingle();
       if (existing != null) return foodFromRow(existing);
     }
@@ -57,6 +76,7 @@ class SupabaseFoodRepository implements FoodRepository {
           .select(_columns)
           .eq('reference_code', code)
           .eq('name', draft.name.trim())
+          .isFilter('household_id', null)
           .limit(1)
           .maybeSingle();
       if (existing != null) return foodFromRow(existing);

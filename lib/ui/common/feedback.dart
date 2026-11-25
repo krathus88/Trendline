@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/auth/auth_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
+import 'package:trendline/data/households/household_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
@@ -16,6 +17,7 @@ String userMessage(Object error) => switch (error) {
   AuthFailure(:final message) => message,
   HealthSourceException(:final message) => message,
   FoodInUse(:final message) => message,
+  HouseholdError(:final message) => message,
   LibraryFoodMissing(:final message) => message,
   PlanNeedsTargets(:final message) => message,
   PlanNotSaved(:final message) => message,

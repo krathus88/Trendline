@@ -44,6 +44,7 @@ class TestBackend {
   final health = FakeHealthSource();
   final goals = FakeGoalRepository(goal: Goal.maintenance);
   final energy = FakeEnergyRepository();
+  final households = FakeHouseholdRepository();
 
   /// The recipe library file's contents. Null uses the real one.
   String? library;
@@ -62,6 +63,7 @@ class TestBackend {
     foodRepositoryProvider.overrideWithValue(foods),
     referenceFoodRepositoryProvider.overrideWithValue(referenceFoods),
     recipeRepositoryProvider.overrideWithValue(recipes),
+    householdRepositoryProvider.overrideWithValue(households),
     foodPreferencesRepositoryProvider.overrideWithValue(preferences),
     scheduleRepositoryProvider.overrideWithValue(schedules),
     mealRuleRepositoryProvider.overrideWithValue(rules),

@@ -66,6 +66,8 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
       weightUnit: _unit,
       useLeanMass: widget.existing?.useLeanMass ?? false,
       strengthTraining: _training,
+      // Set in Settings, not here: keep it.
+      planSnacks: widget.existing?.planSnacks ?? true,
       disclaimerAcceptedAt:
           widget.existing?.disclaimerAcceptedAt ?? DateTime.now(),
       healthScreenedAt: widget.existing?.healthScreenedAt,

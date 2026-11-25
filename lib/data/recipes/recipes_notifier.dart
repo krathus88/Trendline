@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trendline/data/foods/foods_notifier.dart';
+import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/domain/food.dart';
@@ -24,10 +25,14 @@ final recipesProvider = AsyncNotifierProvider<RecipesNotifier, List<Recipe>>(
   RecipesNotifier.new,
 );
 
-/// The user's foods by ID, for ingredient names and recipe nutrition.
+/// The user's foods, and the household's shared ones, by ID: for
+/// ingredient names and recipe nutrition.
 final foodsByIdProvider = Provider<Map<String, Food>>((ref) {
   final foods = ref.watch(foodsProvider).value ?? const <Food>[];
-  return {for (final f in foods) f.id: f};
+  final shared = ref.watch(sharedFoodsProvider).value ?? const <Food>[];
+  return {
+    for (final f in [...foods, ...shared]) f.id: f,
+  };
 });
 
 class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
@@ -66,12 +71,14 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
   /// their foods (reusing ones already saved), so the copy, its logs and
   /// its prep only ever point at the user's own data. A dish made from a
   /// template is copied the same way, with [origin] template, its basic
-  /// foods in [foods] and its expected cooked weight.
+  /// foods in [foods] and its expected cooked weight; a no-cook one with
+  /// [cookedWeightG] already known (it weighs what goes in).
   Future<Recipe> addFromLibrary(
     LibraryRecipe library, {
     RecipeOrigin origin = RecipeOrigin.library,
     Map<FoodKey, FoodDraft>? foods,
     double? estimatedCookedWeightG,
+    double? cookedWeightG,
   }) async {
     final drafts = switch (foods) {
       final given? => given,
@@ -91,6 +98,7 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
         name: library.name,
         ingredients: ingredients,
         portions: library.portions,
+        cookedWeightG: cookedWeightG,
         fridgeDays: library.fridgeDays,
         freezable: library.freezable,
         method: library.method,

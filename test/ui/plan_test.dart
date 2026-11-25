@@ -131,6 +131,52 @@ void main() {
     expect(find.text('To cook'), findsOneWidget);
   });
 
+  testWidgets('plans a snack a day, never prepped, unless switched off', (
+    tester,
+  ) async {
+    final backend = await _ready(tester)
+      ..templates = '''
+{"format": 1,
+ "flavours": [{"id": "plain", "name": "Plain", "cuisine": "british",
+   "ingredients": [{"cofid": "12-555", "name": "Yogurt, Greek style, plain",
+     "grams": 1, "role": "dairy"}]}],
+ "options": {},
+ "templates": [{"id": "yogurt-pot", "version": 1, "label": "Yogurt pot",
+   "name": "{protein} pot", "meals": ["snack"], "no_cook": true,
+   "portions": 1, "fridge_days": 0, "freezable": false,
+   "slots": [{"role": "protein", "grams": 150, "min": 100, "max": 250,
+     "options": [{"label": "Greek yogurt", "cofid": "12-555",
+       "name": "Yogurt, Greek style, plain"}]}]}]}''';
+    await backend.pump(tester);
+    await _openPlan(tester);
+    await tester.tap(find.text('Plan this week'));
+    await tester.pumpAndSettle();
+    expect(find.text('Greek yogurt pot'), findsNWidgets(7));
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    final copy = backend.recipes.items.singleWhere(
+      (r) => r.sourceId == 'yogurt-pot',
+    );
+    expect(copy.cookedWeightG, 150, reason: 'no-cook: weighs what goes in');
+    expect(
+      backend.prep.sessions.expand((s) => s.portions),
+      hasLength(21),
+      reason: 'snacks aren’t prepped; the 21 meals are',
+    );
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Plan a snack each day'));
+    await tester.pumpAndSettle();
+    expect(backend.profiles.profile?.planSnacks, isFalse);
+
+    await _openPlan(tester);
+    await tester.tap(find.text('Regenerate'));
+    await tester.pumpAndSettle();
+    expect(find.text('Greek yogurt pot'), findsNothing);
+  });
+
   testWidgets('a locked item stays when regenerating', (tester) async {
     final backend = await _ready(tester);
     await backend.pump(tester);
@@ -177,12 +223,34 @@ void main() {
     expect(find.text('250 g · 100 kcal'), findsNWidgets(7));
   });
 
-  testWidgets('without targets, says what to set up first', (tester) async {
+  testWidgets('without a weigh-in, shows the setup checklist, then plans', (
+    tester,
+  ) async {
     final backend = TestBackend(profile: testProfile)..templates = '{}';
+    backend.goals.goal = Goal.maintenance;
     await backend.pump(tester);
     await _openPlan(tester);
     await tester.tap(find.text('Plan this week'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('the plan is sized'), findsOneWidget);
+
+    expect(find.text('Set up planning'), findsOneWidget);
+    expect(find.text('Needed'), findsOneWidget, reason: 'only the weigh-in');
+    final plan = find.widgetWithText(FilledButton, 'Plan this week').last;
+    expect(tester.widget<FilledButton>(plan).onPressed, isNull);
+
+    // Doing the step from the checklist updates it in place.
+    await tester.tap(find.text('First weigh-in'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'kg'), '90');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(backend.weighIns.items, hasLength(1));
+    expect(find.text('Needed'), findsNothing);
+    expect(tester.widget<FilledButton>(plan).onPressed, isNotNull);
+
+    await tester.tap(plan);
+    await tester.pumpAndSettle();
+    expect(find.text('Set up planning'), findsNothing);
+    expect(find.text('No plan for this week'), findsNothing);
   });
 }

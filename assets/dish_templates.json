@@ -74,6 +74,33 @@
     }
   ],
   "options": {
+    "snack-fruit": [
+      {"label": "apple", "cofid": "14-319", "name": "Apples, eating, raw, flesh and skin"},
+      {"label": "pear", "cofid": "14-321", "name": "Pears, raw, flesh and skin"},
+      {"label": "banana", "cofid": "14-318", "name": "Bananas, flesh only"},
+      {"label": "grapes", "cofid": "14-350", "name": "Grapes, average"},
+      {"label": "orange", "cofid": "14-327", "name": "Oranges, flesh only"}
+    ],
+    "berries": [
+      {"label": "blueberries", "cofid": "14-325", "name": "Blueberries"},
+      {"label": "strawberries", "cofid": "14-324", "name": "Strawberries, raw"},
+      {"label": "raspberries", "cofid": "14-375", "name": "Raspberries, raw"},
+      {"label": "banana", "cofid": "14-318", "name": "Bananas, flesh only"}
+    ],
+    "nuts": [
+      {"label": "almonds", "cofid": "14-896", "name": "Almonds, whole kernels"},
+      {"label": "cashews", "cofid": "14-811", "name": "Cashew nuts, kernel only, plain"},
+      {"label": "walnuts", "cofid": "14-879", "name": "Walnuts, kernel only"}
+    ],
+    "dippers": [
+      {"label": "carrot sticks", "cofid": "13-496", "name": "Carrots, old, raw"},
+      {"label": "cucumber", "cofid": "13-523", "name": "Cucumber, raw, flesh and skin"},
+      {"label": "pepper strips", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"}
+    ],
+    "crispbread": [
+      {"label": "oatcakes", "cofid": "11-823", "name": "Oatcakes, plain, retail"},
+      {"label": "wholemeal toast", "cofid": "11-981", "name": "Bread, wholemeal, average"}
+    ],
     "lean-protein": [
       {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
        "cooked": {"cofid": "18-323", "name": "Chicken, breast, grilled without skin, meat only"}},
@@ -282,6 +309,133 @@
         ]},
         {"role": "fat", "grams": 5, "min": 0, "max": 10, "options": [
           {"label": "rapeseed oil", "cofid": "17-041", "name": "Oil, rapeseed"}
+        ]}
+      ]
+    },
+    {
+      "id": "yogurt-bowl",
+      "version": 1,
+      "label": "Yogurt bowl",
+      "name": "{protein} with {fruit}",
+      "meals": ["snack"],
+      "no_cook": true,
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "slots": [
+        {"role": "protein", "grams": 150, "min": 100, "max": 250, "options": [
+          {"label": "Greek yogurt", "cofid": "12-555", "name": "Yogurt, Greek style, plain"},
+          {"label": "natural yogurt", "cofid": "12-379", "name": "Yogurt, low fat, plain"},
+          {"label": "quark", "cofid": "12-174", "name": "Cheese, Quark"}
+        ]},
+        {"role": "fruit", "grams": 80, "min": 40, "max": 150, "options": "berries"},
+        {"role": "fat", "grams": 15, "min": 0, "max": 30, "optional": true, "options": [
+          {"label": "almonds", "cofid": "14-896", "name": "Almonds, whole kernels"},
+          {"label": "walnuts", "cofid": "14-879", "name": "Walnuts, kernel only"},
+          {"label": "pumpkin seeds", "cofid": "14-842", "name": "Pumpkin seeds"}
+        ]}
+      ]
+    },
+    {
+      "id": "fruit-and-nuts",
+      "version": 1,
+      "label": "Fruit and nuts",
+      "name": "{fruit} with {protein}",
+      "meals": ["snack"],
+      "no_cook": true,
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "slots": [
+        {"role": "fruit", "grams": 150, "min": 100, "max": 200, "options": "snack-fruit"},
+        {"role": "protein", "grams": 25, "min": 15, "max": 40, "options": "nuts"}
+      ]
+    },
+    {
+      "id": "houmous-dippers",
+      "version": 1,
+      "label": "Houmous and veg",
+      "name": "Houmous with {veg}",
+      "meals": ["snack"],
+      "no_cook": true,
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "slots": [
+        {"role": "protein", "grams": 60, "min": 40, "max": 100, "options": [
+          {"label": "houmous", "cofid": "13-556", "name": "Houmous"}
+        ]},
+        {"role": "veg", "grams": 80, "min": 50, "max": 150, "options": "dippers"},
+        {"role": "veg", "grams": 50, "min": 0, "max": 100, "optional": true, "options": "dippers"},
+        {"role": "carb", "grams": 20, "min": 0, "max": 40, "optional": true, "options": [
+          {"label": "oatcakes", "cofid": "11-823", "name": "Oatcakes, plain, retail"}
+        ]}
+      ]
+    },
+    {
+      "id": "peanut-butter-toast",
+      "version": 1,
+      "label": "Peanut butter on toast",
+      "name": "Peanut butter on {carb}",
+      "meals": ["snack"],
+      "no_cook": true,
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "slots": [
+        {"role": "carb", "grams": 40, "min": 25, "max": 80, "options": "crispbread"},
+        {"role": "protein", "grams": 15, "min": 10, "max": 30, "options": [
+          {"label": "peanut butter", "cofid": "14-892", "name": "Peanut butter, smooth"}
+        ]},
+        {"role": "fruit", "grams": 50, "min": 0, "max": 100, "optional": true, "options": [
+          {"label": "banana", "cofid": "14-318", "name": "Bananas, flesh only"}
+        ]}
+      ]
+    },
+    {
+      "id": "cottage-cheese",
+      "version": 1,
+      "label": "Cottage cheese",
+      "name": "Cottage cheese on {carb}",
+      "meals": ["snack"],
+      "no_cook": true,
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "slots": [
+        {"role": "protein", "grams": 120, "min": 80, "max": 200, "options": [
+          {"label": "cottage cheese", "cofid": "12-539", "name": "Cheese, cottage, plain"},
+          {"label": "reduced-fat cottage cheese", "cofid": "12-550", "name": "Cheese, cottage, plain, reduced fat"}
+        ]},
+        {"role": "carb", "grams": 25, "min": 15, "max": 50, "options": "crispbread"},
+        {"role": "veg", "grams": 40, "min": 0, "max": 80, "optional": true, "options": [
+          {"label": "cucumber", "cofid": "13-523", "name": "Cucumber, raw, flesh and skin"},
+          {"label": "tomato", "cofid": "13-517", "name": "Tomatoes, standard, raw"}
+        ]}
+      ]
+    },
+    {
+      "id": "cheese-and-fruit",
+      "version": 1,
+      "label": "Cheese and fruit",
+      "name": "Cheese with {fruit}",
+      "meals": ["snack"],
+      "no_cook": true,
+      "portions": 1,
+      "fridge_days": 0,
+      "freezable": false,
+      "slots": [
+        {"role": "protein", "grams": 30, "min": 20, "max": 45, "options": [
+          {"label": "half-fat Cheddar", "cofid": "12-348", "name": "Cheese, Cheddar type, half fat"},
+          {"label": "reduced-fat Cheddar", "cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'"}
+        ]},
+        {"role": "fruit", "grams": 120, "min": 80, "max": 180, "options": [
+          {"label": "apple", "cofid": "14-319", "name": "Apples, eating, raw, flesh and skin"},
+          {"label": "pear", "cofid": "14-321", "name": "Pears, raw, flesh and skin"},
+          {"label": "grapes", "cofid": "14-350", "name": "Grapes, average"}
+        ]},
+        {"role": "carb", "grams": 20, "min": 0, "max": 40, "optional": true, "options": [
+          {"label": "oatcakes", "cofid": "11-823", "name": "Oatcakes, plain, retail"}
         ]}
       ]
     }

@@ -44,19 +44,24 @@ class _MakeDishScreenState extends ConsumerState<MakeDishScreen> {
   Future<void> _add(GeneratedDish dish, double? estimate) async {
     setState(() => _adding = true);
     try {
+      final made = dish.madeWeightG;
       await ref
           .read(recipesProvider.notifier)
           .addFromLibrary(
             dish.toRecipe(),
             origin: RecipeOrigin.template,
             foods: await ref.read(templateFoodsProvider.future),
-            estimatedCookedWeightG: estimate,
+            // Nothing to weigh for a no-cook dish: it weighs what goes in.
+            estimatedCookedWeightG: made == null ? estimate : null,
+            cookedWeightG: made,
           );
       if (!mounted) return;
       Navigator.of(context).pop();
       showMessageSnack(
         context,
-        'Added to your recipes. Weigh it after cooking to log portions.',
+        made != null
+            ? 'Added to your recipes.'
+            : 'Added to your recipes. Weigh it after cooking to log portions.',
       );
     } on Object catch (e) {
       if (mounted) showErrorSnack(context, e);
@@ -163,23 +168,25 @@ class _MakeDishScreenState extends ConsumerState<MakeDishScreen> {
               ),
           ],
         ),
-        const SizedBox(height: Space.md),
-        Text('Flavour', style: text.labelMedium),
-        Wrap(
-          spacing: Space.sm,
-          children: [
-            for (final id in template.flavourIds)
-              ChoiceChip(
-                label: Text(all.flavours[id]!.name),
-                selected: dish?.flavour.id == id,
-                onSelected:
-                    prefs.cuisines[all.flavours[id]!.cuisine] ==
-                        Preference.never
-                    ? null
-                    : (_) => setState(() => _flavourId = id),
-              ),
-          ],
-        ),
+        if (template.flavourIds.isNotEmpty) ...[
+          const SizedBox(height: Space.md),
+          Text('Flavour', style: text.labelMedium),
+          Wrap(
+            spacing: Space.sm,
+            children: [
+              for (final id in template.flavourIds)
+                ChoiceChip(
+                  label: Text(all.flavours[id]!.name),
+                  selected: dish?.flavour?.id == id,
+                  onSelected:
+                      prefs.cuisines[all.flavours[id]!.cuisine] ==
+                          Preference.never
+                      ? null
+                      : (_) => setState(() => _flavourId = id),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: Space.lg),
         if (result case NoDish(:final reason))
           Text(reason, style: text.bodyMedium?.copyWith(color: colors.error))
@@ -195,7 +202,7 @@ class _MakeDishScreenState extends ConsumerState<MakeDishScreen> {
             const SizedBox(height: Space.xs),
             MacroLine(nutrition.perPortion),
           ],
-          if (estimate != null) ...[
+          if (estimate != null && !template.noCook) ...[
             const SizedBox(height: Space.xs),
             Text(
               'Expect about ${formatGrams(estimate)} cooked, so roughly '
@@ -244,6 +251,7 @@ class _MakeDishScreenState extends ConsumerState<MakeDishScreen> {
 
 /// "Rice bowl", "Noodle stir-fry": the template name without placeholders.
 String _shapeLabel(DishTemplate t) {
+  if (t.label case final label?) return label;
   final words = t.name
       .replaceAll(RegExp(r'\{[a-z]+\}'), '')
       .replaceAll(RegExp(r'\b(and|with)\b'), '')

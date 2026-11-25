@@ -13,11 +13,14 @@ import 'package:trendline/ui/theme/typography.dart';
 
 /// "Indian · lunch, dinner · 4 portions"
 String librarySummary(LibraryRecipe r) {
-  final cuisine = r.cuisine.name[0].toUpperCase() + r.cuisine.name.substring(1);
+  final cuisine = switch (r.cuisine?.name) {
+    final n? => n[0].toUpperCase() + n.substring(1),
+    null => null,
+  };
   final meals = [for (final m in r.meals) mealSlotLabel(m).toLowerCase()]
       .join(', ');
   final portions = r.portions == 1 ? '1 portion' : '${r.portions} portions';
-  return '$cuisine · $meals · $portions';
+  return [?cuisine, meals, portions].join(' · ');
 }
 
 /// A library recipe: what's in it, per-portion nutrition, and adding it to

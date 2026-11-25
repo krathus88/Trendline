@@ -62,7 +62,10 @@ class LibraryRecipe {
   final int version;
   final String name;
   final Set<MealSlot> meals;
-  final Cuisine cuisine;
+
+  /// Every library recipe has one; a no-cook snack made from a template
+  /// (yogurt with berries) has none.
+  final Cuisine? cuisine;
   final int portions;
   final int fridgeDays;
   final bool freezable;

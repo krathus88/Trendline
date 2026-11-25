@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trendline/domain/dish_templates.dart';
+import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/recipe_library.dart';
 
@@ -47,7 +48,12 @@ void main() {
 
     test('every template makes sensible dishes with every flavour', () {
       for (final t in shipped.templates) {
-        for (final f in t.flavourIds) {
+        // Meals: 200-1,000 kcal and 12 g protein a portion. Snacks (no-cook):
+        // 100-450 kcal and some protein, so they hold off hunger.
+        final (minKcal, maxKcal, minProtein) = t.noCook
+            ? (100.0, 450.0, 4.0)
+            : (200.0, 1000.0, 12.0);
+        for (final f in t.flavourIds.isEmpty ? [null] : t.flavourIds) {
           for (var seed = 0; seed < 20; seed++) {
             final dish = generateDish(
               t,
@@ -68,17 +74,35 @@ void main() {
             final perPortion = portion.kcal / t.portions;
             expect(
               perPortion,
-              inInclusiveRange(200, 1000),
+              inInclusiveRange(minKcal, maxKcal),
               reason: '${dish.name}: ${perPortion.round()} kcal',
             );
             expect(
               portion.protein / t.portions,
-              greaterThanOrEqualTo(12),
+              greaterThanOrEqualTo(minProtein),
               reason: '${dish.name} protein',
             );
             expect(dish.expectedCookedWeightG(kcal), isNotNull);
+            expect(dish.name, isNot(contains('{')), reason: dish.name);
+            if (t.noCook) {
+              expect(dish.madeWeightG, greaterThan(0), reason: dish.name);
+            } else {
+              expect(dish.madeWeightG, isNull, reason: 'cooked: weigh it');
+            }
           }
         }
+      }
+    });
+
+    test('there are snacks, and they are all no-cook', () {
+      final snacks = [
+        for (final t in shipped.templates)
+          if (t.meals.contains(MealSlot.snack)) t,
+      ];
+      expect(snacks.length, greaterThanOrEqualTo(5));
+      for (final t in snacks) {
+        expect(t.noCook, isTrue, reason: t.id);
+        expect(t.label, isNotNull, reason: '${t.id} needs a picker label');
       }
     });
   });
@@ -120,7 +144,7 @@ void main() {
       const prefs = FoodPreferences(ingredients: {_onion: Preference.never});
       for (var seed = 0; seed < 100; seed++) {
         expect(
-          make(seed, prefs: prefs).flavour.id,
+          make(seed, prefs: prefs).flavour?.id,
           isNot(anyOf('indian', 'mexican')),
         );
       }
@@ -131,7 +155,10 @@ void main() {
         cuisines: {Cuisine.indian: Preference.never},
       );
       for (var seed = 0; seed < 100; seed++) {
-        expect(make(seed, prefs: prefs).flavour.cuisine, isNot(Cuisine.indian));
+        expect(
+          make(seed, prefs: prefs).flavour?.cuisine,
+          isNot(Cuisine.indian),
+        );
       }
     });
 
@@ -167,7 +194,7 @@ void main() {
       final rice = bowl.slots[1].options.firstWhere((o) => o.raw == _rice);
       for (var seed = 0; seed < 50; seed++) {
         final dish = make(seed, flavourId: 'mexican', chosen: {1: rice});
-        expect(dish.flavour.id, 'mexican');
+        expect(dish.flavour?.id, 'mexican');
         expect(dish.picks[1], rice);
         expect(dish.name, startsWith('Mexican '));
       }
@@ -190,6 +217,25 @@ void main() {
       final onions = dish.ingredients.where((i) => i.key == _onion);
       expect(onions, hasLength(1));
       expect(onions.single.rawGrams, 40 * bowl.portions);
+    });
+
+    test('a no-cook snack has no flavour and is named from its picks', () {
+      final bowl = shipped.templates.firstWhere((t) => t.id == 'yogurt-bowl');
+      final dish = generateDish(
+        bowl,
+        shipped.flavours,
+        FoodPreferences.none,
+        Random(1),
+        chosen: {
+          0: bowl.slots[0].options.first,
+          1: bowl.slots[1].options.first,
+          2: null,
+        },
+      ) as GeneratedDish;
+      expect(dish.flavour, isNull);
+      expect(dish.name, 'Greek yogurt with blueberries');
+      expect(dish.toRecipe().cuisine, isNull);
+      expect(dish.madeWeightG, 150 + 80);
     });
 
     test('names fill in the flavour and the protein', () {
@@ -245,6 +291,26 @@ void main() {
         ('"grams": 130, "min": 90', '"grams": 30, "min": 90'),
         ('"18-290"', '"18290"'),
       ]) {
+        expect(
+          () => parseDishTemplates(source.replaceFirst(from, to)),
+          throwsFormatException,
+          reason: to,
+        );
+      }
+    });
+
+    test('only no-cook dishes go without a flavour, and they keep fresh', () {
+      final source = File('assets/dish_templates.json').readAsStringSync();
+      for (final (from, to) in [
+        // A cooked dish without flavours.
+        ('"flavours": ["british", "mediterranean"],\n', ''),
+        // A no-cook dish that claims to keep.
+        (
+          '"no_cook": true,\n      "portions": 1,\n      "fridge_days": 0',
+          '"no_cook": true,\n      "portions": 1,\n      "fridge_days": 2',
+        ),
+      ]) {
+        expect(source.contains(from), isTrue, reason: from);
         expect(
           () => parseDishTemplates(source.replaceFirst(from, to)),
           throwsFormatException,

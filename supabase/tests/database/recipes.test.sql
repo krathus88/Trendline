@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(23);
+select plan(26);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a@test.local'),
@@ -118,6 +118,34 @@ select throws_ok(
 );
 delete from public.recipes where name = 'My oats';
 
+-- Mixes (a food made up with others, as one portion) have no source.
+select lives_ok(
+  $$select public.save_recipe(
+      null, 'Cappuccino with milk', 1::smallint, 215.5, 0::smallint, false,
+      null,
+      '[{"food_id": "11111111-1111-1111-1111-111111111111", "raw_grams": 15.5},
+        {"food_id": "22222222-2222-2222-2222-222222222222", "raw_grams": 200}]',
+      'mix')$$,
+  'A can save a mix'
+);
+select throws_ok(
+  $$select public.save_recipe(
+      null, 'Odd mix', 1::smallint, null, 0::smallint, false, null,
+      '[{"food_id": "11111111-1111-1111-1111-111111111111", "raw_grams": 10}]',
+      'mix', 'overnight-oats-berries', 1::smallint)$$,
+  '23514', null,
+  'a mix has no source'
+);
+select throws_ok(
+  $$select public.save_recipe(
+      null, 'Odd', 1::smallint, null, 0::smallint, false, null,
+      '[{"food_id": "11111111-1111-1111-1111-111111111111", "raw_grams": 10}]',
+      'snack')$$,
+  '23514', null,
+  'unknown origins are refused'
+);
+delete from public.recipes where name = 'Cappuccino with milk';
+
 -- ---------------------------------------------------------------------------
 -- Logging, and what deleting does
 -- ---------------------------------------------------------------------------
@@ -196,7 +224,7 @@ select throws_ok(
   $$insert into public.recipes (name, household_id)
     values ('Shared', gen_random_uuid())$$,
   '42501', null,
-  'households are not enabled yet: household_id must stay null'
+  'a row can''t join a household its author isn''t in'
 );
 
 -- ---------------------------------------------------------------------------

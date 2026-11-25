@@ -168,6 +168,91 @@ void main() {
     }
   });
 
+  test('a daily dish recipe takes its meal; a drink mix sits beside one', () {
+    PlannerRule daily(String id, {required bool isMeal}) => PlannerRule(
+      rule: MealRule(
+        id: id,
+        recipeId: id,
+        slot: MealSlot.breakfast,
+        frequency: RuleFrequency.daily,
+        amountMin: 1,
+        amountMax: 1,
+      ),
+      name: id,
+      perUnit: const Nutrition(kcal: 160, proteinG: 8, carbsG: 20, fatG: 5),
+      isMeal: isMeal,
+    );
+
+    final withMix = _plan(rules: [daily('latte', isMeal: false)]);
+    final withDish = _plan(rules: [daily('porridge', isMeal: true)]);
+    for (var d = 0; d < 7; d++) {
+      final mixBreakfast = withMix
+          .itemsOn(d)
+          .where((i) => i.slot == MealSlot.breakfast);
+      expect(mixBreakfast.map((i) => i.key), contains('recipe:latte'));
+      expect(
+        mixBreakfast.where((i) => i.isDish),
+        hasLength(1),
+        reason: 'day $d still gets a breakfast dish',
+      );
+
+      final dishBreakfast = withDish
+          .itemsOn(d)
+          .where((i) => i.slot == MealSlot.breakfast);
+      expect(dishBreakfast.map((i) => i.key), ['recipe:porridge']);
+    }
+  });
+
+  group('snacks', () {
+    final snacks = [
+      for (final (i, kcal) in [180.0, 220.0, 250.0].indexed)
+        _dish(
+          'snack-$i',
+          {MealSlot.snack},
+          Nutrition(kcal: kcal, proteinG: 10, carbsG: 20, fatG: 8, fibreG: 3),
+          keeps: 0,
+          servings: 1,
+        ),
+    ];
+
+    test('a snack every day, never batched, and varied', () {
+      final plan = _plan(dishes: [..._dishes, ...snacks]);
+      final planned = plan.items.where((i) => i.slot == MealSlot.snack);
+      expect(planned, hasLength(7));
+      expect(planned.every((i) => i.batch == null), isTrue);
+      expect(planned.map((i) => i.key).toSet().length, greaterThan(1));
+      for (var d = 0; d < 7; d++) {
+        expect(plan.totalOn(d).kcal, closeTo(2000, 200), reason: 'day $d');
+      }
+    });
+
+    test('a rule item in the snack takes its place', () {
+      const yogurt = PlannerRule(
+        rule: MealRule(
+          id: 'yog',
+          foodId: 'yogurt',
+          slot: MealSlot.snack,
+          frequency: RuleFrequency.daily,
+          amountMin: 150,
+          amountMax: 150,
+        ),
+        name: 'Yogurt',
+        perUnit: Nutrition(kcal: 1, proteinG: 0.1, carbsG: 0.05, fatG: 0.03),
+      );
+      final plan = _plan(dishes: [..._dishes, ...snacks], rules: [yogurt]);
+      for (var d = 0; d < 7; d++) {
+        final snack = plan.itemsOn(d).where((i) => i.slot == MealSlot.snack);
+        expect(snack.map((i) => i.key), ['food:yogurt'], reason: 'day $d');
+      }
+    });
+
+    test('without snack dishes, the snack stays empty and unremarked', () {
+      final plan = _plan();
+      expect(plan.items.where((i) => i.slot == MealSlot.snack), isEmpty);
+      expect(plan.notes.where((n) => n.contains('snack')), isEmpty);
+    });
+  });
+
   test('"at least" rules count dishes that contain the food', () {
     const salmon = PlannerRule(
       rule: MealRule(

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trendline/app.dart';
 import 'package:trendline/data/supabase/supabase_config.dart';
@@ -23,5 +25,13 @@ void main() {
       SupabaseConfig.authRedirectUrl,
       'com.krathus.trendline://login-callback',
     );
+  });
+
+  test('redirect URL matches the scheme the Windows app registers', () {
+    final header = File('windows/runner/url_scheme.h').readAsStringSync();
+    final scheme = RegExp(r'kUrlScheme\[\] = L"([^"]+)"')
+        .firstMatch(header)
+        ?.group(1);
+    expect(scheme, Uri.parse(SupabaseConfig.authRedirectUrl).scheme);
   });
 }

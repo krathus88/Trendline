@@ -11,10 +11,13 @@ class DaySchedule {
     required this.weekday,
     required this.wakeMinute,
     required this.sleepMinute,
-  });
+  }) : isSet = true;
 
   /// The default for a weekday the user hasn't set: 07:00 to 23:00.
-  const new standard(this.weekday) : wakeMinute = 7 * 60, sleepMinute = 23 * 60;
+  const new standard(this.weekday)
+    : wakeMinute = 7 * 60,
+      sleepMinute = 23 * 60,
+      isSet = false;
 
   static const int minAwakeMinutes = 8 * 60;
   static const int maxAwakeMinutes = 20 * 60;
@@ -23,6 +26,10 @@ class DaySchedule {
   final int weekday;
   final int wakeMinute;
   final int sleepMinute;
+
+  /// False for the [DaySchedule.standard] stand-in of a day the user hasn't
+  /// set. Not part of equality: the times are what count.
+  final bool isSet;
 
   /// Minutes awake, counting across midnight.
   int get awakeMinutes => (sleepMinute - wakeMinute + _day) % _day;

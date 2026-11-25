@@ -127,7 +127,7 @@ select throws_ok(
        source)
     values (gen_random_uuid(), 'Rice', 130, 2.7, 28, 0.3, 'manual')$$,
   '42501', null,
-  'households are not enabled yet: household_id must stay null'
+  'a row can''t join a household its author isn''t in'
 );
 
 select lives_ok(

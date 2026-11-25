@@ -25,7 +25,8 @@ class OffRateLimited extends OffException {
 /// Client for the public Open Food Facts API.
 ///
 /// * Barcode lookups use API v3; text search uses search.openfoodfacts.org,
-///   filtered to products sold in the UK.
+///   filtered to products sold in the UK. Search finds products; their
+///   nutrition comes from a barcode lookup when one is picked.
 /// * Their limits are 15 product reads and 10 searches per minute per user,
 ///   and no search-as-you-type. The client enforces both limits itself and
 ///   caches results in memory, so repeated lookups cost nothing.
@@ -43,8 +44,18 @@ class OffClient {
   static const int lookupsPerMinute = 15;
   static const int pageSize = 20;
 
+  /// Search-a-licious query filters: sold in the UK, with the nutrition
+  /// table entered. Field names follow their index config (`countries`,
+  /// `states`); an unknown field fails the whole search with a 400.
+  static const String searchFilters =
+      'countries:"en:united-kingdom" states:"en:nutrition-facts-completed"';
+
   static const String _fields =
       'code,product_name,product_name_en,brands,serving_quantity,nutriments';
+
+  /// The search index has no nutrition, so it isn't asked for.
+  static const String _searchFields =
+      'code,product_name,product_name_en,brands';
 
   final String userAgent;
   final Duration timeout;
@@ -53,12 +64,13 @@ class OffClient {
 
   final _searchTimes = <DateTime>[];
   final _lookupTimes = <DateTime>[];
-  final _searchCache = <String, List<OffProduct>>{};
+  final _searchCache = <String, List<OffSearchHit>>{};
   final _lookupCache = <String, OffProduct?>{};
 
-  /// Products sold in the UK matching [query]. Results with missing or
-  /// implausible nutrition are left out.
-  Future<List<OffProduct>> search(String query) async {
+  /// Products sold in the UK matching [query] whose nutrition facts are
+  /// filled in. The hits carry no nutrition: read it with [lookup] when one
+  /// is picked (it can still turn out unusable).
+  Future<List<OffSearchHit>> search(String query) async {
     final cleaned = cleanSearchQuery(query);
     if (cleaned.length < 2) return const [];
 
@@ -67,16 +79,16 @@ class OffClient {
 
     _checkLimit(_searchTimes, searchesPerMinute);
     final uri = Uri.https('search.openfoodfacts.org', '/search', {
-      'q': '$cleaned countries_tags:"en:united-kingdom"',
+      'q': '$cleaned $searchFilters',
       'page_size': '$pageSize',
       'langs': 'en',
-      'fields': _fields,
+      'fields': _searchFields,
     });
     final body = await _get(uri);
     final hits = body['hits'];
     final results = hits is List
-        ? hits.map(parseOffProduct).whereType<OffProduct>().toList()
-        : const <OffProduct>[];
+        ? hits.map(parseOffSearchHit).whereType<OffSearchHit>().toList()
+        : const <OffSearchHit>[];
     _searchCache[cleaned] = results;
     return results;
   }

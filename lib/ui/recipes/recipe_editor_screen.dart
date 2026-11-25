@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/nutrition.dart';
@@ -78,8 +79,11 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       fridgeDays: fridgeDays,
       freezable: _freezable,
       method: _method.text,
+      householdId: widget.existing?.householdId,
     );
   }
+
+  bool get _shared => widget.existing?.isShared ?? false;
 
   Future<void> _addIngredient() async {
     final picked = await Navigator.of(context).push<PickedIngredient>(
@@ -135,7 +139,11 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(recipesProvider.notifier).save(draft!);
+      if (_shared) {
+        await ref.read(sharedRecipesProvider.notifier).save(draft!);
+      } else {
+        await ref.read(recipesProvider.notifier).save(draft!);
+      }
       if (mounted) Navigator.of(context).pop();
     } on Object catch (e) {
       if (mounted) showErrorSnack(context, e);
@@ -151,8 +159,11 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete this recipe?'),
-        content: const Text(
-          'Portions you’ve already logged keep their details.',
+        content: Text(
+          _shared
+              ? 'It’s deleted for everyone in the household. Portions '
+                    'already logged keep their details.'
+              : 'Portions you’ve already logged keep their details.',
         ),
         actions: [
           TextButton(
@@ -169,10 +180,36 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
     if (sure != true || !mounted) return;
     final navigator = Navigator.of(context);
     try {
-      await ref.read(recipesProvider.notifier).delete(id);
+      if (_shared) {
+        await ref.read(sharedRecipesProvider.notifier).delete(id);
+      } else {
+        await ref.read(recipesProvider.notifier).delete(id);
+      }
       navigator.pop();
     } on Object catch (e) {
       if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  /// Shares a copy of the saved recipe with the household, or copies a
+  /// shared one into the user's own recipes. Unsaved edits aren't included.
+  Future<void> _copyAcross() async {
+    final existing = widget.existing;
+    if (existing == null) return;
+    setState(() => _saving = true);
+    try {
+      final shared = ref.read(sharedRecipesProvider.notifier);
+      if (existing.isShared) {
+        await shared.copyToMine(existing);
+        if (mounted) showMessageSnack(context, 'Copied to your recipes');
+      } else {
+        await shared.share(existing);
+        if (mounted) showMessageSnack(context, 'Shared with your household');
+      }
+    } on Object catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -180,6 +217,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
+    final inHousehold = ref.watch(householdIdProvider) != null;
     final foods = {...ref.watch(foodsByIdProvider), ..._picked};
     final draft = _draft;
     final nutrition = draft == null || _ingredients.isEmpty
@@ -189,8 +227,26 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existing == null ? 'New recipe' : 'Edit recipe'),
+        title: Text(
+          widget.existing == null
+              ? 'New recipe'
+              : _shared
+              ? 'Shared recipe'
+              : 'Edit recipe',
+        ),
         actions: [
+          if (_shared)
+            IconButton(
+              tooltip: 'Copy to my recipes',
+              icon: const Icon(Icons.library_add_outlined),
+              onPressed: _saving ? null : _copyAcross,
+            )
+          else if (widget.existing != null && inHousehold)
+            IconButton(
+              tooltip: 'Share with household',
+              icon: const Icon(Icons.group_add_outlined),
+              onPressed: _saving ? null : _copyAcross,
+            ),
           if (widget.existing != null)
             IconButton(
               tooltip: 'Delete recipe',

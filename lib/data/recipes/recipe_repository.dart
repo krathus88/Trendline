@@ -3,11 +3,17 @@ import 'package:trendline/data/supabase/row_parsing.dart';
 import 'package:trendline/domain/recipe.dart';
 
 abstract interface class RecipeRepository {
-  /// All the user's recipes, by name, with their ingredients in order.
+  /// All the user's own recipes, by name, with their ingredients in order.
   Future<List<Recipe>> fetchAll();
 
+  /// The recipes shared with the user's household (none outside one).
+  Future<List<Recipe>> fetchShared();
+
   /// Saves [recipe] and its ingredients together. A recipe with an empty
-  /// [Recipe.id] is created; otherwise it's updated. Returns it as saved.
+  /// [Recipe.id] is created (shared with [Recipe.householdId] if set);
+  /// otherwise it's updated. The database swaps each ingredient for the
+  /// recipe owner's copy of its food, making one if needed. Returns it as
+  /// saved.
   Future<Recipe> save(Recipe recipe);
 
   Future<void> delete(String id);
@@ -24,13 +30,26 @@ class SupabaseRecipeRepository implements RecipeRepository {
   static const _columns =
       'id, name, method, portions, cooked_weight_g, fridge_days, freezable, '
       'origin, source_id, source_version, estimated_cooked_weight_g, listed, '
-      'recipe_ingredients(food_id, raw_grams, position)';
+      'household_id, recipe_ingredients(food_id, raw_grams, position)';
 
+  // RLS shows the household's shared recipes too, so each list says which.
   @override
   Future<List<Recipe>> fetchAll() async {
     final rows = await _db
         .from('recipes')
         .select(_columns)
+        .isFilter('household_id', null)
+        .order('name')
+        .order('position', referencedTable: 'recipe_ingredients');
+    return rows.map(recipeFromRow).toList();
+  }
+
+  @override
+  Future<List<Recipe>> fetchShared() async {
+    final rows = await _db
+        .from('recipes')
+        .select(_columns)
+        .not('household_id', 'is', null)
         .order('name')
         .order('position', referencedTable: 'recipe_ingredients');
     return rows.map(recipeFromRow).toList();
@@ -83,6 +102,7 @@ Recipe recipeFromRow(Map<String, dynamic> row) {
     sourceVersion: row['source_version'] as int?,
     estimatedCookedWeightG: readDoubleOrNull(row['estimated_cooked_weight_g']),
     listed: row['listed'] as bool? ?? true,
+    householdId: row['household_id'] as String?,
     ingredients: [
       for (final i in items)
         RecipeIngredient(
@@ -105,11 +125,13 @@ Map<String, dynamic> saveRecipeParams(Recipe r) => {
   'method': _blankToNull(r.method),
   // Kept by the database on updates; only used when the recipe is created.
   'origin': r.origin.name,
-  'source_id': r.origin == RecipeOrigin.user ? null : r.sourceId,
-  'source_version': r.origin == RecipeOrigin.user ? null : r.sourceVersion,
+  'source_id': r.origin.hasSource ? r.sourceId : null,
+  'source_version': r.origin.hasSource ? r.sourceVersion : null,
   'estimated_cooked_weight_g': r.estimatedCookedWeightG == null
       ? null
       : (r.estimatedCookedWeightG! * 10).round() / 10,
+  // Only used when the recipe is created; a recipe never changes owner.
+  'household_id': r.householdId,
   'ingredients': [
     for (final i in r.ingredients)
       {'food_id': i.foodId, 'raw_grams': (i.rawGrams * 10).round() / 10},

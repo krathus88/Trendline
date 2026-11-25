@@ -6,13 +6,18 @@ import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/recipe_library.dart';
 
-/// Meals the planner fills with dishes. Snacks hold rule items (a daily
-/// yoghurt, a piece of fruit) rather than cooked dishes.
+/// Meals the planner fills with cooked dishes, batch-cooked across days.
 const List<MealSlot> dishMeals = [
   MealSlot.breakfast,
   MealSlot.lunch,
   MealSlot.dinner,
 ];
+
+/// Every meal the planner fills: the cooked ones, plus a snack a day from
+/// no-cook snack dishes (yogurt with berries), which are never batched. A
+/// snack only appears when there are snack candidates, and a meal rule
+/// placed in the snack (a daily yogurt) takes its place.
+const List<MealSlot> plannedMeals = [...dishMeals, MealSlot.snack];
 
 /// A day's targets for the plan.
 @immutable
@@ -90,10 +95,20 @@ class DishCandidate {
 /// A meal rule with what the planner needs to place it.
 @immutable
 class PlannerRule {
-  const new({required this.rule, required this.name, required this.perUnit});
+  const new({
+    required this.rule,
+    required this.name,
+    required this.perUnit,
+    this.isMeal = false,
+  });
 
   final MealRule rule;
   final String name;
+
+  /// The item is a meal in itself (a recipe that's a dish), so where it's
+  /// placed the planner adds no other dish. False for foods and for mixes
+  /// (a coffee made with milk), which go alongside the meal's dish.
+  final bool isMeal;
 
   /// Nutrition per gram (a food) or per portion (a recipe).
   final Nutrition perUnit;
@@ -230,10 +245,12 @@ const double _wRepeatBatch = 0.3;
 const double _wCookSession = 0.08;
 const double _wPreference = 0.25;
 const double _wRuleBroken = 5;
+const double _wRepeatSnack = 0.15;
 
 /// Plans [input]'s days: dishes for breakfast, lunch and dinner, cooked in
-/// batches that keep, plus the rule items; amounts fitted to each day's
-/// targets. [random] drives the search, so a seed gives the same plan.
+/// batches that keep, a snack a day when there are snack dishes, plus the
+/// rule items; amounts fitted to each day's targets. [random] drives the
+/// search, so a seed gives the same plan.
 ///
 /// Rules: daily ones go in every day; "at least" ones count dishes that
 /// contain the food or recipe, and the planner places the item itself only
@@ -242,7 +259,7 @@ const double _wRuleBroken = 5;
 WeekPlan planWeek(PlannerInput input, Random random) {
   final days = input.days;
   final dishesBySlot = {
-    for (final slot in dishMeals)
+    for (final slot in plannedMeals)
       slot: [
         for (final d in input.dishes)
           if (d.meals.contains(slot)) d,
@@ -250,8 +267,8 @@ WeekPlan planWeek(PlannerInput input, Random random) {
   };
   final byKey = {for (final d in input.dishes) d.key: d};
 
-  // Days already taken in each dish meal (a locked dish, or a recipe placed
-  // by a rule).
+  // Days already taken in each dish meal (a locked dish, or a dish recipe
+  // placed by a rule; not a food or a mix, which go alongside a dish).
   final fixed = <PlannedItem>[...input.locked];
   final notes = <String>[];
   for (final r in input.rules) {
@@ -262,18 +279,26 @@ WeekPlan planWeek(PlannerInput input, Random random) {
       fixed.add(_ruleItem(r, d, slot));
     }
   }
+  final mealTargets = {
+    for (final r in input.rules)
+      if (r.isMeal) r.target,
+  };
   bool taken(MealSlot slot, int day) => fixed.any(
-    (i) => i.day == day && i.slot == slot && (i.isDish || i.isPortions),
+    (i) =>
+        i.day == day &&
+        i.slot == slot &&
+        // Anything already in the snack (a daily yogurt) is the snack.
+        (slot == MealSlot.snack || i.isDish || mealTargets.contains(i.key)),
   );
 
-  // The search state: for each dish meal, a dish key per day (null: free
-  // and empty, or taken).
+  // The search state: for each meal, a dish key per day (null: free and
+  // empty, or taken).
   final assign = {
-    for (final slot in dishMeals) slot: List<String?>.filled(days, null),
+    for (final slot in plannedMeals) slot: List<String?>.filled(days, null),
   };
 
   // Greedy start: fill each meal with runs of dishes that keep.
-  for (final slot in dishMeals) {
+  for (final slot in plannedMeals) {
     final options = dishesBySlot[slot]!;
     if (options.isEmpty) continue;
     var d = 0;
@@ -296,7 +321,7 @@ WeekPlan planWeek(PlannerInput input, Random random) {
 
   // Simulated annealing: change a run of days in one meal to another dish.
   final free = [
-    for (final slot in dishMeals)
+    for (final slot in plannedMeals)
       if (dishesBySlot[slot]!.isNotEmpty)
         for (var d = 0; d < days; d++)
           if (!taken(slot, d)) (slot: slot, day: d),
@@ -375,6 +400,7 @@ WeekPlan planWeek(PlannerInput input, Random random) {
       );
     }
   }
+  // A snack is optional (snacks may be off), so an empty one isn't noted.
   for (final slot in dishMeals) {
     if (dishesBySlot[slot]!.isEmpty &&
         !List.generate(days, (d) => taken(slot, d)).every((t) => t)) {
@@ -531,6 +557,16 @@ double _cost(
   }
   for (final n in perDish.values) {
     cost += _wRepeatBatch * (n - 1);
+  }
+  // Snacks aren't batched: variety comes from not repeating one too often.
+  final perSnack = <String, int>{};
+  for (final i in items) {
+    if (i.slot == MealSlot.snack && i.isDish) {
+      perSnack[i.key] = (perSnack[i.key] ?? 0) + 1;
+    }
+  }
+  for (final n in perSnack.values) {
+    cost += _wRepeatSnack * (n - 1);
   }
   for (final r in input.rules) {
     final have = _count(items, r.target, byKey);

@@ -122,6 +122,39 @@ void main() {
     }, reason: 'the user’s copy of the yogurt counts for rules about it');
   });
 
+  test('a mix is never a dish, but a meal rule can still place it', () {
+    const latte = Recipe(
+      id: 'r-latte',
+      name: 'Coffee with yogurt',
+      portions: 1,
+      cookedWeightG: 215,
+      fridgeDays: 0,
+      freezable: false,
+      origin: RecipeOrigin.mix,
+      ingredients: [RecipeIngredient(foodId: 'f-yog', rawGrams: 200)],
+    );
+    final c = buildCatalogue(
+      _sources(
+        recipes: [latte],
+        rules: const [
+          MealRule(
+            id: 'm1',
+            recipeId: 'r-latte',
+            slot: MealSlot.breakfast,
+            frequency: RuleFrequency.daily,
+            amountMin: 1,
+            amountMax: 1,
+          ),
+        ],
+      ),
+    );
+    expect(c.dishes.map((d) => d.key), isNot(contains('recipe:r-latte')));
+    final rule = c.rules.single;
+    expect(rule.name, 'Coffee with yogurt');
+    expect(rule.perUnit.kcal, closeTo(266, 0.01));
+    expect(rule.isMeal, isFalse, reason: 'it goes beside breakfast');
+  });
+
   test('a library recipe already copied is offered as the copy', () {
     final c = buildCatalogue(
       _sources(
@@ -200,6 +233,8 @@ void main() {
     expect(yogurt.name, 'Greek style yogurt, plain');
     expect(yogurt.perUnit.proteinG, closeTo(0.057, 1e-9));
     expect(c.rules.last.perUnit.kcal, closeTo(212, 0.01));
+    expect(yogurt.isMeal, isFalse, reason: 'a food goes beside a dish');
+    expect(c.rules.last.isMeal, isTrue, reason: 'the stew is a meal');
   });
 
   test('plan rows round-trip', () {

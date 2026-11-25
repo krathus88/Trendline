@@ -33,6 +33,41 @@ class OffProduct {
   );
 }
 
+/// One text-search result. The search service doesn't return nutrition
+/// (its index has names, brands and barcodes), so [product] is usually null
+/// and the nutrition is read by barcode when the user picks the hit.
+class OffSearchHit {
+  const new({
+    required this.barcode,
+    required this.name,
+    this.brand,
+    this.product,
+  });
+
+  final String barcode;
+  final String name;
+  final String? brand;
+
+  /// The full product, when the hit already carried usable nutrition.
+  final OffProduct? product;
+}
+
+/// Parses one search hit: a barcode and a name are enough. Untrusted like
+/// any Open Food Facts data, so text is cleaned and capped, and nutrition is
+/// only kept if [parseOffProduct] accepts it.
+OffSearchHit? parseOffSearchHit(Object? json) {
+  if (json is! Map<String, dynamic>) return null;
+  final barcode = _barcode(json['code']);
+  final name = _text(json['product_name_en']) ?? _text(json['product_name']);
+  if (barcode == null || name == null) return null;
+  return OffSearchHit(
+    barcode: barcode,
+    name: name,
+    brand: _brand(json['brands']),
+    product: json.containsKey('nutriments') ? parseOffProduct(json) : null,
+  );
+}
+
 const int _maxTextLength = 200;
 const double _kjPerKcal = 4.184;
 
@@ -110,11 +145,15 @@ String? _text(Object? value) {
 }
 
 /// `brands` is a comma-separated string on product pages and a list in
-/// search results. The first brand is the main one.
+/// search results, where entries can be tags with a language prefix
+/// (`xx:nescafe`). The first brand is the main one.
 String? _brand(Object? value) {
   final first = switch (value) {
     final String s => s.split(',').first,
-    final List<dynamic> l when l.isNotEmpty => l.first,
+    final List<dynamic> l when l.isNotEmpty => switch (l.first) {
+      final String s => s.replaceFirst(RegExp('^[a-z]{2}:'), ''),
+      _ => null,
+    },
     _ => null,
   };
   return _text(first);

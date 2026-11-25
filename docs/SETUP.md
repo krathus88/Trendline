@@ -82,3 +82,26 @@ Trendline can import weight, body fat and lean mass that your scale's app saves 
 2. In Trendline: **Settings > Health Connect > Connect**, then allow weight (and body fat and lean mass if your scale measures them) and access to past data.
 
 Trendline only reads from Health Connect. Withdraw access at any time from **Settings > Health Connect > Disconnect** or from Health Connect itself; readings already imported stay in your account.
+
+## 10. Windows desktop (optional)
+
+The same app runs on Windows, without Health Connect and barcode scanning (search and manual entry still work). It uses the same Supabase project and the same redirect URL, so there's nothing to change in the dashboard.
+
+1. Turn on **Developer Mode** (Settings > System > For developers). Flutter needs it to build apps with plugins.
+2. Install Visual Studio with the **Desktop development with C++** workload.
+3. Run or build:
+
+   ```sh
+   flutter run -d windows --dart-define-from-file=dart_defines.json
+   flutter build windows --release --dart-define-from-file=dart_defines.json
+   ```
+
+   The release app is in `build\windows\x64\runner\Release\` (copy the whole folder, not just the `.exe`).
+
+Each time it starts, the app registers the `com.krathus.trendline://` link for your Windows user (under `HKCU\Software\Classes`, no admin rights needed), so Discord sign-in in the browser can return to it. The most recently started copy of the app owns the link: if you switch between a debug and a release build, sign in from the one you started last. Only one window runs at a time; opening the app again brings the running one to the front.
+
+To remove the link registration after deleting the app:
+
+```sh
+reg delete "HKCU\Software\Classes\com.krathus.trendline" /f
+```

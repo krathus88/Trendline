@@ -23,7 +23,19 @@ class RecipeIngredient {
 }
 
 /// Where a recipe came from.
-enum RecipeOrigin { user, library, template }
+/// Where a recipe came from: entered by the user, copied from the library or
+/// a template, or a [mix]: a food made up with others (a coffee sachet with
+/// milk) as one portion. Mixes are logged and placed by meal rules like any
+/// recipe, but the planner never picks them as a meal's dish.
+enum RecipeOrigin {
+  user,
+  library,
+  template,
+  mix;
+
+  /// Library and template copies remember their source; nothing else has one.
+  bool get hasSource => this == library || this == template;
+}
 
 /// A batch-cookable recipe. Portions are eaten in cooked grams, measured
 /// against the batch's [cookedWeightG] once the user has weighed it.
@@ -43,6 +55,7 @@ class Recipe {
     this.sourceVersion,
     this.estimatedCookedWeightG,
     this.listed = true,
+    this.householdId,
   });
 
   static const int maxPortions = 50;
@@ -76,6 +89,12 @@ class Recipe {
   /// aren't, until the user keeps them.
   final bool listed;
 
+  /// The household it's shared with; null for the user's own recipe. Set
+  /// when it's created (sharing saves a copy) and never changed.
+  final String? householdId;
+
+  bool get isShared => householdId != null;
+
   Recipe withListed(bool listed) => Recipe(
     id: id,
     name: name,
@@ -90,6 +109,25 @@ class Recipe {
     sourceVersion: sourceVersion,
     estimatedCookedWeightG: estimatedCookedWeightG,
     listed: listed,
+    householdId: householdId,
+  );
+
+  /// A new, unsaved copy owned by [householdId] (null: the user's own). The
+  /// database swaps each ingredient for the new owner's copy of its food.
+  Recipe copyFor(String? householdId) => Recipe(
+    id: '',
+    name: name,
+    ingredients: ingredients,
+    portions: portions,
+    cookedWeightG: cookedWeightG,
+    fridgeDays: fridgeDays,
+    freezable: freezable,
+    method: method,
+    origin: origin,
+    sourceId: sourceId,
+    sourceVersion: sourceVersion,
+    estimatedCookedWeightG: estimatedCookedWeightG,
+    householdId: householdId,
   );
 
   double get rawWeightG => ingredients.fold(0, (sum, i) => sum + i.rawGrams);

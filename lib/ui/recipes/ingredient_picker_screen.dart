@@ -10,10 +10,19 @@ import 'package:trendline/ui/food/portion_sheet.dart';
 /// A chosen ingredient: the (saved) food and its raw grams.
 typedef PickedIngredient = ({Food food, RecipeIngredient ingredient});
 
-/// Pick a food and its raw amount for a recipe. Pops with a
-/// [PickedIngredient], or null if cancelled.
+/// Pick a food and its raw amount for a recipe (or for what a food is made
+/// with). Pops with a [PickedIngredient], or null if cancelled.
 class IngredientPickerScreen extends ConsumerStatefulWidget {
-  const new({super.key});
+  const new({
+    super.key,
+    this.title = 'Add ingredient',
+    this.amountHint = 'Raw weight, before cooking',
+    this.actionLabel = 'Add to recipe',
+  });
+
+  final String title;
+  final String amountHint;
+  final String actionLabel;
 
   @override
   ConsumerState<IngredientPickerScreen> createState() =>
@@ -30,10 +39,10 @@ class _IngredientPickerScreenState
       context,
       builder: (_) => PortionSheet(
         title: choice.name,
-        subtitle: 'Raw weight, before cooking',
+        subtitle: widget.amountHint,
         per100g: choice.per100g,
         servingG: choice.servingG,
-        actionLabel: 'Add to recipe',
+        actionLabel: widget.actionLabel,
       ),
     );
     if (result is! PortionGrams || !mounted) return;
@@ -62,7 +71,7 @@ class _IngredientPickerScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add ingredient'),
+        title: Text(widget.title),
         bottom: _saving
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
@@ -70,7 +79,8 @@ class _IngredientPickerScreenState
               )
             : null,
       ),
-      body: FoodBrowser(onChosen: _onChosen),
+      // An ingredient is a plain food, so "Made with" isn't offered here.
+      body: FoodBrowser(onChosen: _onChosen, allowMix: false),
     );
   }
 }

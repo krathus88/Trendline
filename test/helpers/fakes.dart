@@ -6,6 +6,7 @@ import 'package:trendline/data/food_logs/food_log_repository.dart';
 import 'package:trendline/data/foods/food_repository.dart';
 import 'package:trendline/data/foods/reference_food_repository.dart';
 import 'package:trendline/data/goals/goal_repository.dart';
+import 'package:trendline/data/households/household_repository.dart';
 import 'package:trendline/data/meal_rules/meal_rule_repository.dart';
 import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/plans/meal_plan_repository.dart';
@@ -22,6 +23,7 @@ import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/health_import.dart';
+import 'package:trendline/domain/household.dart';
 import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/prep.dart';
@@ -156,8 +158,14 @@ class FakeFoodRepository implements FoodRepository {
   int saves = 0;
   int _next = 0;
 
+  /// The household's shared foods.
+  final shared = <Food>[];
+
   @override
   Future<List<Food>> fetchAll() async => List.of(items);
+
+  @override
+  Future<List<Food>> fetchShared() async => List.of(shared);
 
   @override
   Future<Food> save(FoodDraft d) async {
@@ -195,7 +203,16 @@ class FakeRecipeRepository implements RecipeRepository {
   int _next = 0;
 
   @override
-  Future<List<Recipe>> fetchAll() async => List.of(items);
+  Future<List<Recipe>> fetchAll() async => [
+    for (final r in items)
+      if (!r.isShared) r,
+  ];
+
+  @override
+  Future<List<Recipe>> fetchShared() async => [
+    for (final r in items)
+      if (r.isShared) r,
+  ];
 
   @override
   Future<Recipe> save(Recipe r) async {
@@ -214,6 +231,9 @@ class FakeRecipeRepository implements RecipeRepository {
       sourceVersion: r.sourceVersion,
       estimatedCookedWeightG: r.estimatedCookedWeightG,
       listed: r.listed,
+      householdId: r.id.isEmpty
+          ? r.householdId
+          : items.firstWhere((x) => x.id == r.id).householdId,
     );
     items
       ..removeWhere((x) => x.id == saved.id)
@@ -694,3 +714,116 @@ class FakeEnergyRepository implements EnergyRepository {
 /// An [OffClient] whose HTTP calls are answered by [handler].
 OffClient fakeOffClient(Future<http.Response> Function(http.Request) handler) =>
     OffClient(userAgent: 'Trendline/test', httpClient: MockClient(handler));
+
+/// One household in memory, as seen by [me]. Invite codes are made as
+/// ABCDE2345n; [validCodes] are codes others made that [join] accepts.
+class FakeHouseholdRepository implements HouseholdRepository {
+  new({this.me = 'user-1'});
+
+  final String me;
+  Household? household;
+  final validCodes = <String>{};
+  int _next = 0;
+
+  @override
+  Future<Household?> fetch() async => household;
+
+  @override
+  Future<String> create({
+    required String name,
+    required String displayName,
+  }) async {
+    if (household != null) throw HouseholdError.alreadyMember;
+    household = Household(
+      id: 'h${_next++}',
+      name: name.trim(),
+      members: [
+        HouseholdMember(
+          userId: me,
+          displayName: displayName.trim(),
+          isOwner: true,
+          joinedAt: DateTime(2026),
+        ),
+      ],
+    );
+    return household!.id;
+  }
+
+  @override
+  Future<String> join({
+    required String code,
+    required String displayName,
+  }) async {
+    if (household != null) throw HouseholdError.alreadyMember;
+    if (!validCodes.remove(code)) throw HouseholdError.badInvite;
+    household = Household(
+      id: 'h${_next++}',
+      name: 'Joined home',
+      members: [
+        HouseholdMember(
+          userId: 'owner',
+          displayName: 'Owner',
+          isOwner: true,
+          joinedAt: DateTime(2025),
+        ),
+        HouseholdMember(
+          userId: me,
+          displayName: displayName.trim(),
+          isOwner: false,
+          joinedAt: DateTime(2026),
+        ),
+      ],
+    );
+    return household!.id;
+  }
+
+  @override
+  Future<HouseholdInvite> createInvite(String householdId) async {
+    final h = household!;
+    final invite = HouseholdInvite(
+      code: 'ABCDE2345${_next++ % 10}'
+          .replaceAll('0', 'Z')
+          .replaceAll('1', 'Y'),
+      expiresAt: DateTime.now().add(const Duration(days: 2)),
+    );
+    household = Household(
+      id: h.id,
+      name: h.name,
+      members: h.members,
+      invites: [...h.invites, invite],
+    );
+    return invite;
+  }
+
+  @override
+  Future<void> withdrawInvite(String code) async {
+    final h = household!;
+    household = Household(
+      id: h.id,
+      name: h.name,
+      members: h.members,
+      invites: [
+        for (final i in h.invites)
+          if (i.code != code) i,
+      ],
+    );
+  }
+
+  @override
+  Future<void> removeMember(String userId) async {
+    final h = household!;
+    if (userId == me) {
+      household = null;
+      return;
+    }
+    household = Household(
+      id: h.id,
+      name: h.name,
+      members: [
+        for (final m in h.members)
+          if (m.userId != userId) m,
+      ],
+      invites: h.invites,
+    );
+  }
+}

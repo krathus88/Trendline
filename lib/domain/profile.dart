@@ -14,6 +14,7 @@ class Profile {
     required this.disclaimerAcceptedAt,
     this.useLeanMass = false,
     this.strengthTraining = false,
+    this.planSnacks = true,
     this.healthScreenedAt,
   });
 
@@ -30,6 +31,9 @@ class Profile {
   /// Does regular strength (weights or resistance) training. Raises the
   /// protein target, since training is what builds and keeps muscle.
   final bool strengthTraining;
+
+  /// Whether week plans include a snack each day.
+  final bool planSnacks;
   final DateTime disclaimerAcceptedAt;
 
   /// When the user confirmed that none of the conditions needing medical
@@ -52,6 +56,7 @@ class Profile {
     WeightUnit? weightUnit,
     bool? useLeanMass,
     bool? strengthTraining,
+    bool? planSnacks,
     DateTime? healthScreenedAt,
   }) => Profile(
     sex: sex ?? this.sex,
@@ -61,6 +66,7 @@ class Profile {
     weightUnit: weightUnit ?? this.weightUnit,
     useLeanMass: useLeanMass ?? this.useLeanMass,
     strengthTraining: strengthTraining ?? this.strengthTraining,
+    planSnacks: planSnacks ?? this.planSnacks,
     disclaimerAcceptedAt: disclaimerAcceptedAt,
     healthScreenedAt: healthScreenedAt ?? this.healthScreenedAt,
   );

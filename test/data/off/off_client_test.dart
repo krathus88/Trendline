@@ -42,26 +42,65 @@ void main() {
   }
 
   group('search', () {
-    test('searches UK products and parses usable hits', () async {
+    test('searches UK products with nutrition filled in', () async {
+      // The search index has no nutriments: hits are barcode, name, brands.
       final off = client(
         (_) => json({
           'hits': [
-            _milk,
-            {'code': '1', 'product_name': 'broken'},
+            {
+              'code': '01219494',
+              'product_name': 'Semi skimmed milk',
+              'brands': ["Sainsbury's"],
+            },
+            {
+              'code': '7613034310156',
+              'product_name': 'Cappuccino Skinny',
+              'brands': ['xx:nescafe'],
+            },
+            {'code': '1', 'product_name': 'bad barcode'},
+            {'code': '01219495'},
           ],
         }),
       );
 
       final results = await off.search('semi skimmed milk');
 
-      expect(results.single.name, 'Semi skimmed milk');
+      expect(results, hasLength(2));
+      final hit = results.first;
+      expect(hit.barcode, '01219494');
+      expect(hit.name, 'Semi skimmed milk');
+      expect(hit.brand, "Sainsbury's");
+      expect(hit.product, isNull);
+      expect(results.last.brand, 'nescafe', reason: 'tag prefix dropped');
       final uri = requests.single.url;
       expect(uri.host, 'search.openfoodfacts.org');
       expect(
         uri.queryParameters['q'],
-        'semi skimmed milk countries_tags:"en:united-kingdom"',
+        'semi skimmed milk countries:"en:united-kingdom" '
+        'states:"en:nutrition-facts-completed"',
       );
+      expect(uri.queryParameters['fields'], isNot(contains('nutriments')));
       expect(requests.single.headers['User-Agent'], 'Trendline/0.1.0 (test)');
+    });
+
+    test('keeps nutrition a hit happens to carry, if usable', () async {
+      final off = client(
+        (_) => json({
+          'hits': [
+            _milk,
+            {
+              ..._milk,
+              'code': '01219495',
+              'nutriments': {'energy-kcal_100g': 9000},
+            },
+          ],
+        }),
+      );
+
+      final results = await off.search('milk');
+
+      expect(results.first.product?.per100g.kcal, 50);
+      expect(results.last.product, isNull, reason: 'implausible values');
     });
 
     test('caches results for the same query', () async {

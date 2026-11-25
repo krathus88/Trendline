@@ -151,7 +151,7 @@ select throws_ok(
     set eater_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     where day = '2026-12-08'$$,
   '42501', null,
-  'portions are eaten by their owner until households exist'
+  'portions are eaten by their owner until shared plans exist'
 );
 
 -- ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/trend.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
+import 'package:trendline/ui/common/desktop.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/progress/energy_card.dart';
@@ -57,8 +58,8 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
     }
   }
 
-  /// Pull to refresh: imports from Health Connect if connected, otherwise
-  /// reloads from the server.
+  /// Pull to refresh (the refresh button on desktop): imports from Health
+  /// Connect if connected, otherwise reloads from the server.
   Future<void> _refresh() async {
     final health = ref.read(healthSyncProvider).value;
     try {
@@ -76,7 +77,10 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
     final weighIns = ref.watch(weighInsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Progress')),
+      appBar: AppBar(
+        title: const Text('Progress'),
+        actions: [RefreshAction(onRefresh: _refresh)],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addWeighIn,
         icon: const Icon(Icons.add),

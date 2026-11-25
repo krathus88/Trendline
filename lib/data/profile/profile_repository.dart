@@ -18,8 +18,8 @@ class SupabaseProfileRepository implements ProfileRepository {
 
   static const _columns =
       'sex, birth_year, height_cm, activity_level, weight_unit, '
-      'use_lean_mass, strength_training, disclaimer_accepted_at, '
-      'health_screened_at';
+      'use_lean_mass, strength_training, plan_snacks, '
+      'disclaimer_accepted_at, health_screened_at';
 
   @override
   Future<Profile?> fetch() async {
@@ -47,6 +47,7 @@ Profile profileFromRow(Map<String, dynamic> row) => Profile(
   weightUnit: weightUnitFromDb(row['weight_unit'] as String),
   useLeanMass: row['use_lean_mass'] as bool? ?? false,
   strengthTraining: row['strength_training'] as bool? ?? false,
+  planSnacks: row['plan_snacks'] as bool? ?? true,
   disclaimerAcceptedAt: readDateTime(row['disclaimer_accepted_at']),
   healthScreenedAt: row['health_screened_at'] == null
       ? null
@@ -61,6 +62,7 @@ Map<String, dynamic> profileToRow(Profile p) => {
   'weight_unit': weightUnitToDb(p.weightUnit),
   'use_lean_mass': p.useLeanMass,
   'strength_training': p.strengthTraining,
+  'plan_snacks': p.planSnacks,
   'disclaimer_accepted_at': writeTimestamp(p.disclaimerAcceptedAt),
   'health_screened_at': switch (p.healthScreenedAt) {
     final at? => writeTimestamp(at),

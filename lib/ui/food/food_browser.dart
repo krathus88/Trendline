@@ -61,12 +61,21 @@ class NewFood extends FoodChoice {
 /// Saved foods and basic foods (both as you type), Open Food Facts search (on
 /// submit, to respect their rate limit), barcode scanning and manual entry.
 class FoodBrowser extends ConsumerStatefulWidget {
-  const new({required this.onChosen, super.key, this.onRecipeChosen});
+  const new({
+    required this.onChosen,
+    super.key,
+    this.onRecipeChosen,
+    this.allowMix = true,
+  });
 
   final ValueChanged<FoodChoice> onChosen;
 
-  /// When set, the user's recipes are listed too (for logging a portion).
+  /// When set, the user's recipes are listed too (for logging a portion or
+  /// a meal rule). A mix made in "Enter from label" is chosen through it.
   final ValueChanged<Recipe>? onRecipeChosen;
+
+  /// Whether "Enter from label" offers "Made with" (saving a mix).
+  final bool allowMix;
 
   @override
   ConsumerState<FoodBrowser> createState() => _FoodBrowserState();
@@ -77,10 +86,13 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
   String _filter = '';
 
   String? _searchedFor;
-  List<OffProduct>? _results;
+  List<OffSearchHit>? _results;
   Object? _searchError;
   bool _searching = false;
   bool _scanning = false;
+
+  /// The search hit whose nutrition is being read, if any.
+  String? _opening;
 
   /// Basic foods (CoFID) for [_basicFor], searched as the user types.
   static const _basicDebounce = Duration(milliseconds: 300);
@@ -184,11 +196,61 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
     }
   }
 
+  /// Search hits have no nutrition: read it by barcode (or reuse the saved
+  /// copy). Without usable nutrition, opens manual entry with the barcode.
+  Future<void> _chooseHit(OffSearchHit hit) async {
+    if (_opening != null) return;
+    final saved = ref.read(foodsProvider.notifier).byBarcode(hit.barcode);
+    if (saved != null) {
+      widget.onChosen(SavedFood(saved));
+      return;
+    }
+    final known = hit.product;
+    if (known != null) {
+      widget.onChosen(NewFood(known.toDraft()));
+      return;
+    }
+
+    setState(() => _opening = hit.barcode);
+    try {
+      final product = await ref.read(offClientProvider).lookup(hit.barcode);
+      if (!mounted) return;
+      if (product != null) {
+        widget.onChosen(NewFood(product.toDraft()));
+      } else {
+        showMessageSnack(
+          context,
+          'Open Food Facts has no usable nutrition for this product. '
+          'Enter it from the label.',
+        );
+        await _addManually(barcode: hit.barcode);
+      }
+    } on Object catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _opening = null);
+    }
+  }
+
   Future<void> _addManually({String? barcode}) async {
-    final food = await Navigator.of(context).push<Food>(
-      MaterialPageRoute(builder: (_) => ManualFoodScreen(barcode: barcode)),
+    final result = await Navigator.of(context).push<ManualFoodResult>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ManualFoodScreen(barcode: barcode, allowMix: widget.allowMix),
+      ),
     );
-    if (food != null && mounted) widget.onChosen(SavedFood(food));
+    if (result == null || !mounted) return;
+    final mix = result.mix;
+    final onRecipe = widget.onRecipeChosen;
+    // A mix is what's eaten, so it's what gets logged or ruled on.
+    if (mix != null && onRecipe != null) {
+      onRecipe(mix);
+      return;
+    }
+    if (mix != null) {
+      showMessageSnack(context, 'Also saved “${mix.name}” in Recipes.');
+    }
+    widget.onChosen(SavedFood(result.food));
   }
 
   @override
@@ -315,12 +377,11 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
                   'without full nutrition are hidden.',
             )
           else
-            for (final p in _results!)
-              _FoodTile(
-                name: p.name,
-                brand: p.brand,
-                per100g: p.per100g,
-                onTap: () => widget.onChosen(NewFood(p.toDraft())),
+            for (final h in _results!)
+              _HitTile(
+                hit: h,
+                opening: _opening == h.barcode,
+                onTap: () => _chooseHit(h),
               ),
           Padding(
             padding: const EdgeInsets.all(Space.gutter),
@@ -403,6 +464,41 @@ class _Header extends StatelessWidget {
     ),
     child: Text(label, style: Theme.of(context).textTheme.labelMedium),
   );
+}
+
+/// An Open Food Facts search hit. Its nutrition is read when tapped, so it
+/// shows kcal only if the hit already had them.
+class _HitTile extends StatelessWidget {
+  const new({required this.hit, required this.opening, required this.onTap});
+
+  final OffSearchHit hit;
+  final bool opening;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final per100g = hit.product?.per100g;
+    if (per100g != null && !opening) {
+      return _FoodTile(
+        name: hit.name,
+        brand: hit.brand,
+        per100g: per100g,
+        onTap: onTap,
+      );
+    }
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      title: Text(hit.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: hit.brand == null ? null : Text(hit.brand!, maxLines: 1),
+      trailing: opening
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(Icons.chevron_right, color: context.colors.textTertiary),
+      onTap: onTap,
+    );
+  }
 }
 
 class _FoodTile extends StatelessWidget {

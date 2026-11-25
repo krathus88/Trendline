@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/schedule/schedule_notifier.dart';
+import 'package:trendline/data/setup/setup_status.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/nutrition.dart';
@@ -11,6 +12,7 @@ import 'package:trendline/domain/schedule.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/prep/prep_screen.dart';
+import 'package:trendline/ui/setup/setup_checklist.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
@@ -46,6 +48,22 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   DateTime get _weekStart {
     final thisWeek = weekStartOf(DateTime.now());
     return _nextWeek ? addDays(thisWeek, 7) : thisWeek;
+  }
+
+  /// Makes the plan, or first shows the setup checklist if something the
+  /// plan needs (a weigh-in, say) is missing; planning goes ahead from its
+  /// button once it's all done.
+  Future<void> _generate(PlanNotifier notifier) async {
+    final status = await ref.read(setupStatusProvider.future);
+    if (!mounted) return;
+    if (!status.canPlan) {
+      final go = await showSetupSheet(
+        context,
+        planLabel: _nextWeek ? 'Plan next week' : 'Plan this week',
+      );
+      if (go != true || !mounted) return;
+    }
+    await _run(notifier.generate);
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -118,9 +136,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                       'sizes portions to your targets.',
                 ),
                 FilledButton.icon(
-                  onPressed: _busy ? null : () => _run(notifier.generate),
+                  onPressed: _busy ? null : () => _generate(notifier),
                   icon: const Icon(Icons.auto_awesome_outlined),
-                  label: const Text('Plan this week'),
+                  label: Text(_nextWeek ? 'Plan next week' : 'Plan this week'),
+                ),
+                const SizedBox(height: Space.sm),
+                TextButton(
+                  onPressed: () => showSetupSheet(context),
+                  child: const Text('Setup checklist'),
                 ),
               ],
             ),

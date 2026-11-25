@@ -61,7 +61,8 @@ class PlannerCatalogue {
 /// Turns [s] into planner candidates:
 ///
 /// * the user's listed recipes (in the meals of the library recipe or
-///   template they came from; lunch and dinner for their own);
+///   template they came from; lunch and dinner for their own), except
+///   mixes, which only meal rules place;
 /// * library recipes they haven't copied yet;
 /// * [variants] dishes per template and flavour, made under their
 ///   preferences.
@@ -108,15 +109,16 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
     for (final t in s.templates?.templates ?? const <DishTemplate>[]) t.id: t,
   };
 
-  // The user's recipes.
+  // The user's recipes. Mixes (a sachet with milk) aren't dishes: only meal
+  // rules place them.
   for (final r in s.recipes) {
-    if (!r.listed) continue;
+    if (!r.listed || r.origin == RecipeOrigin.mix) continue;
     final n = recipeNutrition(r, s.foods);
     if (!n.complete || r.ingredients.isEmpty) continue;
     final meals = switch (r.origin) {
       RecipeOrigin.library => libraryById[r.sourceId]?.meals,
       RecipeOrigin.template => templatesById[r.sourceId]?.meals,
-      RecipeOrigin.user => null,
+      RecipeOrigin.user || RecipeOrigin.mix => null,
     };
     dishes.add(
       DishCandidate(
@@ -171,9 +173,12 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
       for (final e in s.templateFoods.entries) e.key: e.value.per100g.kcal,
     };
     for (final t in templates.templates) {
-      for (final flavour in t.flavourIds) {
+      // No-cook snacks have no flavours; they get more variants instead, as
+      // they're eaten one serving at a time and repeat sooner.
+      for (final flavour in t.flavourIds.isEmpty ? [null] : t.flavourIds) {
         final names = <String>{};
-        for (var v = 0; v < variants; v++) {
+        final count = t.noCook ? variants * 3 : variants;
+        for (var v = 0; v < count; v++) {
           final result = generateDish(
             t,
             templates.flavours,
@@ -186,7 +191,7 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
           final perPortion = perPortionOf(recipe, s.templateFoods);
           final weight = weightOf(recipe.ingredients, recipe.cuisine);
           if (perPortion == null || weight <= 0) continue;
-          final key = 'template:${t.id}:$flavour:$v';
+          final key = 'template:${t.id}:${flavour ?? 'plain'}:$v';
           generated[key] = (
             dish: result,
             expectedCookedG: result.expectedCookedWeightG(kcal),
@@ -198,11 +203,13 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
               kind: CandidateKind.template,
               meals: t.meals,
               perPortion: perPortion,
-              maxServingsPerBatch: 6,
+              // Made fresh each time: never batched, never prepped.
+              maxServingsPerBatch: t.noCook ? 1 : 6,
               keepsDays: t.fridgeDays,
               cuisine: recipe.cuisine,
               preference: weight,
               contains: containsBasic(recipe.ingredients, s.templateFoods),
+              maxServing: t.noCook ? 1.5 : 1.75,
             ),
           );
         }
@@ -219,7 +226,15 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
       if (r == null) continue;
       final n = recipeNutrition(r, s.foods);
       if (!n.complete) continue;
-      rules.add(PlannerRule(rule: rule, name: r.name, perUnit: n.perPortion));
+      rules.add(
+        PlannerRule(
+          rule: rule,
+          name: r.name,
+          perUnit: n.perPortion,
+          // A mix (coffee with milk) goes alongside the meal's dish.
+          isMeal: r.origin != RecipeOrigin.mix,
+        ),
+      );
     } else {
       final f = s.foods[rule.foodId];
       if (f == null) continue;
