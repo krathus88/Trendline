@@ -16,7 +16,6 @@ import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/goals/goal_screen.dart';
 import 'package:trendline/ui/household/household_screen.dart';
-import 'package:trendline/ui/meal_rules/meal_rules_screen.dart';
 import 'package:trendline/ui/preferences/food_preferences_screen.dart';
 import 'package:trendline/ui/privacy/your_data_screen.dart';
 import 'package:trendline/ui/profile/profile_form_screen.dart';
@@ -95,15 +94,6 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) => const DayScheduleScreen(),
               ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.rule),
-            title: const Text('Meal rules'),
-            subtitle: const Text('Things you always or often have'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const MealRulesScreen()),
             ),
           ),
           if (profile != null)

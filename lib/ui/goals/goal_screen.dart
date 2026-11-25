@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/energy/energy_notifier.dart';
 import 'package:trendline/data/goals/goal_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
+import 'package:trendline/data/schedule/schedule_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/profile.dart';
@@ -10,6 +11,7 @@ import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
+import 'package:trendline/ui/schedule/onboarding_schedule_screen.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
@@ -201,9 +203,26 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
 
   Future<void> _save(Goal goal) async {
     setState(() => _saving = true);
+    // In onboarding, saving the goal swaps this screen for the app, so the
+    // day schedule step goes on the navigator above it.
+    final navigator = Navigator.of(context);
+    final scheduleSet =
+        ref.read(scheduleProvider).value?.any((d) => d.isSet) ?? false;
     try {
       await ref.read(goalProvider.notifier).save(goal);
-      if (mounted && !widget.onboarding) Navigator.of(context).pop();
+      if (widget.onboarding) {
+        if (!scheduleSet) {
+          navigator
+              .push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const OnboardingScheduleScreen(),
+                ),
+              )
+              .ignore();
+        }
+      } else if (mounted) {
+        navigator.pop();
+      }
     } on Object catch (e) {
       if (mounted) showErrorSnack(context, e);
     } finally {
@@ -216,6 +235,9 @@ class _GoalScreenState extends ConsumerState<GoalScreen> {
     final text = Theme.of(context).textTheme;
     final profile = ref.watch(profileProvider).value;
     final energy = ref.watch(energyProvider).value;
+    // Loaded in onboarding so saving knows whether the day schedule step
+    // is still to do.
+    if (widget.onboarding) ref.watch(scheduleProvider);
     final unit = profile?.weightUnit ?? WeightUnit.kg;
     _fill(unit);
     final (goal, problem) = _goal(unit, energy?.trendKg);

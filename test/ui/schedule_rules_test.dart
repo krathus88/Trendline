@@ -8,8 +8,9 @@ import 'package:trendline/domain/schedule.dart';
 import '../helpers/fakes.dart';
 import '../helpers/test_app.dart';
 
+/// Opens [setting]: meal rules are on the Plan tab, the rest in Settings.
 Future<void> _open(WidgetTester tester, String setting) async {
-  await tester.tap(find.text('Settings'));
+  await tester.tap(find.text(setting == 'Meal rules' ? 'Plan' : 'Settings'));
   await tester.pumpAndSettle();
   await tester.tap(find.text(setting));
   await tester.pumpAndSettle();
@@ -93,6 +94,24 @@ void main() {
       expect(rule.amountMax, 250);
       expect(rule.foodId, backend.foods.items.single.id);
       expect(find.text('Every day · breakfast · 250 g'), findsOneWidget);
+
+      // Back on the Plan tab, the tile counts it.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('1 rule'), findsOneWidget);
+    });
+
+    testWidgets('are on the Plan tab, not in Settings', (tester) async {
+      await TestBackend(profile: testProfile).pump(tester);
+      await tester.tap(find.text('Plan'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('None yet. Add things you always or often have'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Meal rules'), findsNothing);
     });
 
     testWidgets('refuses an impossible count', (tester) async {

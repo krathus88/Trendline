@@ -10,6 +10,7 @@ import 'package:trendline/domain/health_import.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/schedule.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/home/home_shell.dart';
@@ -618,6 +619,55 @@ void main() {
       await tester.pumpAndSettle();
       expect(backend.goals.saves, 1);
       expect(backend.goals.goal!.targetWeightKg, 80);
+
+      // Then the optional day schedule step; skipping it saves nothing.
+      expect(find.text('Your day'), findsOneWidget);
+      await tester.tap(find.text('Skip: use 07:00–23:00 for now'));
+      await tester.pumpAndSettle();
+      expect(backend.schedules.saved, isEmpty);
+      expect(find.byType(HomeShell), findsOneWidget);
+    });
+
+    testWidgets('onboarding ends with the day schedule, saved for every '
+        'day', (tester) async {
+      final backend = await withWeighIn(tester);
+      await tester.tap(find.text('Maintain'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your day'), findsOneWidget);
+      expect(find.text('Weekdays'), findsOneWidget);
+      expect(find.text('Weekend'), findsOneWidget);
+      // Meal times follow from the times shown.
+      expect(find.textContaining('Breakfast 07:30'), findsOneWidget);
+      expect(find.textContaining('Breakfast 08:30'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.pumpAndSettle();
+      expect(
+        backend.schedules.saved.keys,
+        unorderedEquals([1, 2, 3, 4, 5, 6, 7]),
+      );
+      expect(backend.schedules.saved[1]!.wakeMinute, 7 * 60);
+      expect(backend.schedules.saved[6]!.wakeMinute, 8 * 60);
+      expect(backend.schedules.saved[7]!.sleepMinute, 23 * 60);
+      expect(find.byType(HomeShell), findsOneWidget);
+      expect(find.text('Your day'), findsNothing);
+    });
+
+    testWidgets('a day schedule already set skips the step', (tester) async {
+      final backend = TestBackend(profile: testProfile);
+      backend.goals.goal = null;
+      await backend.schedules.save(
+        const DaySchedule(weekday: 1, wakeMinute: 360, sleepMinute: 1320),
+      );
+      await backend.pump(tester);
+      await tester.tap(find.text('Maintain'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your day'), findsNothing);
       expect(find.byType(HomeShell), findsOneWidget);
     });
 

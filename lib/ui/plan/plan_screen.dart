@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/households/household_notifier.dart';
+import 'package:trendline/data/meal_rules/meal_rules_notifier.dart';
 import 'package:trendline/data/plans/household_plan_notifier.dart';
 import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/schedule/schedule_notifier.dart';
@@ -13,6 +14,7 @@ import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/schedule.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
+import 'package:trendline/ui/meal_rules/meal_rules_screen.dart';
 import 'package:trendline/ui/plan/household_plan_screen.dart';
 import 'package:trendline/ui/prep/prep_screen.dart';
 import 'package:trendline/ui/setup/setup_checklist.dart';
@@ -140,6 +142,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                 onSelectionChanged: (s) => setState(() => _nextWeek = s.first),
               ),
             ),
+            _RulesTile(hasPlan: state.value?.plan != null),
             switch (state) {
               AsyncError(:final error) => ErrorView(
                 error: error,
@@ -182,6 +185,40 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             },
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The meal rules the planner keeps, and the way in to change them.
+class _RulesTile extends ConsumerWidget {
+  const new({required this.hasPlan});
+
+  /// Whether the week has a plan, which only picks up changed rules when
+  /// it's regenerated.
+  final bool hasPlan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(mealRulesProvider).value?.length;
+    final summary = switch (count) {
+      null => 'Things you always or often have',
+      0 => 'None yet. Add things you always or often have',
+      1 => '1 rule',
+      final n => '$n rules',
+    };
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      leading: const Icon(Icons.rule),
+      title: const Text('Meal rules'),
+      subtitle: Text(
+        hasPlan && (count ?? 0) > 0
+            ? '$summary. Regenerate to use changes'
+            : summary,
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const MealRulesScreen()),
       ),
     );
   }
