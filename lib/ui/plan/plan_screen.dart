@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/households/household_notifier.dart';
+import 'package:trendline/data/plans/household_plan_notifier.dart';
 import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/schedule/schedule_notifier.dart';
 import 'package:trendline/data/setup/setup_status.dart';
@@ -11,6 +13,7 @@ import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/schedule.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
+import 'package:trendline/ui/plan/household_plan_screen.dart';
 import 'package:trendline/ui/prep/prep_screen.dart';
 import 'package:trendline/ui/setup/setup_checklist.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
@@ -87,6 +90,16 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       appBar: AppBar(
         title: const Text('Plan'),
         actions: [
+          if (ref.watch(householdIdProvider) != null)
+            IconButton(
+              tooltip: 'Household meals',
+              icon: const Icon(Icons.groups_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => HouseholdPlanScreen(weekStart: week),
+                ),
+              ),
+            ),
           IconButton(
             tooltip: 'Prep',
             icon: const Icon(Icons.kitchen_outlined),
@@ -102,63 +115,73 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               )
             : null,
       ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: Space.xxl),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.gutter,
-              Space.sm,
-              Space.gutter,
-              Space.sm,
+      body: RefreshIndicator(
+        // Picks up what other household members changed.
+        onRefresh: () async {
+          ref.read(householdRefreshProvider)();
+          await ref.read(planProvider(week).future);
+        },
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: Space.xxl),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.gutter,
+                Space.sm,
+                Space.gutter,
+                Space.sm,
+              ),
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('This week')),
+                  ButtonSegment(value: true, label: Text('Next week')),
+                ],
+                selected: {_nextWeek},
+                onSelectionChanged: (s) => setState(() => _nextWeek = s.first),
+              ),
             ),
-            child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('This week')),
-                ButtonSegment(value: true, label: Text('Next week')),
-              ],
-              selected: {_nextWeek},
-              onSelectionChanged: (s) => setState(() => _nextWeek = s.first),
-            ),
-          ),
-          switch (state) {
-            AsyncError(:final error) => ErrorView(
-              error: error,
-              onRetry: () => ref.invalidate(planProvider(week)),
-            ),
-            AsyncData(value: PlanState(plan: null)) => Column(
-              children: [
-                const EmptyState(
-                  title: 'No plan for this week',
-                  message:
-                      'The planner fills breakfast, lunch and dinner with '
-                      'dishes cooked in batches, keeps your meal rules, and '
-                      'sizes portions to your targets.',
-                ),
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _generate(notifier),
-                  icon: const Icon(Icons.auto_awesome_outlined),
-                  label: Text(_nextWeek ? 'Plan next week' : 'Plan this week'),
-                ),
-                const SizedBox(height: Space.sm),
-                TextButton(
-                  onPressed: () => showSetupSheet(context),
-                  child: const Text('Setup checklist'),
-                ),
-              ],
-            ),
-            AsyncData(value: final s) => _PlanView(
-              state: s,
-              busy: _busy,
-              onRegenerate: () => _run(notifier.generate),
-              onSave: () => _run(notifier.save),
-            ),
-            _ => const Padding(
-              padding: EdgeInsets.all(Space.xl),
-              child: CenteredProgress(),
-            ),
-          },
-        ],
+            switch (state) {
+              AsyncError(:final error) => ErrorView(
+                error: error,
+                onRetry: () => ref.invalidate(planProvider(week)),
+              ),
+              AsyncData(value: PlanState(plan: null)) => Column(
+                children: [
+                  const EmptyState(
+                    title: 'No plan for this week',
+                    message:
+                        'The planner fills breakfast, lunch and dinner with '
+                        'dishes cooked in batches, keeps your meal rules, and '
+                        'sizes portions to your targets.',
+                  ),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () => _generate(notifier),
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    label: Text(
+                      _nextWeek ? 'Plan next week' : 'Plan this week',
+                    ),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  TextButton(
+                    onPressed: () => showSetupSheet(context),
+                    child: const Text('Setup checklist'),
+                  ),
+                ],
+              ),
+              AsyncData(value: final s) => _PlanView(
+                state: s,
+                busy: _busy,
+                onRegenerate: () => _run(notifier.generate),
+                onSave: () => _run(notifier.save),
+                onFitShared: () => _run(notifier.fitShared),
+              ),
+              _ => const Padding(
+                padding: EdgeInsets.all(Space.xl),
+                child: CenteredProgress(),
+              ),
+            },
+          ],
+        ),
       ),
     );
   }
@@ -170,12 +193,14 @@ class _PlanView extends ConsumerWidget {
     required this.busy,
     required this.onRegenerate,
     required this.onSave,
+    required this.onFitShared,
   });
 
   final PlanState state;
   final bool busy;
   final VoidCallback onRegenerate;
   final VoidCallback onSave;
+  final VoidCallback onFitShared;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -224,6 +249,39 @@ class _PlanView extends ConsumerWidget {
               style: text.bodySmall?.copyWith(color: colors.error),
             ),
           ),
+        if (state.saved && state.estimated.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Space.gutter,
+              Space.sm,
+              Space.gutter,
+              0,
+            ),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(Space.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'The household’s meals have changed. Your portions of '
+                      'the new ones are estimates until they’re fitted to '
+                      'your day.',
+                      style: text.bodyMedium,
+                    ),
+                    const SizedBox(height: Space.sm),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.tonal(
+                        onPressed: busy ? null : onFitShared,
+                        child: const Text('Fit my portions'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         for (var d = 0; d < 7; d++)
           _Day(
             date: state.dayOf(d),
@@ -232,6 +290,10 @@ class _PlanView extends ConsumerWidget {
             targets: targets,
             schedule: schedules[state.dayOf(d).weekday - 1],
             weekStart: state.weekStart,
+            leftovers: {
+              for (final (day, slot, key) in state.leftovers)
+                if (day == d) (slot, key),
+            },
           ),
       ],
     );
@@ -246,8 +308,11 @@ class _Day extends StatelessWidget {
     required this.targets,
     required this.schedule,
     required this.weekStart,
+    this.leftovers = const {},
   });
 
+  /// Items (by meal and key) that eat up a leftover portion.
+  final Set<(MealSlot, String)> leftovers;
   final DateTime date;
   final List<PlannedItem> items;
   final Nutrition total;
@@ -299,6 +364,7 @@ class _Day extends StatelessWidget {
                 item: i,
                 time: formatClock(times[slot]!),
                 weekStart: weekStart,
+                leftover: leftovers.contains((i.slot, i.key)),
               ),
         ],
       ),
@@ -307,13 +373,58 @@ class _Day extends StatelessWidget {
 }
 
 class _ItemRow extends ConsumerWidget {
-  const new({required this.item, required this.time, required this.weekStart});
+  const new({
+    required this.item,
+    required this.time,
+    required this.weekStart,
+    this.leftover = false,
+  });
 
+  /// It eats up a leftover portion already cooked.
+  final bool leftover;
   final PlannedItem item;
   final String time;
   final DateTime weekStart;
 
+  /// A household dish: chosen together, so it's changed in the household's
+  /// week; only its amount is the user's, fitted when they plan.
+  Future<void> _sharedInfo(BuildContext context) async {
+    final open = await showAppSheet<bool>(
+      context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(item.name, style: Theme.of(context).textTheme.titleLarge),
+          Text(planAmount(item)),
+          const SizedBox(height: Space.sm),
+          const Text(
+            'Shared with your household. Change the dish in Household '
+            'meals; your portion is fitted to your day when you plan.',
+          ),
+          const SizedBox(height: Space.lg),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.groups_outlined),
+            label: const Text('Household meals'),
+          ),
+        ],
+      ),
+    );
+    if (open == true && context.mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => HouseholdPlanScreen(weekStart: weekStart),
+        ),
+      );
+    }
+  }
+
   Future<void> _actions(BuildContext context, WidgetRef ref) async {
+    if (item.shared) {
+      await _sharedInfo(context);
+      return;
+    }
     final notifier = ref.read(planProvider(weekStart).notifier);
     final action = await showAppSheet<String>(
       context,
@@ -405,7 +516,7 @@ class _ItemRow extends ConsumerWidget {
                 children: [
                   Text(item.name, style: text.bodyMedium),
                   Text(
-                    '${planAmount(item)} · '
+                    '${leftover ? 'Leftover · ' : ''}${planAmount(item)} · '
                     '${formatKcal(item.nutrition.kcal)} kcal',
                     style: text.bodySmall?.copyWith(
                       color: colors.textSecondary,
@@ -414,7 +525,16 @@ class _ItemRow extends ConsumerWidget {
                 ],
               ),
             ),
-            if (item.locked)
+            if (item.shared)
+              Tooltip(
+                message: 'Shared with your household',
+                child: Icon(
+                  Icons.groups_outlined,
+                  size: 16,
+                  color: colors.textTertiary,
+                ),
+              )
+            else if (item.locked)
               Icon(Icons.lock, size: 16, color: colors.textTertiary),
           ],
         ),

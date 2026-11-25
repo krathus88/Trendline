@@ -10,10 +10,13 @@ import 'package:trendline/ui/theme/tokens.dart';
 
 /// What joining means, shown before creating or joining.
 const householdPrivacyNote =
-    'A household shares recipes with the people you live with. Members '
-    'will see each other’s portion sizes once plans are shared, which '
-    'roughly shows calorie targets. Your weight, goal and food log are '
-    'never shared. You can leave at any time.';
+    'A household shares recipes, shared meals and batch cooking with the '
+    'people you live with. Members see each other’s portion sizes, which '
+    'roughly show calorie targets. Your food likes, dislikes and nevers are '
+    'combined with everyone’s to choose shared meals: nobody sees anyone’s '
+    'list, though in a household of two the other could work out yours. '
+    'Your targets, weight, goal and food log are never shared. You can '
+    'leave at any time.';
 
 /// Create or join a household, or manage the one the user is in.
 class HouseholdScreen extends ConsumerWidget {
@@ -235,7 +238,17 @@ class _Members extends ConsumerWidget {
             Space.gutter,
             Space.xs,
           ),
-          child: Text(household.name, style: text.titleLarge),
+          child: Row(
+            children: [
+              Expanded(child: Text(household.name, style: text.titleLarge)),
+              if (owner)
+                IconButton(
+                  tooltip: 'Rename household',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _rename(context, ref),
+                ),
+            ],
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
@@ -256,7 +269,13 @@ class _Members extends ConsumerWidget {
               m.userId == me ? '${m.displayName} (you)' : m.displayName,
             ),
             subtitle: m.isOwner ? const Text('Owner') : null,
-            trailing: owner && m.userId != me
+            trailing: m.userId == me
+                ? IconButton(
+                    tooltip: 'Change your name',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _changeName(context, ref, m),
+                  )
+                : owner
                 ? IconButton(
                     tooltip: 'Remove ${m.displayName}',
                     icon: const Icon(Icons.person_remove_outlined),
@@ -360,6 +379,46 @@ class _Members extends ConsumerWidget {
     return '${local.day}/${local.month} $time';
   }
 
+  Future<void> _rename(BuildContext context, WidgetRef ref) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => _NameDialog(
+        title: 'Rename household',
+        label: 'Household name',
+        initial: household.name,
+        validate: (v) => validateHouseholdName(v, label: 'a household name'),
+      ),
+    );
+    if (name == null || !context.mounted) return;
+    try {
+      await ref.read(householdProvider.notifier).rename(name);
+    } on Object catch (e) {
+      if (context.mounted) showErrorSnack(context, e);
+    }
+  }
+
+  Future<void> _changeName(
+    BuildContext context,
+    WidgetRef ref,
+    HouseholdMember me,
+  ) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => _NameDialog(
+        title: 'Your name in ${household.name}',
+        label: 'The name the others see',
+        initial: me.displayName,
+        validate: validateDisplayName,
+      ),
+    );
+    if (name == null || !context.mounted) return;
+    try {
+      await ref.read(householdProvider.notifier).setDisplayName(name);
+    } on Object catch (e) {
+      if (context.mounted) showErrorSnack(context, e);
+    }
+  }
+
   Future<void> _remove(
     BuildContext context,
     WidgetRef ref,
@@ -426,6 +485,64 @@ class _Members extends ConsumerWidget {
         ),
       ) ??
       false;
+}
+
+/// Asks for a new name, checked with [validate]. Pops the trimmed name, or
+/// null when cancelled.
+class _NameDialog extends StatefulWidget {
+  const new({
+    required this.title,
+    required this.label,
+    required this.initial,
+    required this.validate,
+  });
+
+  final String title;
+  final String label;
+  final String initial;
+  final String? Function(String) validate;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final _name = TextEditingController(text: widget.initial);
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final error = widget.validate(_name.text);
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
+    Navigator.of(context).pop(_name.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _name,
+      autofocus: true,
+      textCapitalization: TextCapitalization.words,
+      decoration: InputDecoration(labelText: widget.label, errorText: _error),
+      onSubmitted: (_) => _save(),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      TextButton(onPressed: _save, child: const Text('Save')),
+    ],
+  );
 }
 
 class _Heading extends StatelessWidget {

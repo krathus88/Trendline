@@ -100,16 +100,17 @@ class RecipeList extends ConsumerWidget {
               padding: EdgeInsets.all(Space.xl),
               child: CenteredProgress(),
             ),
-            _ when (shared.value ?? const []).isEmpty => const EmptyState(
-              title: 'Nothing shared yet',
-              message:
-                  'Open one of your recipes and tap Share to give the '
-                  'household a copy.',
-            ),
+            _ when !(shared.value ?? const []).any((r) => r.listed) =>
+              const EmptyState(
+                title: 'Nothing shared yet',
+                message:
+                    'Open one of your recipes and tap Share to give the '
+                    'household a copy.',
+              ),
             _ => Column(
               children: [
                 for (final r in shared.value!)
-                  RecipeTile(recipe: r, onTap: () => open(r)),
+                  if (r.listed) RecipeTile(recipe: r, onTap: () => open(r)),
               ],
             ),
           },

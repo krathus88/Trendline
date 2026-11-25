@@ -6,7 +6,8 @@ import 'package:trendline/domain/prep.dart';
 /// Prep sessions and their portions. Sessions are laid out by the database
 /// when a plan is saved; the app marks them cooked and updates portions.
 abstract interface class PrepRepository {
-  /// Sessions cooked on or after [from], with their portions.
+  /// Sessions cooked on or after [from], with their portions: the user's
+  /// own, and their household's (with every member's portions).
   Future<List<PrepSession>> fetchFrom(DateTime from);
 
   /// Marks [sessionId] cooked now, with the batch's measured weight.
@@ -22,9 +23,9 @@ class SupabasePrepRepository implements PrepRepository {
   final SupabaseClient _db;
 
   static const _columns =
-      'id, plan_id, recipe_id, cook_on, portions, cooked_at, cooked_weight_g, '
-      'prep_portions(id, session_id, day, slot, amount, use_by, storage, '
-      'status, food_log_id)';
+      'id, plan_id, household_id, recipe_id, cook_on, portions, cooked_at, '
+      'cooked_weight_g, prep_portions(id, session_id, eater_id, day, slot, '
+      'amount, use_by, storage, status, food_log_id)';
 
   @override
   Future<List<PrepSession>> fetchFrom(DateTime from) async {
@@ -64,6 +65,7 @@ PrepSession prepSessionFromRow(Map<String, dynamic> row) {
   return PrepSession(
     id: row['id'] as String,
     planId: row['plan_id'] as String?,
+    householdId: row['household_id'] as String?,
     recipeId: row['recipe_id'] as String,
     cookOn: readDate(row['cook_on']),
     portionCount: readDouble(row['portions']),
@@ -98,6 +100,7 @@ PrepPortion? _portionFromRow(Map<String, dynamic> row) {
   return PrepPortion(
     id: row['id'] as String,
     sessionId: row['session_id'] as String,
+    eaterId: row['eater_id'] as String?,
     day: day == null ? null : readDate(day),
     slot: slot,
     amount: amount,

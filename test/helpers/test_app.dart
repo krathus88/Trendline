@@ -24,7 +24,13 @@ class TestBackend {
   new({Profile? profile, AuthStatus auth = const SignedIn('user-1')})
     : auth = FakeAuthRepository(initial: auth),
       profiles = FakeProfileRepository(profile: profile) {
-    plans.onSaved = (plan) => prep.layOut(plan, recipes.items);
+    plans
+      ..onSaved = ((plan) => prep.layOut(plan, recipes.items))
+      ..onHouseholdSaved = ((week) => prep.layOutHousehold(
+        week,
+        recipes.items,
+        householdId: households.household?.id ?? 'h0',
+      ));
   }
 
   final FakeAuthRepository auth;
@@ -45,6 +51,7 @@ class TestBackend {
   final goals = FakeGoalRepository(goal: Goal.maintenance);
   final energy = FakeEnergyRepository();
   final households = FakeHouseholdRepository();
+  final sharing = FakeSharingRepository();
 
   /// The recipe library file's contents. Null uses the real one.
   String? library;
@@ -64,6 +71,7 @@ class TestBackend {
     referenceFoodRepositoryProvider.overrideWithValue(referenceFoods),
     recipeRepositoryProvider.overrideWithValue(recipes),
     householdRepositoryProvider.overrideWithValue(households),
+    sharingRepositoryProvider.overrideWithValue(sharing),
     foodPreferencesRepositoryProvider.overrideWithValue(preferences),
     scheduleRepositoryProvider.overrideWithValue(schedules),
     mealRuleRepositoryProvider.overrideWithValue(rules),
@@ -79,6 +87,7 @@ class TestBackend {
           dishes: input.dishes,
           rules: input.rules,
           locked: input.locked,
+          meals: input.meals,
           iterations: 400,
         ),
         Random(seed),

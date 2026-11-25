@@ -16,6 +16,7 @@ import 'package:trendline/data/prep/prep_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/schedule/schedule_repository.dart';
+import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
 import 'package:trendline/platform/health_source.dart';
@@ -54,6 +55,10 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
 
 final householdRepositoryProvider = Provider<HouseholdRepository>(
   (ref) => SupabaseHouseholdRepository(ref.watch(supabaseClientProvider)),
+);
+
+final sharingRepositoryProvider = Provider<SharingRepository>(
+  (ref) => SupabaseSharingRepository(ref.watch(supabaseClientProvider)),
 );
 
 final foodPreferencesRepositoryProvider = Provider<FoodPreferencesRepository>(

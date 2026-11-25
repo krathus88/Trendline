@@ -135,6 +135,7 @@ class PlannedItem {
     this.batch,
     this.ruleId,
     this.id,
+    this.shared = false,
   });
 
   /// 0 = the plan's first day.
@@ -164,6 +165,10 @@ class PlannedItem {
   /// The saved plan item's ID; null until saved.
   final String? id;
 
+  /// A serving of the household's week: the dish is chosen together, and
+  /// only its amount is the user's to fit.
+  final bool shared;
+
   Nutrition get nutrition => _times(perUnit, amount);
 
   bool get isPortions => isDish || key.startsWith('recipe:');
@@ -183,6 +188,7 @@ class PlannedItem {
         batch: batch ?? this.batch,
         ruleId: ruleId,
         id: id,
+        shared: shared,
       );
 }
 
@@ -216,6 +222,7 @@ class PlannerInput {
     this.locked = const [],
     this.days = 7,
     this.iterations = 4000,
+    this.meals = plannedMeals,
   });
 
   /// Each day's targets, in order ([days] of them; the last repeats).
@@ -227,6 +234,10 @@ class PlannerInput {
   final List<PlannedItem> locked;
   final int days;
   final int iterations;
+
+  /// The meals to fill with dishes (all of them by default; the household's
+  /// shared meals when planning those).
+  final List<MealSlot> meals;
 
   PlanTargets targetOn(int day) => targets[min(day, targets.length - 1)];
 }
@@ -259,7 +270,7 @@ const double _wRepeatSnack = 0.15;
 WeekPlan planWeek(PlannerInput input, Random random) {
   final days = input.days;
   final dishesBySlot = {
-    for (final slot in plannedMeals)
+    for (final slot in input.meals)
       slot: [
         for (final d in input.dishes)
           if (d.meals.contains(slot)) d,
@@ -294,11 +305,11 @@ WeekPlan planWeek(PlannerInput input, Random random) {
   // The search state: for each meal, a dish key per day (null: free and
   // empty, or taken).
   final assign = {
-    for (final slot in plannedMeals) slot: List<String?>.filled(days, null),
+    for (final slot in input.meals) slot: List<String?>.filled(days, null),
   };
 
   // Greedy start: fill each meal with runs of dishes that keep.
-  for (final slot in plannedMeals) {
+  for (final slot in input.meals) {
     final options = dishesBySlot[slot]!;
     if (options.isEmpty) continue;
     var d = 0;
@@ -321,7 +332,7 @@ WeekPlan planWeek(PlannerInput input, Random random) {
 
   // Simulated annealing: change a run of days in one meal to another dish.
   final free = [
-    for (final slot in plannedMeals)
+    for (final slot in input.meals)
       if (dishesBySlot[slot]!.isNotEmpty)
         for (var d = 0; d < days; d++)
           if (!taken(slot, d)) (slot: slot, day: d),
@@ -402,6 +413,7 @@ WeekPlan planWeek(PlannerInput input, Random random) {
   }
   // A snack is optional (snacks may be off), so an empty one isn't noted.
   for (final slot in dishMeals) {
+    if (!input.meals.contains(slot)) continue;
     if (dishesBySlot[slot]!.isEmpty &&
         !List.generate(days, (d) => taken(slot, d)).every((t) => t)) {
       notes.add('No dishes suit ${slot.name}, so it’s left empty.');
@@ -665,3 +677,25 @@ Nutrition _times(Nutrition n, double f) => Nutrition(
   fibreG: n.fibreG * f,
   fibreUnknown: n.fibreUnknown,
 );
+
+/// Roughly how a day's calories split across its meals: to size a
+/// household's shared meals while their dishes are chosen, and a member's
+/// servings of them on a day they've planned nothing else.
+const Map<MealSlot, double> mealShareOfDay = {
+  MealSlot.breakfast: 0.25,
+  MealSlot.lunch: 0.3,
+  MealSlot.dinner: 0.35,
+  MealSlot.snack: 0.1,
+};
+
+/// [t] scaled to the share of the day [meals] usually take.
+PlanTargets targetsForMeals(PlanTargets t, Iterable<MealSlot> meals) {
+  final share = meals.fold<double>(0, (s, m) => s + (mealShareOfDay[m] ?? 0));
+  return PlanTargets(
+    kcal: t.kcal * share,
+    proteinG: t.proteinG * share,
+    carbsG: t.carbsG * share,
+    fatG: t.fatG * share,
+    fibreG: t.fibreG * share,
+  );
+}

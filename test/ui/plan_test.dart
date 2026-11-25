@@ -5,6 +5,7 @@ import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/prep.dart';
 import 'package:trendline/domain/recipe.dart';
 
 import '../helpers/fakes.dart';
@@ -252,5 +253,62 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set up planning'), findsNothing);
     expect(find.text('No plan for this week'), findsNothing);
+  });
+
+  testWidgets('a leftover in the freezer goes in the next free meal', (
+    tester,
+  ) async {
+    final backend = await _ready(tester);
+    final lentils = await backend.foods.save(
+      const FoodDraft(
+        name: 'Lentils',
+        per100g: Nutrition(kcal: 350, proteinG: 24, carbsG: 50, fatG: 1.5),
+        source: FoodSource.manual,
+      ),
+    );
+    backend.recipes.items.add(
+      Recipe(
+        id: 'r-stew',
+        name: 'Lentil stew',
+        ingredients: [RecipeIngredient(foodId: lentils.id, rawGrams: 400)],
+      ),
+    );
+    final today = dayOf(DateTime.now());
+    backend.prep.sessions.add(
+      PrepSession(
+        id: 's-old',
+        recipeId: 'r-stew',
+        cookOn: addDays(today, -5),
+        portionCount: 1,
+        cookedAt: addDays(today, -5),
+        cookedWeightG: 300,
+        portions: [
+          PrepPortion(
+            id: 'p-frozen',
+            sessionId: 's-old',
+            amount: 1,
+            useBy: addDays(today, 60),
+            storage: PrepStorage.freezer,
+            status: PortionStatus.leftover,
+          ),
+        ],
+      ),
+    );
+    await backend.pump(tester);
+    await _openPlan(tester);
+    await tester.tap(find.text('Plan this week'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Leftover · 1 portion'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    final portion = backend.prep.sessions
+        .firstWhere((s) => s.id == 's-old')
+        .portions
+        .single;
+    expect(portion.status, PortionStatus.planned);
+    expect(portion.day, today);
+    expect(portion.slot, MealSlot.lunch);
   });
 }

@@ -72,13 +72,16 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
   /// its prep only ever point at the user's own data. A dish made from a
   /// template is copied the same way, with [origin] template, its basic
   /// foods in [foods] and its expected cooked weight; a no-cook one with
-  /// [cookedWeightG] already known (it weighs what goes in).
+  /// [cookedWeightG] already known (it weighs what goes in). With
+  /// [householdId], the copy is the household's (its foods copied there by
+  /// the database).
   Future<Recipe> addFromLibrary(
     LibraryRecipe library, {
     RecipeOrigin origin = RecipeOrigin.library,
     Map<FoodKey, FoodDraft>? foods,
     double? estimatedCookedWeightG,
     double? cookedWeightG,
+    String? householdId,
   }) async {
     final drafts = switch (foods) {
       final given? => given,
@@ -92,22 +95,25 @@ class RecipesNotifier extends AsyncNotifier<List<Recipe>> {
       final food = await saved.save(draft);
       ingredients.add(RecipeIngredient(foodId: food.id, rawGrams: i.rawGrams));
     }
-    return await save(
-      Recipe(
-        id: '',
-        name: library.name,
-        ingredients: ingredients,
-        portions: library.portions,
-        cookedWeightG: cookedWeightG,
-        fridgeDays: library.fridgeDays,
-        freezable: library.freezable,
-        method: library.method,
-        origin: origin,
-        sourceId: library.id,
-        sourceVersion: library.version,
-        estimatedCookedWeightG: estimatedCookedWeightG,
-      ),
+    final recipe = Recipe(
+      id: '',
+      name: library.name,
+      ingredients: ingredients,
+      portions: library.portions,
+      cookedWeightG: cookedWeightG,
+      fridgeDays: library.fridgeDays,
+      freezable: library.freezable,
+      method: library.method,
+      origin: origin,
+      sourceId: library.id,
+      sourceVersion: library.version,
+      estimatedCookedWeightG: estimatedCookedWeightG,
+      householdId: householdId,
     );
+    if (householdId != null) {
+      return await ref.read(sharedRecipesProvider.notifier).save(recipe);
+    }
+    return await save(recipe);
   }
 
   /// Shows or hides [id] in the Recipes list ("keep this one").

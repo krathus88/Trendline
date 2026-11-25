@@ -454,12 +454,8 @@ Object generateDish(
   Map<int, TemplateOption?> chosen = const {},
 }) {
   double flavourWeight(FlavourProfile f) {
-    if (f.ingredients.any(
-      (i) => prefs.ingredients[i.key] == Preference.never,
-    )) {
-      return 0;
-    }
-    return preferenceWeight(prefs.cuisines[f.cuisine]);
+    if (f.ingredients.any((i) => prefs.isNever(i.key))) return 0;
+    return prefs.cuisineWeight(f.cuisine);
   }
 
   final candidates = [
@@ -484,7 +480,7 @@ Object generateDish(
       if (choice == null && !slot.optional) {
         return NoDish('This dish needs a ${slot.role.name}.');
       }
-      if (choice != null && prefs.ingredients[choice.raw] == Preference.never) {
+      if (choice != null && prefs.isNever(choice.raw)) {
         return NoDish('You never want ${choice.label}.');
       }
       picks.add(choice);
@@ -497,7 +493,7 @@ Object generateDish(
         for (final o in slot.options)
           if (!used.contains(o.raw)) o,
       ],
-      (o) => preferenceWeight(prefs.ingredients[o.raw]),
+      (o) => prefs.ingredientWeight(o.raw),
       random,
     );
     if (pick == null && !slot.optional) {

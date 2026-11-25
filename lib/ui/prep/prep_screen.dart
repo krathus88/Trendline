@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
+import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/household.dart';
 import 'package:trendline/domain/prep.dart';
 import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/ui/common/feedback.dart';
@@ -34,10 +37,15 @@ class PrepScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(prepProvider);
+    // The household's batches use its shared recipes.
     final recipes = {
-      for (final r in ref.watch(recipesProvider).value ?? const <Recipe>[])
+      for (final r in [
+        ...?ref.watch(recipesProvider).value,
+        ...?ref.watch(sharedRecipesProvider).value,
+      ])
         r.id: r,
     };
+    final me = ref.watch(currentUserIdProvider);
     final today = dayOf(DateTime.now());
 
     return Scaffold(
@@ -51,6 +59,7 @@ class PrepScreen extends ConsumerWidget {
           sessions: activeSessions(value, today),
           recipes: recipes,
           today: today,
+          me: me,
         ),
         _ => const CenteredProgress(),
       },
@@ -63,11 +72,15 @@ class _PrepList extends StatelessWidget {
     required this.sessions,
     required this.recipes,
     required this.today,
+    required this.me,
   });
 
   final List<PrepSession> sessions;
   final Map<String, Recipe> recipes;
   final DateTime today;
+
+  /// Only the user's own portions are theirs to eat.
+  final String? me;
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +91,7 @@ class _PrepList extends StatelessWidget {
     final cooked = [
       for (final s in sessions)
         if (s.cooked && recipes.containsKey(s.recipeId))
-          for (final p in s.openPortions) (session: s, portion: p),
+          for (final p in s.openPortionsFor(me)) (session: s, portion: p),
     ];
     if (toCook.isEmpty && cooked.isEmpty) {
       return const EmptyState(
@@ -149,7 +162,8 @@ class _SessionTile extends StatelessWidget {
       subtitle: Text(
         '${overdue ? 'Was due' : 'Cook on'} ${_day(session.cookOn)} · '
         '${portionsLabel(session.portionCount)} for '
-        '${meals == 1 ? '1 meal' : '$meals meals'}',
+        '${meals == 1 ? '1 meal' : '$meals meals'}'
+        '${session.isShared ? ' · household' : ''}',
         style: overdue ? TextStyle(color: colors.error) : null,
       ),
       trailing: const Icon(Icons.chevron_right),
@@ -342,9 +356,28 @@ class _PrepSessionScreenState extends ConsumerState<PrepSessionScreen> {
       if (s.id == widget.sessionId) session = s;
     }
     Recipe? recipe;
-    for (final r in ref.watch(recipesProvider).value ?? const <Recipe>[]) {
+    for (final r in [
+      ...?ref.watch(recipesProvider).value,
+      ...?ref.watch(sharedRecipesProvider).value,
+    ]) {
       if (r.id == session?.recipeId) recipe = r;
     }
+    final me = ref.watch(currentUserIdProvider);
+    final names = {
+      for (final m
+          in ref.watch(householdProvider).value?.members ??
+              const <HouseholdMember>[])
+        m.userId: m.displayName,
+    };
+    // Whose a household portion is, in front of its meal.
+    String portionLabel(PrepPortion p) {
+      if (!(session?.isShared ?? false) || p.eaterId == null) {
+        return portionMeal(p);
+      }
+      final who = p.eaterId == me ? 'You' : names[p.eaterId] ?? 'Someone';
+      return '$who · ${portionMeal(p)}';
+    }
+
     if (session == null || recipe == null) {
       return Scaffold(
         appBar: AppBar(),
@@ -406,7 +439,7 @@ class _PrepSessionScreenState extends ConsumerState<PrepSessionScreen> {
                 padding: const EdgeInsets.symmetric(vertical: Space.xxs),
                 child: Row(
                   children: [
-                    Expanded(child: Text(portionMeal(p))),
+                    Expanded(child: Text(portionLabel(p))),
                     Text(switch (s.gramsOf(p)) {
                       final g? => formatGrams(g.roundToDouble()),
                       null => portionsLabel(p.amount),

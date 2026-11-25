@@ -166,4 +166,61 @@ void main() {
     ]);
     expect(shown.first.cooked, isTrue, reason: 'cooked, portions left');
   });
+
+  group('placing leftovers', () {
+    final monday = DateTime(2026, 12, 7);
+    PrepPortion leftover(String id, DateTime useBy) => PrepPortion(
+      id: id,
+      sessionId: 's',
+      amount: 1,
+      useBy: useBy,
+      status: PortionStatus.leftover,
+    );
+
+    test('the soonest to go off takes the earliest free meal', () {
+      final placed = placeLeftovers(
+        leftovers: [
+          leftover('later', DateTime(2026, 12, 30)),
+          leftover('soon', DateTime(2026, 12, 9)),
+        ],
+        weekStart: monday,
+        from: DateTime(2026, 12, 8),
+        taken: (day, slot) => day == 1 && slot == MealSlot.lunch,
+      );
+      expect(
+        {for (final e in placed.entries) e.key.id: e.value},
+        {'soon': (1, MealSlot.dinner), 'later': (2, MealSlot.lunch)},
+      );
+    });
+
+    test('nothing goes after its use-by date or before today', () {
+      final placed = placeLeftovers(
+        leftovers: [leftover('p', DateTime(2026, 12, 8))],
+        weekStart: monday,
+        from: DateTime(2026, 12, 8),
+        taken: (day, slot) => day == 1,
+      );
+      expect(placed, isEmpty);
+    });
+
+    test('next week’s plan starts on its Monday', () {
+      final placed = placeLeftovers(
+        leftovers: [leftover('p', DateTime(2026, 12, 20))],
+        weekStart: DateTime(2026, 12, 14),
+        from: DateTime(2026, 12, 10),
+        taken: (_, _) => false,
+      );
+      expect(placed.values.single, (0, MealSlot.lunch));
+    });
+
+    test('a leftover gone off before the week isn’t placed', () {
+      final placed = placeLeftovers(
+        leftovers: [leftover('p', DateTime(2026, 12, 12))],
+        weekStart: DateTime(2026, 12, 14),
+        from: DateTime(2026, 12, 10),
+        taken: (_, _) => false,
+      );
+      expect(placed, isEmpty);
+    });
+  });
 }

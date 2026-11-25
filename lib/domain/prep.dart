@@ -28,10 +28,17 @@ class PrepPortion {
     this.storage = PrepStorage.fridge,
     this.status = PortionStatus.planned,
     this.foodLogId,
+    this.eaterId,
   });
 
   final String id;
   final String sessionId;
+
+  /// Who eats it: the user for their own batches; any member for a
+  /// household's. Null when not known (treated as the user's).
+  final String? eaterId;
+
+  bool isFor(String? userId) => eaterId == null || eaterId == userId;
 
   /// The meal it's planned for; null for a leftover.
   final DateTime? day;
@@ -60,6 +67,7 @@ class PrepPortion {
   }) => PrepPortion(
     id: id,
     sessionId: sessionId,
+    eaterId: eaterId,
     amount: amount,
     day: day == null ? this.day : day(),
     slot: slot == null ? this.slot : slot(),
@@ -83,10 +91,16 @@ class PrepSession {
     this.planId,
     this.cookedAt,
     this.cookedWeightG,
+    this.householdId,
   });
 
   final String id;
   final String? planId;
+
+  /// The household it's cooked for; null for the user's own batch.
+  final String? householdId;
+
+  bool get isShared => householdId != null;
   final String recipeId;
   final DateTime cookOn;
 
@@ -107,6 +121,13 @@ class PrepSession {
       if (p.isOpen) p,
   ];
 
+  /// Portions [userId] still has to eat (all of them in their own batch;
+  /// theirs in a household's).
+  List<PrepPortion> openPortionsFor(String? userId) => [
+    for (final p in portions)
+      if (p.isOpen && p.isFor(userId)) p,
+  ];
+
   /// [portion]'s cooked weight, once the batch has been weighed.
   double? gramsOf(PrepPortion portion) {
     final weight = cookedWeightG;
@@ -121,6 +142,7 @@ class PrepSession {
   }) => PrepSession(
     id: id,
     planId: planId,
+    householdId: householdId,
     recipeId: recipeId,
     cookOn: cookOn,
     portionCount: portionCount,
@@ -228,4 +250,32 @@ List<PrepSession> activeSessions(List<PrepSession> all, DateTime today) {
         s,
   ];
   return active..sort((a, b) => a.cookOn.compareTo(b.cookOn));
+}
+
+/// Where [leftovers] go in the week starting [weekStart], so they're eaten
+/// rather than forgotten: each (soonest use-by first) takes the earliest
+/// lunch or dinner from [from] up to its use-by date, within the week, that
+/// [taken] doesn't already fill. Those that don't fit are left out.
+Map<PrepPortion, (int, MealSlot)> placeLeftovers({
+  required List<PrepPortion> leftovers,
+  required DateTime weekStart,
+  required DateTime from,
+  required bool Function(int day, MealSlot slot) taken,
+}) {
+  final placed = <PrepPortion, (int, MealSlot)>{};
+  final used = <(int, MealSlot)>{};
+  final first = from.isAfter(weekStart) ? daysBetween(weekStart, from) : 0;
+  for (final p in [...leftovers]..sort((a, b) => a.useBy.compareTo(b.useBy))) {
+    final last = daysBetween(weekStart, p.useBy).clamp(-1, 6);
+    search:
+    for (var d = first; d <= last; d++) {
+      for (final slot in const [MealSlot.lunch, MealSlot.dinner]) {
+        if (taken(d, slot) || used.contains((d, slot))) continue;
+        placed[p] = (d, slot);
+        used.add((d, slot));
+        break search;
+      }
+    }
+  }
+  return placed;
 }

@@ -15,6 +15,7 @@ import 'package:trendline/data/prep/prep_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/schedule/schedule_repository.dart';
+import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/data/snapshots/today_snapshot.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
@@ -31,6 +32,7 @@ import 'package:trendline/domain/profile.dart';
 import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
 import 'package:trendline/domain/schedule.dart';
+import 'package:trendline/domain/sharing.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/domain/weigh_in.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
@@ -254,6 +256,44 @@ class FakeRecipeRepository implements RecipeRepository {
 /// Meal plans in memory, by week.
 class FakeMealPlanRepository implements MealPlanRepository {
   final weeks = <DateTime, SavedPlan>{};
+  final householdWeeks = <DateTime, HouseholdWeek>{};
+
+  /// Runs after a household week is saved, as the database lays out its
+  /// joint prep.
+  void Function(HouseholdWeek week)? onHouseholdSaved;
+
+  @override
+  Future<HouseholdWeek?> fetchHouseholdWeek(DateTime weekStart) async =>
+      householdWeeks[weekStart];
+
+  @override
+  Future<void> saveHouseholdWeek(HouseholdWeek week) async {
+    // As the database does: an unchanged serving keeps its amount and
+    // whether it's fitted; the rest are estimates.
+    final before = {
+      for (final i
+          in householdWeeks[week.weekStart]?.items ?? const <SavedPlanItem>[])
+        (i.eaterId, i.day, i.slot, i.recipeId): i,
+    };
+    final saved = HouseholdWeek(
+      weekStart: week.weekStart,
+      notes: week.notes,
+      items: [
+        for (final i in week.items)
+          if (before[(i.eaterId, i.day, i.slot, i.recipeId)] case final old?)
+            _withAmount(
+              i,
+              old.amount,
+              'h${_nextItem++}',
+              estimated: old.estimated,
+            )
+          else
+            _withAmount(i, i.amount, 'h${_nextItem++}', estimated: true),
+      ],
+    );
+    householdWeeks[week.weekStart] = saved;
+    onHouseholdSaved?.call(saved);
+  }
 
   /// Runs after each save, as the database lays out prep when it saves.
   void Function(SavedPlan plan)? onSaved;
@@ -293,13 +333,28 @@ class FakeMealPlanRepository implements MealPlanRepository {
         ],
       );
     }
+    for (final MapEntry(key: week, value: plan)
+        in householdWeeks.entries.toList()) {
+      householdWeeks[week] = HouseholdWeek(
+        weekStart: plan.weekStart,
+        notes: plan.notes,
+        items: [
+          for (final i in plan.items)
+            if (amounts[i.id] case final amount?)
+              _withAmount(i, amount, i.id)
+            else
+              i,
+        ],
+      );
+    }
   }
 
   static SavedPlanItem _withAmount(
     SavedPlanItem i,
     double amount,
-    String? id,
-  ) => SavedPlanItem(
+    String? id, {
+    bool estimated = false,
+  }) => SavedPlanItem(
     id: id,
     day: i.day,
     slot: i.slot,
@@ -311,6 +366,8 @@ class FakeMealPlanRepository implements MealPlanRepository {
     locked: i.locked,
     batch: i.batch,
     mealRuleId: i.mealRuleId,
+    eaterId: i.eaterId,
+    estimated: estimated,
   );
 }
 
@@ -352,8 +409,28 @@ class FakePrepRepository implements PrepRepository {
   /// cooked are replaced; each batch is cooked on its first day (batches
   /// of one recipe starting the same day together), one portion per
   /// serving, eaten by the cook day + the recipe's fridge days.
-  void layOut(SavedPlan plan, List<Recipe> recipes) {
-    final planId = 'plan-${plan.weekStart.toIso8601String()}';
+  void layOut(SavedPlan plan, List<Recipe> recipes) =>
+      _layOut('plan-${plan.weekStart.toIso8601String()}', plan.items, recipes);
+
+  /// A household week's joint prep: a portion per serving, for its eater.
+  void layOutHousehold(
+    HouseholdWeek week,
+    List<Recipe> recipes, {
+    String householdId = 'h0',
+  }) => _layOut(
+    'household-${week.weekStart.toIso8601String()}',
+    week.items,
+    recipes,
+    householdId: householdId,
+  );
+
+  void _layOut(
+    String planId,
+    List<SavedPlanItem> planItems,
+    List<Recipe> recipes, {
+    String? householdId,
+  }) {
+    final plan = (items: planItems);
     sessions.removeWhere((s) => s.planId == planId && !s.cooked);
     final firstDay = <(String, int), DateTime>{};
     for (final i in plan.items) {
@@ -382,6 +459,7 @@ class FakePrepRepository implements PrepRepository {
         PrepSession(
           id: id,
           planId: planId,
+          householdId: householdId,
           recipeId: recipeId,
           cookOn: cookOn,
           portionCount: items.fold(0, (sum, i) => sum + i.amount),
@@ -390,6 +468,7 @@ class FakePrepRepository implements PrepRepository {
               PrepPortion(
                 id: 'p${_nextPortion++}',
                 sessionId: id,
+                eaterId: i.eaterId,
                 day: i.day,
                 slot: i.slot,
                 amount: i.amount,
@@ -723,6 +802,49 @@ class FakeHouseholdRepository implements HouseholdRepository {
   final String me;
   Household? household;
   final validCodes = <String>{};
+
+  /// What the household's combined preferences come back as.
+  FoodPreferences foodPreferences = FoodPreferences.none;
+
+  @override
+  Future<FoodPreferences> fetchFoodPreferences() async => foodPreferences;
+
+  @override
+  Future<void> rename(String householdId, String name) async {
+    final h = household;
+    if (h == null) throw HouseholdError.notMember;
+    if (!h.isOwner(me)) throw HouseholdError.notOwner;
+    household = Household(
+      id: h.id,
+      name: name.trim(),
+      members: h.members,
+      invites: h.invites,
+    );
+  }
+
+  @override
+  Future<void> setDisplayName(String userId, String displayName) async {
+    final h = household;
+    if (h == null) throw HouseholdError.notMember;
+    household = Household(
+      id: h.id,
+      name: h.name,
+      invites: h.invites,
+      members: [
+        for (final m in h.members)
+          if (m.userId == userId)
+            HouseholdMember(
+              userId: m.userId,
+              displayName: displayName.trim(),
+              isOwner: m.isOwner,
+              joinedAt: m.joinedAt,
+            )
+          else
+            m,
+      ],
+    );
+  }
+
   int _next = 0;
 
   @override
@@ -826,4 +948,115 @@ class FakeHouseholdRepository implements HouseholdRepository {
       invites: h.invites,
     );
   }
+}
+
+/// Shares in memory, as seen by [me]. [validCodes] are codes others made
+/// that [accept] turns into a share from 'owner' with the given kinds.
+class FakeSharingRepository implements SharingRepository {
+  new({this.me = 'user-1'});
+
+  final String me;
+  final shares = <Share>[];
+  final invites = <ShareInvite>[];
+  final validCodes = <String, Set<ShareKind>>{};
+
+  /// What's published, and how often.
+  SharedTargets? published;
+  int publishes = 0;
+
+  /// What owners share, by owner ID.
+  final weighIns = <String, List<WeighIn>>{};
+  final targets = <String, SharedTargets>{};
+  final plans = <String, List<SharedPlanItem>>{};
+  int _next = 0;
+
+  bool _can(String owner, ShareKind kind) => shares.any(
+    (s) => s.ownerId == owner && s.viewerId == me && s.includes(kind),
+  );
+
+  @override
+  Future<List<Share>> fetchShares() async => List.of(shares);
+
+  @override
+  Future<List<ShareInvite>> fetchInvites() async => List.of(invites);
+
+  @override
+  Future<ShareInvite> createInvite({
+    required String ownerName,
+    required Set<ShareKind> kinds,
+  }) async {
+    final invite = ShareInvite(
+      code: 'QRSTU2345${'ABCDEFGH'[_next++ % 8]}',
+      ownerName: ownerName.trim(),
+      kinds: kinds,
+      expiresAt: DateTime.now().add(const Duration(days: 2)),
+    );
+    invites.add(invite);
+    return invite;
+  }
+
+  @override
+  Future<void> withdrawInvite(String code) async =>
+      invites.removeWhere((i) => i.code == code);
+
+  @override
+  Future<void> accept({
+    required String code,
+    required String viewerName,
+  }) async {
+    final kinds = validCodes.remove(code);
+    if (kinds == null) throw SharingError.badInvite;
+    shares.add(
+      Share(
+        id: 's${_next++}',
+        ownerId: 'owner',
+        viewerId: me,
+        ownerName: 'Sam',
+        viewerName: viewerName.trim(),
+        kinds: kinds,
+      ),
+    );
+  }
+
+  @override
+  Future<void> setKinds(String shareId, Set<ShareKind> kinds) async {
+    final i = shares.indexWhere((s) => s.id == shareId);
+    shares[i] = shares[i].withKinds(kinds);
+    if (!shares.any((s) => s.ownerId == me && s.includes(ShareKind.targets))) {
+      published = null;
+    }
+  }
+
+  @override
+  Future<void> end(String shareId) async =>
+      shares.removeWhere((s) => s.id == shareId);
+
+  @override
+  Future<void> publishTargets(SharedTargets t) async {
+    publishes++;
+    published = t;
+  }
+
+  @override
+  Future<List<WeighIn>> weighInsOf(String ownerId, DateTime since) async =>
+      _can(ownerId, ShareKind.weight)
+      ? weighIns[ownerId] ?? const []
+      : const [];
+
+  @override
+  Future<SharedTargets?> targetsOf(String ownerId) async =>
+      _can(ownerId, ShareKind.targets) ? targets[ownerId] : null;
+
+  @override
+  Future<List<SharedPlanItem>> planOf(
+    String ownerId,
+    DateTime weekStart,
+  ) async => _can(ownerId, ShareKind.plans)
+      ? [
+          for (final i in plans[ownerId] ?? const <SharedPlanItem>[])
+            if (!i.day.isBefore(weekStart) &&
+                i.day.isBefore(addDays(weekStart, 7)))
+              i,
+        ]
+      : const [];
 }

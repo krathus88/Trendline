@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trendline/data/foods/foods_notifier.dart';
 import 'package:trendline/data/households/household_repository.dart';
+import 'package:trendline/data/preferences/food_preferences_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/household.dart';
 import 'package:trendline/domain/recipe.dart';
 
@@ -63,6 +65,24 @@ class HouseholdNotifier extends AsyncNotifier<Household?> {
     state = const AsyncData(null);
   }
 
+  /// Renames the household (owner only).
+  Future<void> rename(String name) async {
+    final household = state.value;
+    if (household == null) throw HouseholdError.notMember;
+    final repo = ref.read(householdRepositoryProvider);
+    await repo.rename(household.id, name);
+    state = AsyncData(await repo.fetch());
+  }
+
+  /// Changes the name the user shows the others in the household.
+  Future<void> setDisplayName(String name) async {
+    final me = ref.read(currentUserIdProvider);
+    if (me == null) return;
+    final repo = ref.read(householdRepositoryProvider);
+    await repo.setDisplayName(me, name);
+    state = AsyncData(await repo.fetch());
+  }
+
   /// Removes another member (owner only).
   Future<void> remove(String userId) async {
     final repo = ref.read(householdRepositoryProvider);
@@ -81,6 +101,17 @@ final householdIdProvider = Provider<String?>(
 final sharedFoodsProvider = FutureProvider<List<Food>>((ref) async {
   if (ref.watch(householdIdProvider) == null) return const [];
   return await ref.watch(foodRepositoryProvider).fetchShared();
+});
+
+/// The household's combined food preferences, for choosing its shared
+/// meals: everyone's count, nobody's are shown. Fetched again when the
+/// user changes their own.
+final householdFoodPreferencesProvider = FutureProvider<FoodPreferences>((
+  ref,
+) async {
+  if (ref.watch(householdIdProvider) == null) return FoodPreferences.none;
+  ref.watch(foodPreferencesProvider);
+  return await ref.watch(householdRepositoryProvider).fetchFoodPreferences();
 });
 
 /// Recipes shared with the household, by name.
@@ -121,6 +152,16 @@ class SharedRecipesNotifier extends AsyncNotifier<List<Recipe>> {
         .save(shared.copyFor(null));
     ref.invalidate(foodsProvider);
     return saved;
+  }
+
+  /// Shows or hides a shared recipe in the Recipes list (dishes the
+  /// household's planner copied in stay hidden until someone keeps them).
+  Future<void> setListed(String id, {required bool listed}) async {
+    await ref.read(recipeRepositoryProvider).setListed(id, listed: listed);
+    state = AsyncData([
+      for (final r in state.value ?? const <Recipe>[])
+        if (r.id == id) r.withListed(listed) else r,
+    ]);
   }
 
   /// Removes it for everyone in the household; puts it back if that fails.

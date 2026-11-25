@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:trendline/domain/food_preferences.dart';
 import 'package:trendline/domain/household.dart';
+import 'package:trendline/domain/recipe_library.dart';
 
 /// A household action the database refused, with a message for the user.
 class HouseholdError implements Exception {
@@ -13,6 +15,12 @@ class HouseholdError implements Exception {
   static const badInvite = HouseholdError(
     'That code doesn’t work. It may have been used or expired: ask for a '
     'new one.',
+  );
+  static const notMember = HouseholdError(
+    'You’re not in a household any more.',
+  );
+  static const notOwner = HouseholdError(
+    'Only the household’s owner can rename it.',
   );
   static const full = HouseholdError(
     'That household is full (${Household.maxMembers} people).',
@@ -37,6 +45,17 @@ abstract interface class HouseholdRepository {
   /// Removes [userId] from the household: the user themself (leaving) or,
   /// for the owner, someone else.
   Future<void> removeMember(String userId);
+
+  /// Renames the household (owner only). Throws [HouseholdError.notOwner]
+  /// when the database refuses.
+  Future<void> rename(String householdId, String name);
+
+  /// Changes the name the user shows the others.
+  Future<void> setDisplayName(String userId, String displayName);
+
+  /// The household's combined food preferences: how many members like,
+  /// dislike or never want each food and cuisine, never who.
+  Future<FoodPreferences> fetchFoodPreferences();
 }
 
 class SupabaseHouseholdRepository implements HouseholdRepository {
@@ -105,6 +124,59 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   Future<void> removeMember(String userId) async {
     await _db.from('household_members').delete().eq('user_id', userId);
   }
+
+  @override
+  Future<void> rename(String householdId, String name) async {
+    // RLS lets only the owner update it; anyone else updates nothing.
+    final rows = await _db
+        .from('households')
+        .update({'name': name.trim()})
+        .eq('id', householdId)
+        .select('id');
+    if (rows.isEmpty) throw HouseholdError.notOwner;
+  }
+
+  @override
+  Future<void> setDisplayName(String userId, String displayName) async {
+    final rows = await _db
+        .from('household_members')
+        .update({'display_name': displayName.trim()})
+        .eq('user_id', userId)
+        .select('user_id');
+    if (rows.isEmpty) throw HouseholdError.notMember;
+  }
+
+  @override
+  Future<FoodPreferences> fetchFoodPreferences() async {
+    final rows = await _db.rpc<List<dynamic>>('household_food_preferences');
+    return householdPreferencesFromRows([
+      for (final r in rows) r as Map<String, dynamic>,
+    ]);
+  }
+}
+
+/// The household's combined preference rows as [FoodPreferences]. Unknown
+/// cuisines and malformed rows are skipped.
+FoodPreferences householdPreferencesFromRows(List<Map<String, dynamic>> rows) =>
+    FoodPreferences.combined([
+      for (final row in rows)
+        if (_preferenceTarget(row) case final target?)
+          HouseholdPreference(
+            target: target,
+            likes: (row['likes'] as num?)?.toInt() ?? 0,
+            dislikes: (row['dislikes'] as num?)?.toInt() ?? 0,
+            nevers: (row['nevers'] as num?)?.toInt() ?? 0,
+            members: (row['members'] as num?)?.toInt() ?? 1,
+          ),
+    ]);
+
+Object? _preferenceTarget(Map<String, dynamic> row) {
+  if (Cuisine.values.asNameMap()[row['cuisine']] case final cuisine?) {
+    return cuisine;
+  }
+  final code = row['cofid_code'];
+  final name = row['cofid_name'];
+  return code is String && name is String ? (code: code, name: name) : null;
 }
 
 Household householdFromRow(Map<String, dynamic> row, {required DateTime now}) {

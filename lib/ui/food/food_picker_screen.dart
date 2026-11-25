@@ -130,7 +130,11 @@ class _FoodPickerScreenState extends ConsumerState<FoodPickerScreen> {
               )
             : null,
       ),
-      body: FoodBrowser(onChosen: _onChosen, onRecipeChosen: _onRecipeChosen),
+      body: FoodBrowser(
+        onChosen: _onChosen,
+        onRecipeChosen: _onRecipeChosen,
+        includeShared: true,
+      ),
     );
   }
 }

@@ -134,4 +134,94 @@ void main() {
     expect(find.byTooltip('Share with household'), findsNothing);
     expect(find.byTooltip('Copy to my recipes'), findsOneWidget);
   });
+
+  testWidgets('the owner renames the household; each changes their own name', (
+    tester,
+  ) async {
+    final backend = TestBackend(profile: testProfile);
+    await backend.households.create(name: 'Flat 2', displayName: 'Alex');
+    await backend.pump(tester);
+    await _openHousehold(tester);
+
+    await tester.tap(find.byTooltip('Rename household'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Household name'),
+      '',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter a household name.'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Household name'),
+      ' The Flat ',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(backend.households.household!.name, 'The Flat');
+    expect(find.text('The Flat'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Change your name'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'The name the others see'),
+      'Al',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Al (you)'), findsOneWidget);
+    expect(backend.households.household!.members.single.displayName, 'Al');
+  });
+
+  testWidgets('Today’s picker logs a portion of a shared recipe', (
+    tester,
+  ) async {
+    final backend = TestBackend(profile: testProfile);
+    await backend.households.create(name: 'Flat 2', displayName: 'Alex');
+    final h = backend.households.household!;
+    backend.foods.shared.add(
+      const Food(
+        id: 'hf-lentils',
+        name: 'Lentils',
+        per100g: Nutrition(kcal: 350, proteinG: 24, carbsG: 50, fatG: 1.5),
+        source: FoodSource.manual,
+      ),
+    );
+    backend.recipes.items.addAll([
+      Recipe(
+        id: 'hr-dal',
+        name: 'Dal',
+        householdId: h.id,
+        cookedWeightG: 1600,
+        ingredients: const [
+          RecipeIngredient(foodId: 'hf-lentils', rawGrams: 400),
+        ],
+      ),
+      Recipe(
+        id: 'hr-hidden',
+        name: 'Hidden stew',
+        householdId: h.id,
+        listed: false,
+        ingredients: const [
+          RecipeIngredient(foodId: 'hf-lentils', rawGrams: 400),
+        ],
+      ),
+    ]);
+    await backend.pump(tester);
+
+    await tester.tap(find.text('Add food').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Shared with Flat 2'), findsOneWidget);
+    expect(find.text('Hidden stew'), findsNothing);
+    await tester.tap(find.text('Dal'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1 portion (400 g)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Add to breakfast'));
+    await tester.pumpAndSettle();
+
+    final entry = backend.foodLogs.items.single;
+    expect(entry.recipeId, 'hr-dal');
+    expect(entry.grams, 400, reason: 'one portion of the cooked batch');
+  });
 }

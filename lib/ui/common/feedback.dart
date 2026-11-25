@@ -6,6 +6,7 @@ import 'package:trendline/data/off/off_client.dart';
 import 'package:trendline/data/plans/plan_notifier.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
+import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
@@ -18,6 +19,7 @@ String userMessage(Object error) => switch (error) {
   HealthSourceException(:final message) => message,
   FoodInUse(:final message) => message,
   HouseholdError(:final message) => message,
+  SharingError(:final message) => message,
   LibraryFoodMissing(:final message) => message,
   PlanNeedsTargets(:final message) => message,
   PlanNotSaved(:final message) => message,

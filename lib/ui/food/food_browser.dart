@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/foods/foods_notifier.dart';
+import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/off/off_product.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
@@ -66,6 +67,7 @@ class FoodBrowser extends ConsumerStatefulWidget {
     super.key,
     this.onRecipeChosen,
     this.allowMix = true,
+    this.includeShared = false,
   });
 
   final ValueChanged<FoodChoice> onChosen;
@@ -76,6 +78,10 @@ class FoodBrowser extends ConsumerStatefulWidget {
 
   /// Whether "Enter from label" offers "Made with" (saving a mix).
   final bool allowMix;
+
+  /// Whether the household's shared recipes are listed too (for logging a
+  /// portion; meal rules use only the user's own).
+  final bool includeShared;
 
   @override
   ConsumerState<FoodBrowser> createState() => _FoodBrowserState();
@@ -275,6 +281,18 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
                 in ref.watch(recipesProvider).value ?? const <Recipe>[])
               if (filter.isEmpty || r.name.toLowerCase().contains(filter)) r,
           ];
+    final household = widget.includeShared && onRecipe != null
+        ? ref.watch(householdProvider).value
+        : null;
+    final shared = household == null
+        ? const <Recipe>[]
+        : [
+            for (final r
+                in ref.watch(sharedRecipesProvider).value ?? const <Recipe>[])
+              if (r.listed &&
+                  (filter.isEmpty || r.name.toLowerCase().contains(filter)))
+                r,
+          ];
 
     return ListView(
       padding: const EdgeInsets.only(bottom: Space.xxl),
@@ -320,6 +338,16 @@ class _FoodBrowserState extends ConsumerState<FoodBrowser> {
         if (recipes.isNotEmpty) ...[
           _Header(filter.isEmpty ? 'Your recipes' : 'Your recipes matching'),
           for (final r in recipes)
+            RecipeTile(recipe: r, onTap: () => onRecipe!(r)),
+          const SizedBox(height: Space.md),
+        ],
+        if (shared.isNotEmpty) ...[
+          _Header(
+            filter.isEmpty
+                ? 'Shared with ${household!.name}'
+                : 'Shared with ${household!.name}, matching',
+          ),
+          for (final r in shared)
             RecipeTile(recipe: r, onTap: () => onRecipe!(r)),
           const SizedBox(height: Space.md),
         ],

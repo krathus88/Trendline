@@ -92,9 +92,9 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
   };
 
   double weightOf(Iterable<LibraryIngredient> ingredients, Cuisine? cuisine) {
-    var w = cuisine == null ? 1.0 : preferenceWeight(prefs.cuisines[cuisine]);
+    var w = cuisine == null ? 1.0 : prefs.cuisineWeight(cuisine);
     for (final i in ingredients) {
-      w *= preferenceWeight(prefs.ingredients[i.key]);
+      w *= prefs.ingredientWeight(i.key);
     }
     return w;
   }

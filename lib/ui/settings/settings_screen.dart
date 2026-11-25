@@ -8,7 +8,9 @@ import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/setup/setup_status.dart';
+import 'package:trendline/data/sharing/sharing_notifier.dart';
 import 'package:trendline/domain/profile.dart';
+import 'package:trendline/domain/sharing.dart';
 import 'package:trendline/domain/units.dart';
 import 'package:trendline/platform/health_source.dart';
 import 'package:trendline/ui/common/feedback.dart';
@@ -21,6 +23,7 @@ import 'package:trendline/ui/progress/energy_card.dart';
 import 'package:trendline/ui/schedule/day_schedule_screen.dart';
 import 'package:trendline/ui/settings/health_connect_sheet.dart';
 import 'package:trendline/ui/setup/setup_checklist.dart';
+import 'package:trendline/ui/sharing/sharing_screen.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 
@@ -35,6 +38,7 @@ class SettingsScreen extends ConsumerWidget {
     final targets = ref.watch(targetsProvider).value;
     final setup = ref.watch(setupStatusProvider).value;
     final household = ref.watch(householdProvider).value;
+    final sharing = ref.watch(sharingProvider).value;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -139,6 +143,15 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(builder: (_) => const HouseholdScreen()),
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.visibility_outlined),
+            title: const Text('Sharing'),
+            subtitle: Text(_sharingSummary(sharing)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SharingScreen()),
+            ),
+          ),
           if (health != null &&
               health.availability != HealthAvailability.unavailable)
             ListTile(
@@ -184,6 +197,17 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static String _sharingSummary(SharingState? s) {
+    if (s == null || (s.outgoing.isEmpty && s.incoming.isEmpty)) {
+      return 'Let someone see your progress, read-only';
+    }
+    final parts = [
+      if (s.outgoing.isNotEmpty) 'You share with ${s.outgoing.length}',
+      if (s.incoming.isNotEmpty) '${s.incoming.length} share with you',
+    ];
+    return parts.join(' · ');
   }
 
   static String _summary(Profile p) {

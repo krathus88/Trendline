@@ -536,7 +536,8 @@ select is(
    where n.nspname = 'private'
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
   array['food_for', 'is_household_member', 'is_household_owner',
-        'new_invite_code'],
+        'new_invite_code', 'plan_item_allowed', 'prep_portion_allowed',
+        'prep_session_allowed'],
   'signed-in users can run only the helpers the policies need'
 );
 

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/health/health_sync_notifier.dart';
+import 'package:trendline/data/plans/household_plan_notifier.dart';
+import 'package:trendline/data/sharing/sharing_notifier.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/food/food_screen.dart';
 import 'package:trendline/ui/plan/plan_screen.dart';
@@ -13,7 +15,8 @@ import 'package:trendline/ui/today/today_screen.dart';
 /// keeps its state (scroll position, chosen day) when you switch away.
 ///
 /// Also keeps the Health Connect sync running: it syncs on start and again
-/// whenever the app comes back to the foreground.
+/// whenever the app comes back to the foreground, when it also fetches
+/// what other household members changed.
 class HomeShell extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -29,7 +32,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.read(healthSyncProvider.notifier).recheck().ignore(),
+      onResume: () {
+        ref.read(healthSyncProvider.notifier).recheck().ignore();
+        // Another member may have changed the household's week.
+        ref.read(householdRefreshProvider)();
+      },
     );
   }
 
@@ -49,6 +56,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Publishes the targets while a share includes them. Failures are left
+    // for the next change: the viewer sees when they were last updated.
+    ref.listen(targetsPublisherProvider, (_, _) {});
     ref.listen(healthSyncProvider, (previous, next) {
       final before = previous?.value?.lastSyncedAt;
       final now = next.value;
