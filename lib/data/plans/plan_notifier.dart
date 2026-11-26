@@ -657,14 +657,14 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
   }
 
   /// Re-plans the rest of [date] around what's been [eaten]: the saved
-  /// plan's items not yet eaten are refitted to [targetKcal] within their
-  /// ranges, and saved. Portions of batches already cooked stay as boxed.
-  /// Returns the outcome, with a note when the day can't land near its
-  /// target.
+  /// plan's items not yet eaten are refitted to [target] (calories first,
+  /// then protein and the other macros) within their ranges, and saved.
+  /// Portions of batches already cooked stay as boxed. Returns the
+  /// outcome, with a note when the day can't land near its targets.
   Future<DayReplan> replanDay({
     required DateTime date,
     required List<FoodLogEntry> eaten,
-    required double targetKcal,
+    required PlanTargets target,
   }) async {
     final current = state.value;
     final plan = current?.plan;
@@ -683,7 +683,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     final result = replanRestOfDay(
       remaining: remaining,
       eaten: Nutrition.sum(eaten.map((e) => e.nutrition)),
-      targetKcal: targetKcal,
+      target: target,
       fixed: (i) => boxed.contains((i.key, i.slot)),
     );
     final changed = {
@@ -713,6 +713,37 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
       ),
     );
     return result;
+  }
+
+  /// Takes [item], one of the user's own saved items, out of the plan: a
+  /// meal they won't have. Its prep follows in the database (a cooked
+  /// portion is kept as a leftover; a batch not yet cooked shrinks).
+  /// Re-planning the rest of the day then makes up for it. The
+  /// household's dishes are changed in the household's week.
+  Future<void> skip(PlannedItem item) async {
+    final current = state.value;
+    final id = item.id;
+    if (current == null || !current.saved || id == null || item.shared) {
+      throw const PlanNotSaved();
+    }
+    await ref.read(mealPlanRepositoryProvider).skipItem(id);
+    ref.invalidate(prepProvider);
+    final latest = state.value ?? current;
+    state = AsyncData(
+      PlanState(
+        weekStart: weekStart,
+        targets: latest.targets,
+        saved: true,
+        estimated: latest.estimated,
+        plan: WeekPlan(
+          items: [
+            for (final i in latest.plan?.items ?? const <PlannedItem>[])
+              if (i.id != id) i,
+          ],
+          notes: latest.plan?.notes ?? const [],
+        ),
+      ),
+    );
   }
 
   /// Logs [item] as eaten on [date], as planned: a food by its grams; a

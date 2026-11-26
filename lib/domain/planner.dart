@@ -251,6 +251,20 @@ const double _wProteinShort = 6;
 const double _wFat = 1;
 const double _wCarbs = 1;
 const double _wFibreShort = 1;
+
+/// How far a day's nutrition [n] is from its targets [t], weighted as the
+/// planner weighs it (lower is better): calories most, then a protein
+/// shortfall, then fat, carbs and a fibre shortfall. Protein and fibre
+/// are minimums. Shared with re-planning the rest of a day.
+double dayNutritionScore(Nutrition n, PlanTargets t) {
+  double sq(double v) => v * v;
+  return _wKcal * sq((n.kcal - t.kcal) / t.kcal) +
+      _wProteinShort * sq(max(0, t.proteinG - n.proteinG) / t.proteinG) +
+      _wFat * sq((n.fatG - t.fatG) / t.fatG) +
+      _wCarbs * sq((n.carbsG - t.carbsG) / max(t.carbsG, 1)) +
+      _wFibreShort * sq(max(0, t.fibreG - n.fibreG) / t.fibreG);
+}
+
 const double _wSameDishSameDay = 0.5;
 const double _wRepeatBatch = 0.3;
 const double _wCookSession = 0.08;
@@ -544,13 +558,10 @@ double _cost(
       for (final i in items)
         if (i.day == d) i,
     ];
-    final n = Nutrition.sum([for (final i in day) i.nutrition]);
-    double sq(double v) => v * v;
-    cost += _wKcal * sq((n.kcal - t.kcal) / t.kcal);
-    cost += _wProteinShort * sq(max(0, t.proteinG - n.proteinG) / t.proteinG);
-    cost += _wFat * sq((n.fatG - t.fatG) / t.fatG);
-    cost += _wCarbs * sq((n.carbsG - t.carbsG) / max(t.carbsG, 1));
-    cost += _wFibreShort * sq(max(0, t.fibreG - n.fibreG) / t.fibreG);
+    cost += dayNutritionScore(
+      Nutrition.sum([for (final i in day) i.nutrition]),
+      t,
+    );
     final dishes = [
       for (final i in day)
         if (i.isDish) i.key,

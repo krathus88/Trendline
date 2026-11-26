@@ -302,6 +302,30 @@ class FakeMealPlanRepository implements MealPlanRepository {
   /// Runs after each save, as the database lays out prep when it saves.
   void Function(SavedPlan plan)? onSaved;
 
+  /// Runs after an item is skipped, as the database updates its prep.
+  void Function(SavedPlanItem item)? onSkipped;
+
+  @override
+  Future<void> skipItem(String id) async {
+    if (failUpdates) throw FakeNetworkError();
+    for (final MapEntry(key: week, value: plan) in weeks.entries.toList()) {
+      final item = plan.items.where((i) => i.id == id).firstOrNull;
+      if (item == null) continue;
+      weeks[week] = SavedPlan(
+        weekStart: plan.weekStart,
+        targets: plan.targets,
+        notes: plan.notes,
+        items: [
+          for (final i in plan.items)
+            if (i.id != id) i,
+        ],
+      );
+      onSkipped?.call(item);
+      return;
+    }
+    throw StateError('Not one of your own planned meals');
+  }
+
   @override
   Future<SavedPlan?> fetchWeek(DateTime weekStart) async => weeks[weekStart];
 
@@ -407,6 +431,58 @@ class FakePrepRepository implements PrepRepository {
           if (p.id == portion.id) portion else p,
       ],
     );
+  }
+
+  /// As `skip_plan_item` does for [item]'s portion: a cooked batch's
+  /// becomes a leftover; one not yet cooked is taken out and the batch
+  /// shrinks, or goes when nothing's left.
+  void skip(SavedPlanItem item) {
+    for (final (n, s) in sessions.indexed) {
+      if (s.recipeId != item.recipeId) continue;
+      final p = s.portions
+          .where(
+            (p) =>
+                p.day == item.day &&
+                p.slot == item.slot &&
+                p.status == PortionStatus.planned,
+          )
+          .firstOrNull;
+      if (p == null) continue;
+      if (s.cooked) {
+        sessions[n] = s.copyWith(
+          portions: [
+            for (final q in s.portions)
+              if (q.id == p.id)
+                q.copyWith(
+                  day: () => null,
+                  slot: () => null,
+                  status: PortionStatus.leftover,
+                )
+              else
+                q,
+          ],
+        );
+      } else {
+        final rest = [
+          for (final q in s.portions)
+            if (q.id != p.id) q,
+        ];
+        if (rest.isEmpty) {
+          sessions.removeAt(n);
+        } else {
+          sessions[n] = PrepSession(
+            id: s.id,
+            planId: s.planId,
+            householdId: s.householdId,
+            recipeId: s.recipeId,
+            cookOn: s.cookOn,
+            portionCount: rest.fold<double>(0, (t, q) => t + q.amount),
+            portions: rest,
+          );
+        }
+      }
+      return;
+    }
   }
 
   /// Lays out [plan]'s batches as `save_meal_plan` does: sessions not yet

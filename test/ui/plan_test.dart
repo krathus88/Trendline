@@ -334,11 +334,17 @@ void main() {
     expect(find.byIcon(Icons.lock), findsOneWidget);
 
     // Taken out and saved: the portion waits in Prep as a leftover.
+    // (Later in the week, today's dinner is further down the list.)
+    await tester.ensureVisible(find.text('Lentil stew'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Lentil stew'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Remove from the plan'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    final save = find.widgetWithText(FilledButton, 'Save');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
     await tester.pumpAndSettle();
     final portion = backend.prep.sessions
         .firstWhere((s) => s.id == 's-stew')

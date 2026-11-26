@@ -52,12 +52,32 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     }
   }
 
-  Future<void> _replan(List<FoodLogEntry> eaten, double targetKcal) async {
+  Future<void> _skipPlanned(PlannedItem item) async {
+    try {
+      await ref.read(planProvider(weekStartOf(_day)).notifier).skip(item);
+      if (!mounted) return;
+      showMessageSnack(
+        context,
+        _isToday
+            ? 'Skipped ${item.name}. Re-plan the rest of the day to make up '
+                  'for it.'
+            : 'Skipped ${item.name}.',
+      );
+    } on Object catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  Future<void> _replan(List<FoodLogEntry> eaten, DailyTargets targets) async {
     setState(() => _replanning = true);
     try {
       final result = await ref
           .read(planProvider(weekStartOf(_day)).notifier)
-          .replanDay(date: _day, eaten: eaten, targetKcal: targetKcal);
+          .replanDay(
+            date: _day,
+            eaten: eaten,
+            target: targets.forPlanning,
+          );
       if (!mounted) return;
       final changed = result.items.length;
       showMessageSnack(
@@ -220,12 +240,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             onAdd: _add,
             onEdit: _edit,
             onLogPlanned: _logPlanned,
+            onSkipPlanned: _skipPlanned,
             onReplan:
                 _isToday &&
                     targets != null &&
                     planned.isNotEmpty &&
                     !_replanning
-                ? () => _replan(value, targets.kcal)
+                ? () => _replan(value, targets)
                 : null,
           ),
         ),
@@ -296,6 +317,7 @@ class _SnapshotView extends StatelessWidget {
             onEdit: onEdit,
             // Logging as planned and re-planning need the live plan.
             onLogPlanned: null,
+            onSkipPlanned: null,
             onReplan: null,
           ),
         ),
@@ -313,6 +335,7 @@ class _DayLog extends StatelessWidget {
     required this.onAdd,
     required this.onEdit,
     required this.onLogPlanned,
+    required this.onSkipPlanned,
     required this.onReplan,
   });
 
@@ -327,6 +350,9 @@ class _DayLog extends StatelessWidget {
 
   /// Null while only a saved copy is shown.
   final ValueChanged<PlannedItem>? onLogPlanned;
+
+  /// Null while only a saved copy is shown.
+  final ValueChanged<PlannedItem>? onSkipPlanned;
 
   /// Null when there's nothing to re-plan (or it isn't today).
   final VoidCallback? onReplan;
@@ -367,6 +393,7 @@ class _DayLog extends StatelessWidget {
             onAdd: () => onAdd(slot),
             onEdit: onEdit,
             onLogPlanned: onLogPlanned,
+            onSkipPlanned: onSkipPlanned,
           ),
         const SizedBox(height: Space.xl),
         _DayComplete(day: day),
@@ -616,6 +643,7 @@ class _SlotSection extends StatelessWidget {
     required this.onAdd,
     required this.onEdit,
     required this.onLogPlanned,
+    required this.onSkipPlanned,
   });
 
   final MealSlot slot;
@@ -624,6 +652,9 @@ class _SlotSection extends StatelessWidget {
   final VoidCallback onAdd;
   final ValueChanged<FoodLogEntry> onEdit;
   final ValueChanged<PlannedItem>? onLogPlanned;
+
+  /// Null while only a saved copy is shown.
+  final ValueChanged<PlannedItem>? onSkipPlanned;
 
   @override
   Widget build(BuildContext context) {
@@ -687,13 +718,26 @@ class _SlotSection extends StatelessWidget {
                 '${formatKcal(i.nutrition.kcal)} kcal',
                 style: text.bodySmall?.tabular,
               ),
-              trailing: switch (onLogPlanned) {
-                final log? => IconButton(
-                  tooltip: 'Eaten as planned',
-                  icon: const Icon(Icons.check_circle_outline),
-                  onPressed: () => log(i),
+              trailing: switch ((onLogPlanned, onSkipPlanned)) {
+                (final log?, final skip?) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // The household's dishes change in the household's
+                    // week.
+                    if (!i.shared && i.id != null)
+                      IconButton(
+                        tooltip: 'Skip (not having it)',
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => skip(i),
+                      ),
+                    IconButton(
+                      tooltip: 'Eaten as planned',
+                      icon: const Icon(Icons.check_circle_outline),
+                      onPressed: () => log(i),
+                    ),
+                  ],
                 ),
-                null => null,
+                _ => null,
               },
             ),
           Align(

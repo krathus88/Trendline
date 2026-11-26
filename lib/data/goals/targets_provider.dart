@@ -44,14 +44,19 @@ class TodayTargets {
       today: today,
       weekStart: weekStart,
     ))
-      PlanTargets(
-        kcal: t.kcal,
-        proteinG: t.proteinG,
-        carbsG: t.carbsG,
-        fatG: t.fatG,
-        fibreG: t.fibreG,
-      ),
+      t.forPlanning,
   ];
+}
+
+extension DailyTargetsForPlanning on DailyTargets {
+  /// These targets as the planner and re-planning take them.
+  PlanTargets get forPlanning => PlanTargets(
+    kcal: kcal,
+    proteinG: proteinG,
+    carbsG: carbsG,
+    fatG: fatG,
+    fibreG: fibreG,
+  );
 }
 
 /// Null until there's a profile, a goal and a weigh-in.

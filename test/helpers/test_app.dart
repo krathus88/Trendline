@@ -26,6 +26,7 @@ class TestBackend {
       profiles = FakeProfileRepository(profile: profile) {
     plans
       ..onSaved = ((plan) => prep.layOut(plan, recipes.items))
+      ..onSkipped = prep.skip
       ..onHouseholdSaved = ((week) => prep.layOutHousehold(
         week,
         recipes.items,

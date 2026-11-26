@@ -7,7 +7,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(39);
+select plan(40);
 
 -- A owns the household, B is a member, C is an outsider.
 insert into auth.users (id, email) values
@@ -117,6 +117,16 @@ select lives_ok(
 );
 select is((select count(*)::int from public.meal_plans), 2,
   'A sees both weeks');
+select throws_ok(
+  $$select public.skip_plan_item((
+      select i.id from public.plan_items i
+      join public.meal_plans p on p.id = i.plan_id
+      where p.household_id is not null
+        and i.eater_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      limit 1))$$,
+  '22023', null,
+  'a household serving can''t be skipped from one''s own day'
+);
 
 select throws_ok(
   $$select public.save_household_plan('2026-12-07', '[]',

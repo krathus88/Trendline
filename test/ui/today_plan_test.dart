@@ -235,4 +235,52 @@ void main() {
     expect(_amount(backend, 'i-oats'), 80);
     expect(find.text('Planned · 80 g · 304 kcal'), findsOneWidget);
   });
+
+  /// The skip button on [name]'s planned row.
+  Finder skipButton(String name) => find.descendant(
+    of: find.widgetWithText(ListTile, name),
+    matching: find.byTooltip('Skip (not having it)'),
+  );
+
+  testWidgets('skipping a meal takes it out, then re-planning makes up for '
+      'it', (tester) async {
+    final backend = await _ready();
+    await backend.pump(tester);
+    await tester.tap(skipButton('Oats'));
+    await tester.pumpAndSettle();
+
+    expect(
+      backend.plans.weeks[_week]!.items.map((i) => i.id),
+      unorderedEquals(['i-yog', 'i-stew']),
+    );
+    expect(find.textContaining('Planned ·'), findsNWidgets(2));
+    expect(find.textContaining('Skipped Oats'), findsOneWidget);
+
+    await tester.tap(find.text('Re-plan the rest of the day'));
+    await tester.pumpAndSettle();
+    expect(_amount(backend, 'i-stew'), greaterThan(1));
+  });
+
+  testWidgets('a skipped cooked portion waits in Prep as a leftover', (
+    tester,
+  ) async {
+    final backend = await _ready(stewCooked: true);
+    await backend.pump(tester);
+    await tester.tap(skipButton('Stew'));
+    await tester.pumpAndSettle();
+    final portion = backend.prep.sessions.single.portions.first;
+    expect(portion.status, PortionStatus.leftover);
+    expect(portion.day, isNull);
+    expect(find.textContaining('Planned ·'), findsNWidgets(2));
+  });
+
+  testWidgets('a failed skip keeps the meal', (tester) async {
+    final backend = await _ready();
+    backend.plans.failUpdates = true;
+    await backend.pump(tester);
+    await tester.tap(skipButton('Oats'));
+    await tester.pumpAndSettle();
+    expect(backend.plans.weeks[_week]!.items, hasLength(3));
+    expect(find.textContaining('Planned ·'), findsNWidgets(3));
+  });
 }

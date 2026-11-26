@@ -107,6 +107,12 @@ abstract interface class MealPlanRepository {
   /// Portions of batches not yet cooked follow; a cooked batch's portions
   /// can't change.
   Future<void> updateAmounts(Map<String, double> amounts);
+
+  /// Takes one of the user's own planned items (by ID) out of their plan.
+  /// Its prep follows: a cooked batch's portion becomes a leftover, and a
+  /// batch not yet cooked shrinks (or goes, with nothing left planned).
+  /// Household servings can't be skipped this way.
+  Future<void> skipItem(String id);
 }
 
 class SupabaseMealPlanRepository implements MealPlanRepository {
@@ -178,6 +184,12 @@ class SupabaseMealPlanRepository implements MealPlanRepository {
         ],
       },
     );
+  }
+
+  @override
+  Future<void> skipItem(String id) async {
+    // One database function, so the item and its prep change together.
+    await _db.rpc<void>('skip_plan_item', params: {'item_id': id});
   }
 }
 
