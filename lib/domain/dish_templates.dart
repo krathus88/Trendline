@@ -15,6 +15,8 @@ class FlavourProfile {
     required this.name,
     required this.cuisine,
     required this.ingredients,
+    this.base,
+    this.finish,
   });
 
   final String id;
@@ -25,18 +27,47 @@ class FlavourProfile {
 
   /// Grams per portion.
   final List<LibraryIngredient> ingredients;
+
+  /// How a pan dish starts with this flavour (the onion, garlic and
+  /// spices), for a template method's {flavour_base}.
+  final String? base;
+
+  /// How a dish is finished with it (lemon juice, fresh herbs), for
+  /// {flavour_finish}.
+  final String? finish;
 }
 
 /// One choice for a template slot: a basic food, raw, with the cooked form
 /// CoFID has for it (used to estimate the cooked weight).
 @immutable
 class TemplateOption {
-  const new({required this.label, required this.raw, this.cooked});
+  const new({
+    required this.label,
+    required this.raw,
+    this.cooked,
+    this.noun,
+    this.prep,
+    this.done,
+  });
 
   /// Shown in dish names: "chicken", "brown rice".
   final String label;
   final FoodKey raw;
   final FoodKey? cooked;
+
+  /// How a method names it, when that differs from [label] ("chickpeas"
+  /// for "chickpea").
+  final String? noun;
+
+  /// Getting it ready, as a sentence ("Drain and rinse the chickpeas."),
+  /// for a method's {prep}.
+  final String? prep;
+
+  /// How to tell it's cooked ("the chicken has no pink left"), for a
+  /// method's {done}.
+  final String? done;
+
+  String get methodNoun => noun ?? label;
 }
 
 /// One ingredient role in a dish shape, with its amount per portion and the
@@ -75,10 +106,15 @@ class DishTemplate {
     required this.slots,
     this.noCook = false,
     this.label,
+    this.method = const [],
   });
 
   final String id;
   final int version;
+
+  /// How to make it, step by step, with placeholders (see [dishMethod]).
+  /// Empty when there are no instructions yet.
+  final List<MethodStep> method;
 
   /// The dish shape's name for pickers ("Yogurt bowl"), when its [name]
   /// pattern says too little once the placeholders are taken out.
@@ -101,6 +137,28 @@ class DishTemplate {
   /// what goes in.
   final bool noCook;
 }
+
+/// One step of a template's method. [text] may hold placeholders (see
+/// [dishMethod]). With [onlyIf], the step is used only when the dish has
+/// that role filled or that option picked (by label); with [unless], only
+/// when it hasn't.
+@immutable
+class MethodStep {
+  const new(this.text, {this.onlyIf, this.unless});
+
+  final String text;
+  final String? onlyIf;
+  final String? unless;
+}
+
+/// The placeholders a method step may use besides the ingredient roles.
+const Set<String> methodPlaceholders = {
+  'prep',
+  'done',
+  'flavour_base',
+  'flavour_finish',
+  'fridge_days',
+};
 
 @immutable
 class DishTemplates {
@@ -179,6 +237,12 @@ String _string(Map<String, dynamic> json, String field, String where) {
   return v;
 }
 
+String? _optionalString(
+  Map<String, dynamic> json,
+  String field,
+  String where,
+) => json[field] == null ? null : _string(json, field, where);
+
 String _checkedId(Map<String, dynamic> json, String where) {
   final id = _string(json, 'id', where);
   if (!_id.hasMatch(id) || id.length > 80) {
@@ -214,6 +278,8 @@ FlavourProfile _flavour(Object? json) {
     id: id,
     name: _string(m, 'name', id),
     cuisine: _enum(Cuisine.values, m['cuisine'], '$id cuisine'),
+    base: _optionalString(m, 'base', id),
+    finish: _optionalString(m, 'finish', id),
     ingredients: [
       for (final i in _list(m['ingredients'], id))
         () {
@@ -239,6 +305,9 @@ List<TemplateOption> _options(Object? json, String where) => [
         label: _string(m, 'label', where),
         raw: _key(m, where),
         cooked: cooked == null ? null : _key(_map(cooked, where), where),
+        noun: _optionalString(m, 'noun', where),
+        prep: _optionalString(m, 'prep', where),
+        done: _optionalString(m, 'done', where),
       );
     }(),
 ];
@@ -308,6 +377,7 @@ DishTemplate _template(
   if (!slots.any((s) => s.role == IngredientRole.protein && !s.optional)) {
     throw FormatException('$id: needs a protein');
   }
+  final method = _method(m['method'], id, slots);
   return DishTemplate(
     id: id,
     version: version,
@@ -323,7 +393,52 @@ DishTemplate _template(
     slots: slots,
     noCook: noCook,
     label: m['label'] == null ? null : _string(m, 'label', id),
+    method: method,
   );
+}
+
+final _placeholder = RegExp(r'\{([a-z_]+)\}');
+
+/// A template's method: optional, but every placeholder and condition in
+/// it must make sense for this template.
+List<MethodStep> _method(
+  Object? json,
+  String id,
+  List<TemplateSlot> slots,
+) {
+  if (json == null) return const [];
+  final roles = {for (final s in slots) s.role.name};
+  final labels = {
+    for (final s in slots)
+      for (final o in s.options) o.label,
+  };
+  final steps = <MethodStep>[];
+  for (final step in _list(json, '$id method')) {
+    final MethodStep parsed;
+    if (step is String) {
+      parsed = MethodStep(step);
+    } else {
+      final sm = _map(step, '$id method');
+      parsed = MethodStep(
+        _string(sm, 'text', '$id method'),
+        onlyIf: _optionalString(sm, 'if', '$id method'),
+        unless: _optionalString(sm, 'unless', '$id method'),
+      );
+    }
+    for (final match in _placeholder.allMatches(parsed.text)) {
+      final name = match.group(1)!;
+      if (!roles.contains(name) && !methodPlaceholders.contains(name)) {
+        throw FormatException('$id method: unknown {$name}');
+      }
+    }
+    for (final condition in [?parsed.onlyIf, ?parsed.unless]) {
+      if (!roles.contains(condition) && !labels.contains(condition)) {
+        throw FormatException('$id method: unknown condition $condition');
+      }
+    }
+    steps.add(parsed);
+  }
+  return steps;
 }
 
 // ---------------------------------------------------------------------------
@@ -392,8 +507,12 @@ class GeneratedDish {
     portions: template.portions,
     fridgeDays: template.fridgeDays,
     freezable: template.freezable,
+    method: method,
     ingredients: ingredients,
   );
+
+  /// The template's method for this dish, or null when it has none.
+  String? get method => dishMethod(template, flavour, picks);
 
   /// The batch's expected weight after cooking, from CoFID's raw and cooked
   /// forms: only water changes, so cooked grams = raw grams x raw kcal /
@@ -532,6 +651,73 @@ String dishName(
   name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
   return name.isEmpty ? name : name[0].toUpperCase() + name.substring(1);
 }
+
+/// [template]'s method for a dish with [flavour] and [picks], as numbered
+/// steps, one per line, or null when the template has no method.
+///
+/// Placeholders: an ingredient role ({protein}, {veg}...) becomes what was
+/// picked for it ("broccoli and red pepper" for two veg slots); {prep} the
+/// picks' preparation sentences; {done} how to tell they're cooked (a step
+/// using it is left out if nothing picked says); {flavour_base} and
+/// {flavour_finish} the
+/// flavour's; {fridge_days} how long it keeps. A step is left out when its
+/// condition isn't met, when it names a role nothing was picked for, or
+/// when nothing is left of it once filled in.
+String? dishMethod(
+  DishTemplate template,
+  FlavourProfile? flavour,
+  List<TemplateOption?> picks,
+) {
+  if (template.method.isEmpty) return null;
+  final byRole = <String, List<TemplateOption>>{};
+  for (final (i, slot) in template.slots.indexed) {
+    final pick = picks[i];
+    if (pick == null) continue;
+    final list = byRole.putIfAbsent(slot.role.name, () => []);
+    if (!list.any((o) => o.raw == pick.raw)) list.add(pick);
+  }
+  final picked = [for (final list in byRole.values) ...list];
+  bool holds(String condition) =>
+      byRole.containsKey(condition) ||
+      picked.any((o) => o.label == condition);
+
+  final values = <String, String>{
+    'prep': {for (final o in picked) ?o.prep}.join(' '),
+    'flavour_base': flavour?.base ?? '',
+    'flavour_finish': flavour?.finish ?? '',
+    'fridge_days': '${template.fridgeDays}',
+    if ({for (final o in picked) ?o.done} case final done when done.isNotEmpty)
+      'done': done.join(' and '),
+    for (final MapEntry(:key, :value) in byRole.entries)
+      key: _joinNouns([for (final o in value) o.methodNoun]),
+  };
+  final steps = <String>[];
+  for (final step in template.method) {
+    if (step.onlyIf case final c? when !holds(c)) continue;
+    if (step.unless case final c? when holds(c)) continue;
+    String? missing;
+    final text = step.text.replaceAllMapped(_placeholder, (m) {
+      final name = m.group(1)!;
+      final value = values[name];
+      if (value == null) missing = name;
+      return value ?? '';
+    });
+    if (missing != null) continue;
+    final tidy = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (!RegExp('[A-Za-z]').hasMatch(tidy)) continue;
+    steps.add(tidy);
+  }
+  if (steps.isEmpty) return null;
+  return [for (final (n, s) in steps.indexed) '${n + 1}. $s'].join('\n');
+}
+
+/// "a", "a and b", "a, b and c".
+String _joinNouns(List<String> nouns) => switch (nouns.length) {
+  0 => '',
+  1 => nouns.single,
+  _ =>
+    '${nouns.sublist(0, nouns.length - 1).join(', ')} and ${nouns.last}',
+};
 
 T? _weightedPick<T>(List<T> items, double Function(T) weight, Random random) {
   final weights = [for (final i in items) weight(i)];

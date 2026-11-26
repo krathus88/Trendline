@@ -224,3 +224,16 @@ RecipeNutrition? libraryRecipeNutrition(
     },
   );
 }
+
+/// [recipe]'s method: its own, or, for a copy of a library recipe saved
+/// before the library had a method for it, the library recipe's current
+/// one. Null when there's none.
+String? recipeMethod(Recipe recipe, Iterable<LibraryRecipe> library) {
+  final own = recipe.method;
+  if (own != null && own.trim().isNotEmpty) return own;
+  if (recipe.origin != RecipeOrigin.library) return null;
+  for (final l in library) {
+    if (l.id == recipe.sourceId) return l.method;
+  }
+  return null;
+}

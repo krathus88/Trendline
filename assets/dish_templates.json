@@ -5,6 +5,7 @@
       "id": "indian",
       "name": "Indian",
       "cuisine": "indian",
+      "base": "Heat the oil in a large pan and fry the chopped onion for 8 minutes, until soft and golden. Add the cumin seeds, then the crushed garlic and grated ginger, and stir for a minute. Stir in the turmeric, garam masala and chilli powder for 30 seconds.",
       "ingredients": [
         {"cofid": "13-499", "name": "Onions, raw", "grams": 40, "role": "veg"},
         {"cofid": "13-244", "name": "Garlic, raw", "grams": 3, "role": "flavour"},
@@ -19,6 +20,8 @@
       "id": "mexican",
       "name": "Mexican",
       "cuisine": "mexican",
+      "base": "Heat the oil in a large pan and fry the chopped onion for 6 to 8 minutes, until soft. Add the crushed garlic, cumin, paprika, chilli powder and oregano and stir for a minute.",
+      "finish": "Stir in the lime juice.",
       "ingredients": [
         {"cofid": "13-499", "name": "Onions, raw", "grams": 40, "role": "veg"},
         {"cofid": "13-244", "name": "Garlic, raw", "grams": 2.5, "role": "flavour"},
@@ -33,6 +36,8 @@
       "id": "italian",
       "name": "Italian",
       "cuisine": "italian",
+      "base": "Heat the oil in a large pan and fry the chopped onion for 6 to 8 minutes, until soft, then add the crushed garlic and oregano and stir for a minute.",
+      "finish": "Tear in the basil and season with black pepper.",
       "ingredients": [
         {"cofid": "13-499", "name": "Onions, raw", "grams": 30, "role": "veg"},
         {"cofid": "13-244", "name": "Garlic, raw", "grams": 2.5, "role": "flavour"},
@@ -45,6 +50,8 @@
       "id": "mediterranean",
       "name": "Mediterranean",
       "cuisine": "mediterranean",
+      "base": "Heat the oil in a large pan, add the crushed garlic and oregano and stir for 30 seconds.",
+      "finish": "Stir in the lemon juice and season with black pepper.",
       "ingredients": [
         {"cofid": "13-244", "name": "Garlic, raw", "grams": 2, "role": "flavour"},
         {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 5, "role": "flavour"},
@@ -56,6 +63,8 @@
       "id": "chinese",
       "name": "Chinese-style",
       "cuisine": "chinese",
+      "base": "Heat the oil in a wok or large frying pan over a high heat, add the crushed garlic and grated ginger and stir for 30 seconds.",
+      "finish": "Stir in the soy sauce and scatter over the sliced spring onions.",
       "ingredients": [
         {"cofid": "13-244", "name": "Garlic, raw", "grams": 2.5, "role": "flavour"},
         {"cofid": "13-890", "name": "Ginger, fresh", "grams": 2.5, "role": "flavour"},
@@ -67,6 +76,8 @@
       "id": "british",
       "name": "Herby",
       "cuisine": "british",
+      "base": "Heat the oil in a large pan and stir in the mixed herbs.",
+      "finish": "Season with black pepper.",
       "ingredients": [
         {"cofid": "13-884", "name": "Mixed herbs, dried", "grams": 0.5, "role": "flavour"},
         {"cofid": "13-880", "name": "Pepper, black", "grams": 0.3, "role": "flavour"}
@@ -75,17 +86,17 @@
   ],
   "options": {
     "snack-fruit": [
-      {"label": "apple", "cofid": "14-319", "name": "Apples, eating, raw, flesh and skin"},
-      {"label": "pear", "cofid": "14-321", "name": "Pears, raw, flesh and skin"},
-      {"label": "banana", "cofid": "14-318", "name": "Bananas, flesh only"},
+      {"label": "apple", "prep": "Core and slice the apple.", "cofid": "14-319", "name": "Apples, eating, raw, flesh and skin"},
+      {"label": "pear", "prep": "Core and slice the pear.", "cofid": "14-321", "name": "Pears, raw, flesh and skin"},
+      {"label": "banana", "prep": "Slice the banana.", "cofid": "14-318", "name": "Bananas, flesh only"},
       {"label": "grapes", "cofid": "14-350", "name": "Grapes, average"},
-      {"label": "orange", "cofid": "14-327", "name": "Oranges, flesh only"}
+      {"label": "orange", "prep": "Peel the orange and split it into segments.", "cofid": "14-327", "name": "Oranges, flesh only"}
     ],
     "berries": [
       {"label": "blueberries", "cofid": "14-325", "name": "Blueberries"},
-      {"label": "strawberries", "cofid": "14-324", "name": "Strawberries, raw"},
+      {"label": "strawberries", "prep": "Hull and halve the strawberries.", "cofid": "14-324", "name": "Strawberries, raw"},
       {"label": "raspberries", "cofid": "14-375", "name": "Raspberries, raw"},
-      {"label": "banana", "cofid": "14-318", "name": "Bananas, flesh only"}
+      {"label": "banana", "prep": "Slice the banana.", "cofid": "14-318", "name": "Bananas, flesh only"}
     ],
     "nuts": [
       {"label": "almonds", "cofid": "14-896", "name": "Almonds, whole kernels"},
@@ -93,25 +104,25 @@
       {"label": "walnuts", "cofid": "14-879", "name": "Walnuts, kernel only"}
     ],
     "dippers": [
-      {"label": "carrot sticks", "cofid": "13-496", "name": "Carrots, old, raw"},
-      {"label": "cucumber", "cofid": "13-523", "name": "Cucumber, raw, flesh and skin"},
-      {"label": "pepper strips", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"}
+      {"label": "carrot sticks", "prep": "Peel the carrots and cut them into sticks.", "cofid": "13-496", "name": "Carrots, old, raw"},
+      {"label": "cucumber", "prep": "Slice the cucumber.", "cofid": "13-523", "name": "Cucumber, raw, flesh and skin"},
+      {"label": "pepper strips", "prep": "Deseed the pepper and cut it into strips.", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"}
     ],
     "crispbread": [
       {"label": "oatcakes", "cofid": "11-823", "name": "Oatcakes, plain, retail"},
-      {"label": "wholemeal toast", "cofid": "11-981", "name": "Bread, wholemeal, average"}
+      {"label": "wholemeal toast", "noun": "toast", "cofid": "11-981", "name": "Bread, wholemeal, average"}
     ],
     "lean-protein": [
-      {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+      {"label": "chicken", "done": "the chicken has no pink left", "prep": "Cut the chicken into bite-size pieces.", "cofid": "18-290", "name": "Chicken, light meat, raw",
        "cooked": {"cofid": "18-323", "name": "Chicken, breast, grilled without skin, meat only"}},
-      {"label": "turkey", "cofid": "18-349", "name": "Turkey, light meat, raw",
+      {"label": "turkey", "done": "the turkey has no pink left", "prep": "Cut the turkey into bite-size pieces.", "cofid": "18-349", "name": "Turkey, light meat, raw",
        "cooked": {"cofid": "18-359", "name": "Turkey, light meat, roasted"}},
-      {"label": "beef", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
+      {"label": "beef", "done": "the mince is browned with no pink left", "noun": "beef mince", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
        "cooked": {"cofid": "18-507", "name": "Beef, mince, extra lean, stewed"}},
-      {"label": "salmon", "cofid": "16-356", "name": "Salmon, farmed, flesh only, raw",
+      {"label": "salmon", "done": "the salmon flakes easily", "prep": "Cut the salmon into large chunks, removing any skin.", "cofid": "16-356", "name": "Salmon, farmed, flesh only, raw",
        "cooked": {"cofid": "16-359", "name": "Salmon, farmed, flesh only, baked"}},
-      {"label": "chickpea", "cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained"},
-      {"label": "tofu", "cofid": "13-570", "name": "Tofu, soya bean, steamed"}
+      {"label": "chickpea", "done": "the chickpeas are hot through", "noun": "chickpeas", "prep": "Drain and rinse the chickpeas.", "cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained"},
+      {"label": "tofu", "done": "the tofu is hot and golden", "prep": "Pat the tofu dry and cut it into cubes.", "cofid": "13-570", "name": "Tofu, soya bean, steamed"}
     ],
     "rice": [
       {"label": "rice", "cofid": "11-857", "name": "Rice, white, basmati, raw",
@@ -120,17 +131,17 @@
        "cooked": {"cofid": "11-867", "name": "Rice, brown, basmati, boiled in unsalted water"}}
     ],
     "green-veg": [
-      {"label": "broccoli", "cofid": "13-502", "name": "Broccoli, green, raw"},
-      {"label": "green beans", "cofid": "13-514", "name": "Beans, green, raw"},
+      {"label": "broccoli", "prep": "Cut the broccoli into small florets.", "cofid": "13-502", "name": "Broccoli, green, raw"},
+      {"label": "green beans", "prep": "Trim the green beans and cut them in half.", "cofid": "13-514", "name": "Beans, green, raw"},
       {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
       {"label": "peas", "cofid": "13-527", "name": "Peas, frozen, raw"},
-      {"label": "courgette", "cofid": "13-627", "name": "Courgette, raw"}
+      {"label": "courgette", "prep": "Slice the courgette.", "cofid": "13-627", "name": "Courgette, raw"}
     ],
     "colourful-veg": [
-      {"label": "red pepper", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"},
-      {"label": "carrot", "cofid": "13-496", "name": "Carrots, old, raw"},
-      {"label": "mushroom", "cofid": "13-505", "name": "Mushrooms, white, raw"},
-      {"label": "cauliflower", "cofid": "13-512", "name": "Cauliflower, raw"}
+      {"label": "red pepper", "prep": "Deseed and slice the pepper.", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"},
+      {"label": "carrot", "prep": "Peel and slice the carrot.", "cofid": "13-496", "name": "Carrots, old, raw"},
+      {"label": "mushroom", "noun": "mushrooms", "prep": "Slice the mushrooms.", "cofid": "13-505", "name": "Mushrooms, white, raw"},
+      {"label": "cauliflower", "prep": "Cut the cauliflower into small florets.", "cofid": "13-512", "name": "Cauliflower, raw"}
     ],
     "oil": [
       {"label": "olive oil", "cofid": "17-038", "name": "Oil, olive"},
@@ -140,13 +151,22 @@
   "templates": [
     {
       "id": "rice-bowl",
-      "version": 1,
+      "version": 2,
       "name": "{flavour} {protein} rice bowl",
       "meals": ["lunch", "dinner"],
       "portions": 4,
       "fridge_days": 3,
       "freezable": false,
       "flavours": ["indian", "mexican", "mediterranean", "chinese"],
+      "method": [
+        "{prep}",
+        "Cook the {carb} as the packet says.",
+        "{flavour_base}",
+        "Add the {protein} and cook, stirring now and then, until {done}.",
+        "Add the {veg} with a splash of water and cook for 5 to 6 minutes, until just tender.",
+        "{flavour_finish}",
+        "Divide between containers. Cool quickly (within an hour, as cooked rice left out can make you ill) and keep in the fridge for up to {fridge_days} days. Reheat until piping hot all the way through."
+      ],
       "slots": [
         {"role": "protein", "grams": 130, "min": 90, "max": 200, "options": "lean-protein"},
         {"role": "carb", "grams": 60, "min": 30, "max": 110, "options": "rice"},
@@ -157,13 +177,23 @@
     },
     {
       "id": "noodle-stir-fry",
-      "version": 1,
+      "version": 2,
       "name": "{flavour} {protein} noodle stir-fry",
       "meals": ["lunch", "dinner"],
       "portions": 4,
       "fridge_days": 3,
       "freezable": false,
       "flavours": ["chinese"],
+      "method": [
+        "{prep}",
+        "Cook the {carb} as the packet says, drain, and toss with a little of the oil.",
+        "{flavour_base}",
+        "Add the {protein} and stir-fry over a high heat until {done}.",
+        "Add the {veg} and stir-fry for 3 to 4 minutes, until just tender.",
+        "Toss the noodles through until hot.",
+        "{flavour_finish}",
+        "Divide between containers. Cool quickly and keep in the fridge for up to {fridge_days} days. Reheat until piping hot all the way through."
+      ],
       "slots": [
         {"role": "protein", "grams": 130, "min": 90, "max": 200, "options": "lean-protein"},
         {"role": "carb", "grams": 65, "min": 35, "max": 110, "options": [
@@ -179,21 +209,35 @@
     },
     {
       "id": "tomato-pasta",
-      "version": 1,
+      "version": 2,
       "name": "{flavour} {protein} tomato pasta",
       "meals": ["lunch", "dinner"],
       "portions": 4,
       "fridge_days": 3,
       "freezable": true,
       "flavours": ["italian", "mediterranean"],
+      "method": [
+        "{prep}",
+        "{flavour_base}",
+        {"if": "beef", "text": "Add the beef mince and cook, breaking it up, until browned all over."},
+        {"if": "chicken", "text": "Add the chicken and cook until golden on all sides."},
+        "Add the {veg} and cook for 3 minutes, then add the {sauce}, breaking them up.",
+        {"if": "lentil", "text": "Stir in the lentils with a mug of water."},
+        {"unless": "tuna", "text": "Simmer for 20 minutes, stirring now and then, until thick and {done}; add a splash of water if it gets dry."},
+        {"if": "tuna", "text": "Simmer for 15 minutes, stirring now and then, until thick."},
+        {"if": "tuna", "text": "Stir in the tuna and heat through."},
+        "Meanwhile, cook the {carb} as the packet says, drain, and stir it into the sauce.",
+        "{flavour_finish}",
+        "Divide between containers. Cool quickly and keep in the fridge for up to {fridge_days} days, or freeze for up to 3 months. Reheat until piping hot all the way through."
+      ],
       "slots": [
         {"role": "protein", "grams": 120, "min": 80, "max": 190, "options": [
-          {"label": "beef", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
+          {"label": "beef", "done": "the mince is browned with no pink left", "noun": "beef mince", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
            "cooked": {"cofid": "18-507", "name": "Beef, mince, extra lean, stewed"}},
-          {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+          {"label": "chicken", "done": "the chicken has no pink left", "prep": "Cut the chicken into bite-size pieces.", "cofid": "18-290", "name": "Chicken, light meat, raw",
            "cooked": {"cofid": "18-323", "name": "Chicken, breast, grilled without skin, meat only"}},
-          {"label": "tuna", "cofid": "16-416", "name": "Tuna, canned in brine, drained"},
-          {"label": "lentil", "cofid": "13-657", "name": "Lentils, red, split, dried, raw",
+          {"label": "tuna", "prep": "Drain the tuna.", "cofid": "16-416", "name": "Tuna, canned in brine, drained"},
+          {"label": "lentil", "done": "the lentils are soft", "noun": "lentils", "prep": "Rinse the lentils.", "cofid": "13-657", "name": "Lentils, red, split, dried, raw",
            "cooked": {"cofid": "13-658", "name": "Lentils, red, split, dried, boiled in unsalted water"}}
         ]},
         {"role": "carb", "grams": 75, "min": 40, "max": 120, "options": [
@@ -206,10 +250,10 @@
           {"label": "tomatoes", "cofid": "13-530", "name": "Tomatoes, canned, whole contents"}
         ]},
         {"role": "veg", "grams": 70, "min": 30, "max": 140, "options": [
-          {"label": "mushroom", "cofid": "13-505", "name": "Mushrooms, white, raw"},
+          {"label": "mushroom", "noun": "mushrooms", "prep": "Slice the mushrooms.", "cofid": "13-505", "name": "Mushrooms, white, raw"},
           {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
-          {"label": "red pepper", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"},
-          {"label": "courgette", "cofid": "13-627", "name": "Courgette, raw"}
+          {"label": "red pepper", "prep": "Deseed and slice the pepper.", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"},
+          {"label": "courgette", "prep": "Slice the courgette.", "cofid": "13-627", "name": "Courgette, raw"}
         ]},
         {"role": "fat", "grams": 3, "min": 0, "max": 10, "options": [
           {"label": "olive oil", "cofid": "17-038", "name": "Oil, olive"}
@@ -218,25 +262,34 @@
     },
     {
       "id": "traybake",
-      "version": 1,
+      "version": 2,
       "name": "{flavour} {protein} and {carb} traybake",
       "meals": ["lunch", "dinner"],
       "portions": 2,
       "fridge_days": 2,
       "freezable": false,
       "flavours": ["mediterranean", "british", "mexican"],
+      "method": [
+        "{prep}",
+        "Heat the oven to 200°C (180°C fan, gas 6).",
+        "Toss the {carb} with half the oil and the herbs and spices (chop any onion and crush any garlic first), spread over a large roasting tin and roast for 20 minutes.",
+        "Add the {protein} with the {veg}, toss everything with the rest of the oil and roast for 15 to 20 minutes more, until everything is tender and {done}.",
+        {"if": "spinach", "text": "If the spinach starts to crisp, stir it under the rest; it only needs to wilt."},
+        "{flavour_finish}",
+        "Divide between containers. Cool quickly and keep in the fridge for up to {fridge_days} days. Reheat until piping hot all the way through."
+      ],
       "slots": [
         {"role": "protein", "grams": 140, "min": 100, "max": 220, "options": [
-          {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+          {"label": "chicken", "done": "the chicken has no pink left", "prep": "Cut the chicken into bite-size pieces.", "cofid": "18-290", "name": "Chicken, light meat, raw",
            "cooked": {"cofid": "18-330", "name": "Chicken, light meat, roasted"}},
-          {"label": "salmon", "cofid": "16-356", "name": "Salmon, farmed, flesh only, raw",
+          {"label": "salmon", "done": "the salmon flakes easily", "prep": "Cut the salmon into large chunks, removing any skin.", "cofid": "16-356", "name": "Salmon, farmed, flesh only, raw",
            "cooked": {"cofid": "16-359", "name": "Salmon, farmed, flesh only, baked"}},
-          {"label": "cod", "cofid": "16-372", "name": "Cod, flesh only, raw",
+          {"label": "cod", "done": "the cod flakes easily", "prep": "Cut the cod into large chunks.", "cofid": "16-372", "name": "Cod, flesh only, raw",
            "cooked": {"cofid": "16-373", "name": "Cod, flesh only, baked"}}
         ]},
         {"role": "carb", "grams": 180, "min": 100, "max": 300, "options": [
-          {"label": "new potato", "cofid": "13-618", "name": "Potatoes, new and salad, flesh only, raw"},
-          {"label": "sweet potato", "cofid": "13-463", "name": "Sweet potato, raw, flesh only",
+          {"label": "new potato", "noun": "new potatoes", "prep": "Halve any large new potatoes.", "cofid": "13-618", "name": "Potatoes, new and salad, flesh only, raw"},
+          {"label": "sweet potato", "prep": "Peel the sweet potato and cut it into chunks.", "cofid": "13-463", "name": "Sweet potato, raw, flesh only",
            "cooked": {"cofid": "13-672", "name": "Sweet potato, baked"}}
         ]},
         {"role": "veg", "grams": 100, "min": 50, "max": 180, "options": "green-veg"},
@@ -248,21 +301,34 @@
     },
     {
       "id": "curry",
-      "version": 1,
+      "version": 2,
       "name": "{protein} curry with {carb}",
       "meals": ["lunch", "dinner"],
       "portions": 4,
       "fridge_days": 3,
       "freezable": true,
       "flavours": ["indian"],
+      "method": [
+        "{prep}",
+        "Cook the {carb} as the packet says.",
+        "{flavour_base}",
+        {"if": "chicken", "text": "Add the chicken and cook until sealed all over."},
+        {"if": "beef", "text": "Add the beef mince and cook, breaking it up, until browned all over."},
+        "Add the {sauce}, breaking them up, and the {veg}.",
+        {"if": "lentil", "text": "Stir in the lentils with a mug of water."},
+        {"if": "chickpea", "text": "Stir in the chickpeas."},
+        "Simmer for 20 minutes, stirring now and then, until thick and {done}; add a splash of water if it gets dry.",
+        "{flavour_finish}",
+        "Divide between containers. Cool quickly (within an hour, as cooked rice left out can make you ill) and keep in the fridge for up to {fridge_days} days, or freeze for up to 3 months. Reheat until piping hot all the way through."
+      ],
       "slots": [
         {"role": "protein", "grams": 130, "min": 90, "max": 200, "options": [
-          {"label": "chicken", "cofid": "18-290", "name": "Chicken, light meat, raw",
+          {"label": "chicken", "done": "the chicken has no pink left", "prep": "Cut the chicken into bite-size pieces.", "cofid": "18-290", "name": "Chicken, light meat, raw",
            "cooked": {"cofid": "18-330", "name": "Chicken, light meat, roasted"}},
-          {"label": "chickpea", "cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained"},
-          {"label": "lentil", "cofid": "13-657", "name": "Lentils, red, split, dried, raw",
+          {"label": "chickpea", "done": "the chickpeas are hot through", "noun": "chickpeas", "prep": "Drain and rinse the chickpeas.", "cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained"},
+          {"label": "lentil", "done": "the lentils are soft", "noun": "lentils", "prep": "Rinse the lentils.", "cofid": "13-657", "name": "Lentils, red, split, dried, raw",
            "cooked": {"cofid": "13-658", "name": "Lentils, red, split, dried, boiled in unsalted water"}},
-          {"label": "beef", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
+          {"label": "beef", "done": "the mince is browned with no pink left", "noun": "beef mince", "cofid": "18-508", "name": "Beef, mince, raw, extra lean",
            "cooked": {"cofid": "18-507", "name": "Beef, mince, extra lean, stewed"}}
         ]},
         {"role": "carb", "grams": 60, "min": 30, "max": 110, "options": "rice"},
@@ -271,9 +337,9 @@
         ]},
         {"role": "veg", "grams": 70, "min": 30, "max": 140, "options": [
           {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
-          {"label": "cauliflower", "cofid": "13-512", "name": "Cauliflower, raw"},
+          {"label": "cauliflower", "prep": "Cut the cauliflower into small florets.", "cofid": "13-512", "name": "Cauliflower, raw"},
           {"label": "peas", "cofid": "13-527", "name": "Peas, frozen, raw"},
-          {"label": "green beans", "cofid": "13-514", "name": "Beans, green, raw"}
+          {"label": "green beans", "prep": "Trim the green beans and cut them in half.", "cofid": "13-514", "name": "Beans, green, raw"}
         ]},
         {"role": "fat", "grams": 4, "min": 0, "max": 10, "options": [
           {"label": "rapeseed oil", "cofid": "17-041", "name": "Oil, rapeseed"}
@@ -282,26 +348,34 @@
     },
     {
       "id": "omelette",
-      "version": 1,
+      "version": 2,
       "name": "{flavour} {veg} omelette",
       "meals": ["breakfast", "lunch"],
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
       "flavours": ["british", "mediterranean"],
+      "method": [
+        "{prep}",
+        "Beat the eggs with the flavourings (crush any garlic first).",
+        "Heat the oil in a small non-stick frying pan and cook the {veg} for 3 to 4 minutes, until soft.",
+        "Pour in the eggs and cook gently, drawing the edges into the middle, until {done}.",
+        {"if": "dairy", "text": "Scatter over the {dairy}."},
+        "Fold in half and eat straight away."
+      ],
       "slots": [
         {"role": "protein", "grams": 180, "min": 120, "max": 240, "options": [
-          {"label": "egg", "cofid": "12-937", "name": "Eggs, chicken, whole, raw",
+          {"label": "egg", "done": "the eggs are just set", "noun": "eggs", "cofid": "12-937", "name": "Eggs, chicken, whole, raw",
            "cooked": {"cofid": "12-963", "name": "Eggs, chicken, whole, scrambled, without milk"}}
         ]},
         {"role": "veg", "grams": 50, "min": 20, "max": 100, "options": [
           {"label": "spinach", "cofid": "13-521", "name": "Spinach, baby, raw"},
-          {"label": "mushroom", "cofid": "13-505", "name": "Mushrooms, white, raw"},
-          {"label": "red pepper", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"}
+          {"label": "mushroom", "noun": "mushrooms", "prep": "Slice the mushrooms.", "cofid": "13-505", "name": "Mushrooms, white, raw"},
+          {"label": "red pepper", "prep": "Deseed and slice the pepper.", "cofid": "13-524", "name": "Pepper, capsicum, red, raw"}
         ]},
         {"role": "veg", "grams": 50, "min": 20, "max": 100, "options": [
-          {"label": "tomato", "cofid": "13-517", "name": "Tomatoes, standard, raw"},
-          {"label": "courgette", "cofid": "13-627", "name": "Courgette, raw"}
+          {"label": "tomato", "prep": "Chop the tomato.", "cofid": "13-517", "name": "Tomatoes, standard, raw"},
+          {"label": "courgette", "prep": "Slice the courgette.", "cofid": "13-627", "name": "Courgette, raw"}
         ]},
         {"role": "dairy", "grams": 20, "min": 0, "max": 40, "optional": true, "options": [
           {"label": "cheese", "cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'"},
@@ -314,7 +388,7 @@
     },
     {
       "id": "yogurt-bowl",
-      "version": 1,
+      "version": 2,
       "label": "Yogurt bowl",
       "name": "{protein} with {fruit}",
       "meals": ["snack"],
@@ -322,6 +396,11 @@
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
+      "method": [
+        "{prep}",
+        "Spoon the {protein} into a bowl and top with the {fruit}.",
+        {"if": "fat", "text": "Scatter over the {fat}."}
+      ],
       "slots": [
         {"role": "protein", "grams": 150, "min": 100, "max": 250, "options": [
           {"label": "Greek yogurt", "cofid": "12-555", "name": "Yogurt, Greek style, plain"},
@@ -338,7 +417,7 @@
     },
     {
       "id": "fruit-and-nuts",
-      "version": 1,
+      "version": 2,
       "label": "Fruit and nuts",
       "name": "{fruit} with {protein}",
       "meals": ["snack"],
@@ -346,6 +425,10 @@
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
+      "method": [
+        "{prep}",
+        "Serve the {fruit} with the {protein}."
+      ],
       "slots": [
         {"role": "fruit", "grams": 150, "min": 100, "max": 200, "options": "snack-fruit"},
         {"role": "protein", "grams": 25, "min": 15, "max": 40, "options": "nuts"}
@@ -353,7 +436,7 @@
     },
     {
       "id": "houmous-dippers",
-      "version": 1,
+      "version": 2,
       "label": "Houmous and veg",
       "name": "Houmous with {veg}",
       "meals": ["snack"],
@@ -361,6 +444,11 @@
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
+      "method": [
+        "{prep}",
+        "Serve the houmous with the {veg} for dipping.",
+        {"if": "carb", "text": "Add the oatcakes on the side."}
+      ],
       "slots": [
         {"role": "protein", "grams": 60, "min": 40, "max": 100, "options": [
           {"label": "houmous", "cofid": "13-556", "name": "Houmous"}
@@ -374,7 +462,7 @@
     },
     {
       "id": "peanut-butter-toast",
-      "version": 1,
+      "version": 2,
       "label": "Peanut butter on toast",
       "name": "Peanut butter on {carb}",
       "meals": ["snack"],
@@ -382,19 +470,24 @@
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
+      "method": [
+        {"if": "wholemeal toast", "text": "Toast the bread."},
+        "Spread the peanut butter over the {carb}.",
+        {"if": "fruit", "text": "Top with the banana, sliced."}
+      ],
       "slots": [
         {"role": "carb", "grams": 40, "min": 25, "max": 80, "options": "crispbread"},
         {"role": "protein", "grams": 15, "min": 10, "max": 30, "options": [
           {"label": "peanut butter", "cofid": "14-892", "name": "Peanut butter, smooth"}
         ]},
         {"role": "fruit", "grams": 50, "min": 0, "max": 100, "optional": true, "options": [
-          {"label": "banana", "cofid": "14-318", "name": "Bananas, flesh only"}
+          {"label": "banana", "prep": "Slice the banana.", "cofid": "14-318", "name": "Bananas, flesh only"}
         ]}
       ]
     },
     {
       "id": "cottage-cheese",
-      "version": 1,
+      "version": 2,
       "label": "Cottage cheese",
       "name": "Cottage cheese on {carb}",
       "meals": ["snack"],
@@ -402,6 +495,12 @@
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
+      "method": [
+        "{prep}",
+        {"if": "wholemeal toast", "text": "Toast the bread."},
+        "Spoon the {protein} onto the {carb}.",
+        {"if": "veg", "text": "Top with the {veg}."}
+      ],
       "slots": [
         {"role": "protein", "grams": 120, "min": 80, "max": 200, "options": [
           {"label": "cottage cheese", "cofid": "12-539", "name": "Cheese, cottage, plain"},
@@ -409,14 +508,14 @@
         ]},
         {"role": "carb", "grams": 25, "min": 15, "max": 50, "options": "crispbread"},
         {"role": "veg", "grams": 40, "min": 0, "max": 80, "optional": true, "options": [
-          {"label": "cucumber", "cofid": "13-523", "name": "Cucumber, raw, flesh and skin"},
-          {"label": "tomato", "cofid": "13-517", "name": "Tomatoes, standard, raw"}
+          {"label": "cucumber", "prep": "Slice the cucumber.", "cofid": "13-523", "name": "Cucumber, raw, flesh and skin"},
+          {"label": "tomato", "prep": "Chop the tomato.", "cofid": "13-517", "name": "Tomatoes, standard, raw"}
         ]}
       ]
     },
     {
       "id": "cheese-and-fruit",
-      "version": 1,
+      "version": 2,
       "label": "Cheese and fruit",
       "name": "Cheese with {fruit}",
       "meals": ["snack"],
@@ -424,14 +523,19 @@
       "portions": 1,
       "fridge_days": 0,
       "freezable": false,
+      "method": [
+        "{prep}",
+        "Serve the {protein} with the {fruit}.",
+        {"if": "carb", "text": "Add the oatcakes on the side."}
+      ],
       "slots": [
         {"role": "protein", "grams": 30, "min": 20, "max": 45, "options": [
           {"label": "half-fat Cheddar", "cofid": "12-348", "name": "Cheese, Cheddar type, half fat"},
           {"label": "reduced-fat Cheddar", "cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'"}
         ]},
         {"role": "fruit", "grams": 120, "min": 80, "max": 180, "options": [
-          {"label": "apple", "cofid": "14-319", "name": "Apples, eating, raw, flesh and skin"},
-          {"label": "pear", "cofid": "14-321", "name": "Pears, raw, flesh and skin"},
+          {"label": "apple", "prep": "Core and slice the apple.", "cofid": "14-319", "name": "Apples, eating, raw, flesh and skin"},
+          {"label": "pear", "prep": "Core and slice the pear.", "cofid": "14-321", "name": "Pears, raw, flesh and skin"},
           {"label": "grapes", "cofid": "14-350", "name": "Grapes, average"}
         ]},
         {"role": "carb", "grams": 20, "min": 0, "max": 40, "optional": true, "options": [

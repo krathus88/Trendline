@@ -4,12 +4,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/household.dart';
 import 'package:trendline/domain/prep.dart';
 import 'package:trendline/domain/recipe.dart';
+import 'package:trendline/domain/recipe_library.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/common/format.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
@@ -387,6 +389,10 @@ class _PrepSessionScreenState extends ConsumerState<PrepSessionScreen> {
     final s = session;
     final r = recipe;
     final foods = ref.watch(foodsByIdProvider);
+    final method = recipeMethod(
+      r,
+      ref.watch(recipeLibraryProvider).value ?? const [],
+    );
     final expected = expectedCookedWeightG(r, s.portionCount);
     final typed = parseDecimal(_weight.text);
     final valid = typed != null && typed > 0 && typed < 50000;
@@ -424,7 +430,7 @@ class _PrepSessionScreenState extends ConsumerState<PrepSessionScreen> {
                 ],
               ),
             ),
-          if (r.method case final method? when method.trim().isNotEmpty) ...[
+          if (method != null && method.trim().isNotEmpty) ...[
             const SizedBox(height: Space.lg),
             Text('Method', style: text.titleMedium),
             const SizedBox(height: Space.xs),

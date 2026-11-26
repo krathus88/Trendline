@@ -319,4 +319,172 @@ void main() {
       }
     });
   });
+
+  group('methods', () {
+    /// Every dish a template can make with [flavourId]: each option in turn
+    /// in every slot (the rest left to the seed), and each optional slot
+    /// skipped too.
+    Iterable<GeneratedDish> dishesOf(DishTemplate t, String? flavourId) sync* {
+      for (final (i, slot) in t.slots.indexed) {
+        for (final option in [...slot.options, if (slot.optional) null]) {
+          final dish = generateDish(
+            t,
+            shipped.flavours,
+            FoodPreferences.none,
+            Random(i),
+            flavourId: flavourId,
+            chosen: {i: option},
+          );
+          if (dish is GeneratedDish) yield dish;
+        }
+      }
+    }
+
+    test('every shipped dish has complete, numbered steps', () {
+      for (final t in shipped.templates) {
+        expect(t.method, isNotEmpty, reason: t.id);
+        for (final f in t.flavourIds.isEmpty ? [null] : t.flavourIds) {
+          for (final dish in dishesOf(t, f)) {
+            final method = dish.method!;
+            final steps = method.split('\n');
+            expect(
+              steps.length,
+              greaterThanOrEqualTo(t.noCook ? 1 : 3),
+              reason: dish.name,
+            );
+            for (final (n, step) in steps.indexed) {
+              expect(step, startsWith('${n + 1}. '), reason: dish.name);
+              expect(step, isNot(contains('{')), reason: dish.name);
+              expect(step, isNot(contains('}')), reason: dish.name);
+              expect(step, matches(RegExp(r'[.!]$')), reason: step);
+            }
+            expect(steps.toSet(), hasLength(steps.length), reason: dish.name);
+            // The copy saved to the user's recipes carries it.
+            expect(dish.toRecipe().method, method);
+          }
+        }
+      }
+    });
+
+    test('cooked dishes say when they are cooked, and how to keep them', () {
+      for (final t in shipped.templates.where((t) => !t.noCook)) {
+        for (final f in t.flavourIds) {
+          for (final dish in dishesOf(t, f)) {
+            final method = dish.method!;
+            final protein = dish.picks[t.slots.indexWhere(
+              (s) => s.role == IngredientRole.protein,
+            )]!;
+            // Raw meat, fish and eggs always get a doneness check.
+            if (protein.done case final done?) {
+              expect(method, contains(done), reason: dish.name);
+            }
+            if (t.fridgeDays > 0) {
+              expect(
+                method,
+                contains('fridge for up to ${t.fridgeDays} days'),
+                reason: dish.name,
+              );
+              expect(method, contains('piping hot'), reason: dish.name);
+            }
+            if (method.contains('rice')) {
+              expect(method, contains('within an hour'), reason: dish.name);
+            }
+          }
+        }
+      }
+    });
+
+    test('every raw meat, fish and egg option says how to tell it is '
+        'cooked', () {
+      for (final t in shipped.templates.where((t) => !t.noCook)) {
+        for (final slot in t.slots.where(
+          (s) => s.role == IngredientRole.protein,
+        )) {
+          for (final o in slot.options) {
+            if (RegExp('Chicken|Turkey|Beef|Salmon|Cod|Eggs').hasMatch(
+              o.raw.name,
+            )) {
+              expect(o.done, isNotNull, reason: '${t.id} ${o.label}');
+            }
+          }
+        }
+      }
+    });
+
+    test('a step can depend on what was picked', () {
+      final omelette = shipped.templates.firstWhere((t) => t.id == 'omelette');
+      final dairy = omelette.slots.indexWhere(
+        (s) => s.role == IngredientRole.dairy,
+      );
+      String methodWith(TemplateOption? cheese) {
+        final dish = generateDish(
+          omelette,
+          shipped.flavours,
+          FoodPreferences.none,
+          Random(1),
+          chosen: {dairy: cheese},
+        );
+        return (dish as GeneratedDish).method!;
+      }
+
+      expect(methodWith(null), isNot(contains('Scatter over')));
+      final feta = omelette.slots[dairy].options.firstWhere(
+        (o) => o.label == 'feta',
+      );
+      expect(methodWith(feta), contains('Scatter over the feta.'));
+    });
+
+    test('several picks of one role are listed together', () {
+      final bowl = shipped.templates.firstWhere((t) => t.id == 'rice-bowl');
+      TemplateOption option(int slot, String label) =>
+          bowl.slots[slot].options.firstWhere((o) => o.label == label);
+      final dish = generateDish(
+        bowl,
+        shipped.flavours,
+        FoodPreferences.none,
+        Random(1),
+        flavourId: 'chinese',
+        chosen: {
+          0: option(0, 'chickpea'),
+          2: option(2, 'broccoli'),
+          3: option(3, 'mushroom'),
+        },
+      );
+      final method = (dish as GeneratedDish).method!;
+      expect(method, contains('Add the broccoli and mushrooms'));
+      expect(method, contains('Drain and rinse the chickpeas.'));
+      expect(method, contains('until the chickpeas are hot through'));
+      expect(method, contains('scatter over the sliced spring onions'));
+    });
+
+    test('a template with no method gives none', () {
+      final source = File('assets/dish_templates.json').readAsStringSync();
+      final start = source.indexOf('"method": [');
+      final end = source.indexOf('],', start) + 2;
+      final without = parseDishTemplates(source.replaceRange(start, end, ''));
+      final dish = generateDish(
+        without.templates.first,
+        without.flavours,
+        FoodPreferences.none,
+        Random(1),
+      );
+      expect((dish as GeneratedDish).method, isNull);
+    });
+
+    test('refuses unknown placeholders and conditions', () {
+      final source = File('assets/dish_templates.json').readAsStringSync();
+      for (final (from, to) in [
+        ('"Cook the {carb} as', '"Cook the {sprinkles} as'),
+        ('{"if": "dairy",', '{"if": "custard",'),
+        ('{"unless": "tuna",', '{"unless": "unicorn",'),
+      ]) {
+        expect(source.contains(from), isTrue, reason: from);
+        expect(
+          () => parseDishTemplates(source.replaceFirst(from, to)),
+          throwsFormatException,
+          reason: to,
+        );
+      }
+    });
+  });
 }

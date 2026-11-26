@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/domain/dates.dart';
@@ -179,5 +181,41 @@ void main() {
       PortionStatus.discarded,
     );
     expect(find.text('Stew'), findsOneWidget);
+  });
+
+  testWidgets('a library copy saved without a method shows the library’s', (
+    tester,
+  ) async {
+    final backend = await _ready(firstDay: today)
+      ..library = File('assets/recipe_library.json').readAsStringSync();
+    final stew = backend.recipes.items.single;
+    backend.recipes.items
+      ..clear()
+      ..add(
+        Recipe(
+          id: stew.id,
+          name: stew.name,
+          ingredients: stew.ingredients,
+          estimatedCookedWeightG: stew.estimatedCookedWeightG,
+          origin: RecipeOrigin.library,
+          sourceId: 'red-lentil-soup',
+          sourceVersion: 1,
+        ),
+      );
+    await _openPrep(tester, backend);
+    await tester.tap(find.text('Stew'));
+    await tester.pumpAndSettle();
+    expect(find.text('Method'), findsOneWidget);
+    expect(find.textContaining('rinse the lentils'), findsOneWidget);
+  });
+
+  testWidgets('a recipe without a method shows no Method heading', (
+    tester,
+  ) async {
+    final backend = await _ready(firstDay: today);
+    await _openPrep(tester, backend);
+    await tester.tap(find.text('Stew'));
+    await tester.pumpAndSettle();
+    expect(find.text('Method'), findsNothing);
   });
 }

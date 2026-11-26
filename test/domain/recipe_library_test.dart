@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trendline/domain/food.dart';
+import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
 
 /// Basic foods as the data migration loads them: (code, name) -> kcal.
@@ -112,6 +113,58 @@ void main() {
           reason: to,
         );
       }
+    });
+  });
+
+  group('methods', () {
+    final library = parseRecipeLibrary(
+      File('assets/recipe_library.json').readAsStringSync(),
+    );
+
+    test('every shipped recipe has numbered steps, and keeps safely', () {
+      for (final r in library) {
+        final steps = r.method!.split('\n');
+        expect(steps.length, greaterThanOrEqualTo(3), reason: r.id);
+        for (final (n, step) in steps.indexed) {
+          expect(step, startsWith('${n + 1}. '), reason: r.id);
+        }
+        if (r.fridgeDays > 0) {
+          expect(
+            r.method,
+            contains('fridge for up to ${r.fridgeDays} days'),
+            reason: r.id,
+          );
+        }
+        final rice = r.ingredients.any((i) => i.cofidName.startsWith('Rice'));
+        if (rice) expect(r.method, contains('within an hour'), reason: r.id);
+        if (r.freezable) expect(r.method, contains('freeze'), reason: r.id);
+      }
+    });
+
+    Recipe copy({String? method, RecipeOrigin origin = RecipeOrigin.library}) =>
+        Recipe(
+          id: 'r1',
+          name: 'Soup',
+          ingredients: const [RecipeIngredient(foodId: 'f', rawGrams: 100)],
+          method: method,
+          origin: origin,
+          sourceId: 'red-lentil-soup',
+        );
+
+    test('a copy saved before the library had a method shows the '
+        'library’s', () {
+      final soup = library.firstWhere((r) => r.id == 'red-lentil-soup');
+      expect(recipeMethod(copy(), library), soup.method);
+      expect(recipeMethod(copy(method: '  '), library), soup.method);
+    });
+
+    test('a recipe’s own method always wins, and others get none', () {
+      expect(recipeMethod(copy(method: 'Mine.'), library), 'Mine.');
+      expect(recipeMethod(copy(origin: RecipeOrigin.user), library), isNull);
+      expect(
+        recipeMethod(copy(origin: RecipeOrigin.template), library),
+        isNull,
+      );
     });
   });
 }
