@@ -85,8 +85,9 @@ const List<PolicySection> privacyPolicy = [
           'which '
           'days you marked complete, and the calorie estimates worked out '
           'from them.',
-      'Food and planning: the foods and recipes you save, likes and '
-          'dislikes, meal rules, your day schedule, meal plans and meal prep.',
+      'Food and planning: the foods and recipes you save, your favourite '
+          'recipes, likes and dislikes, meal rules, your day schedule, meal '
+          'plans and meal prep.',
       'Households and sharing: the names you choose to show, who you share '
           'with and what, and invite codes.',
       'A record of when you agreed to this policy.',
@@ -228,7 +229,7 @@ Send a deletion request to $privacyContact. Include your Discord username so we 
 
 - Your account and sign-in details (Discord ID, username, display name, email address and avatar link) and your place on the invite list.
 - Your profile, goals, weigh-ins (with body fat and lean mass), food log, completed days and calorie estimates.
-- Your foods, recipes, likes and dislikes, meal rules, day schedule, meal plans and meal prep.
+- Your foods, recipes, favourite recipes, likes and dislikes, meal rules, day schedule, meal plans and meal prep.
 - Everything you share with others, and their access to it, and what others share with you.
 - Your household membership and the record of when you agreed to the privacy policy.
 

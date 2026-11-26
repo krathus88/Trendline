@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/households/household_notifier.dart';
+import 'package:trendline/data/recipes/recipe_favourites_notifier.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/recipe.dart';
@@ -24,6 +25,14 @@ class RecipeList extends ConsumerWidget {
     final library = ref.watch(recipeLibraryProvider).value ?? const [];
     final household = ref.watch(householdProvider).value;
     final shared = ref.watch(sharedRecipesProvider);
+    final favourites = ref.watch(recipeFavouritesProvider).value ?? const {};
+    // Favourites first; otherwise the lists keep their order.
+    List<Recipe> starredFirst(List<Recipe> recipes) => [
+      for (final r in recipes)
+        if (r.listed && favourites.contains(r.id)) r,
+      for (final r in recipes)
+        if (r.listed && !favourites.contains(r.id)) r,
+    ];
 
     void open([Recipe? recipe]) => Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -83,8 +92,8 @@ class RecipeList extends ConsumerWidget {
             ),
           _ => Column(
             children: [
-              for (final r in recipes.value!)
-                if (r.listed) RecipeTile(recipe: r, onTap: () => open(r)),
+              for (final r in starredFirst(recipes.value!))
+                RecipeTile(recipe: r, onTap: () => open(r)),
             ],
           ),
         },
@@ -109,8 +118,8 @@ class RecipeList extends ConsumerWidget {
               ),
             _ => Column(
               children: [
-                for (final r in shared.value!)
-                  if (r.listed) RecipeTile(recipe: r, onTap: () => open(r)),
+                for (final r in starredFirst(shared.value!))
+                  RecipeTile(recipe: r, onTap: () => open(r)),
               ],
             ),
           },
@@ -180,7 +189,8 @@ class _LibraryTile extends ConsumerWidget {
   }
 }
 
-/// A recipe with its portions and energy per portion.
+/// A recipe with its portions and energy per portion, and a star to make
+/// it a favourite (planned more often, first in lists).
 class RecipeTile extends ConsumerWidget {
   const new({required this.recipe, required this.onTap, super.key});
 
@@ -195,8 +205,28 @@ class RecipeTile extends ConsumerWidget {
     final portions = recipe.portions == 1
         ? '1 portion'
         : '${recipe.portions} portions';
+    final starred =
+        ref.watch(recipeFavouritesProvider).value?.contains(recipe.id) ??
+        false;
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+      contentPadding: const EdgeInsets.only(
+        left: Space.xs,
+        right: Space.gutter,
+      ),
+      leading: IconButton(
+        tooltip: starred ? 'Remove from favourites' : 'Add to favourites',
+        icon: Icon(
+          starred ? Icons.star : Icons.star_border,
+          color: starred ? colors.accent : colors.textTertiary,
+        ),
+        onPressed: () async {
+          try {
+            await ref.read(recipeFavouritesProvider.notifier).toggle(recipe.id);
+          } on Object catch (e) {
+            if (context.mounted) showErrorSnack(context, e);
+          }
+        },
+      ),
       title: Text(recipe.name, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         recipe.cookedWeightG == null

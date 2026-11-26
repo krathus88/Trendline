@@ -186,4 +186,60 @@ void main() {
     expect(find.textContaining('This food is in a recipe'), findsOneWidget);
     expect(backend.foods.items, hasLength(1));
   });
+
+  group('Favourites', () {
+    Future<TestBackend> withTwoRecipes(WidgetTester tester) async {
+      final backend = TestBackend(profile: testProfile);
+      final rice = await backend.foods.save(riceDraft);
+      for (final (id, name) in [('r-a', 'Apple rice'), ('r-b', 'Bean rice')]) {
+        backend.recipes.items.add(
+          Recipe(
+            id: id,
+            name: name,
+            ingredients: [RecipeIngredient(foodId: rice.id, rawGrams: 300)],
+          ),
+        );
+      }
+      await backend.pump(tester);
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Recipes'));
+      await tester.pumpAndSettle();
+      return backend;
+    }
+
+    Finder starOf(String name) => find.descendant(
+      of: find.widgetWithText(ListTile, name),
+      matching: find.byType(IconButton),
+    );
+
+    testWidgets('a starred recipe is saved and moves to the top', (
+      tester,
+    ) async {
+      final backend = await withTwoRecipes(tester);
+      double y(String name) => tester.getTopLeft(find.text(name)).dy;
+      expect(y('Apple rice'), lessThan(y('Bean rice')));
+
+      await tester.tap(starOf('Bean rice'));
+      await tester.pumpAndSettle();
+      expect(backend.favourites.ids, {'r-b'});
+      expect(y('Bean rice'), lessThan(y('Apple rice')));
+      expect(find.byTooltip('Remove from favourites'), findsOneWidget);
+
+      await tester.tap(starOf('Bean rice'));
+      await tester.pumpAndSettle();
+      expect(backend.favourites.ids, isEmpty);
+      expect(y('Apple rice'), lessThan(y('Bean rice')));
+    });
+
+    testWidgets('a star that can’t be saved is taken back', (tester) async {
+      final backend = await withTwoRecipes(tester);
+      backend.favourites.fail = true;
+      await tester.tap(starOf('Bean rice'));
+      await tester.pumpAndSettle();
+      expect(backend.favourites.ids, isEmpty);
+      expect(find.byTooltip('Remove from favourites'), findsNothing);
+      expect(find.byTooltip('Add to favourites'), findsNWidgets(2));
+    });
+  });
 }

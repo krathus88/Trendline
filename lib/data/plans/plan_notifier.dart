@@ -17,6 +17,7 @@ import 'package:trendline/data/prep/prep_notifier.dart';
 import 'package:trendline/data/profile/profile_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
+import 'package:trendline/data/recipes/recipe_favourites_notifier.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
@@ -247,6 +248,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
           await orNull(ref.read(templateFoodsProvider.future)) ?? const {},
       preferences: await ref.read(foodPreferencesProvider.future),
       rules: await ref.read(mealRulesProvider.future),
+      favourites: await ref.read(recipeFavouritesProvider.future),
     );
     return _catalogue = buildCatalogue(sources);
   }
@@ -407,7 +409,12 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     return [
       for (final d in catalogue.dishes)
         if (d.meals.contains(slot)) d,
-    ]..sort((a, b) => a.name.compareTo(b.name));
+    ]..sort(
+      // Favourites first, then by name.
+      (a, b) => a.favourite != b.favourite
+          ? (a.favourite ? -1 : 1)
+          : a.name.compareTo(b.name),
+    );
   }
 
   /// Puts [dish] in [item]'s place, one portion, locked.

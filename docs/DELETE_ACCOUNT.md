@@ -19,7 +19,7 @@ Send a deletion request to https://github.com/krathus88/Trendline (or the person
 
 - Your account and sign-in details (Discord ID, username, display name, email address and avatar link) and your place on the invite list.
 - Your profile, goals, weigh-ins (with body fat and lean mass), food log, completed days and calorie estimates.
-- Your foods, recipes, likes and dislikes, meal rules, day schedule, meal plans and meal prep.
+- Your foods, recipes, favourite recipes, likes and dislikes, meal rules, day schedule, meal plans and meal prep.
 - Everything you share with others, and their access to it, and what others share with you.
 - Your household membership and the record of when you agreed to the privacy policy.
 

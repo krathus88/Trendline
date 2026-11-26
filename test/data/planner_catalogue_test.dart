@@ -68,6 +68,7 @@ PlannerSources _sources({
   List<Recipe> recipes = const [],
   FoodPreferences preferences = FoodPreferences.none,
   List<MealRule> rules = const [],
+  Set<String> favourites = const {},
 }) => PlannerSources(
   recipes: recipes,
   foods: {
@@ -79,6 +80,7 @@ PlannerSources _sources({
   templateFoods: const {},
   preferences: preferences,
   rules: rules,
+  favourites: favourites,
 );
 
 const _myStew = Recipe(
@@ -120,6 +122,24 @@ void main() {
     expect(oats.contains, {
       'food:f-yog',
     }, reason: 'the user’s copy of the yogurt counts for rules about it');
+  });
+
+  test('a favourite recipe is offered as often as a liked dish', () {
+    const other = Recipe(
+      id: 'r-other',
+      name: 'Other stew',
+      ingredients: [RecipeIngredient(foodId: 'f-chicken', rawGrams: 600)],
+    );
+    final c = buildCatalogue(
+      _sources(recipes: [_myStew, other], favourites: {'r-stew'}),
+    );
+    final stew = c.dishes.firstWhere((d) => d.key == 'recipe:r-stew');
+    final plain = c.dishes.firstWhere((d) => d.key == 'recipe:r-other');
+    expect(stew.favourite, isTrue);
+    expect(stew.preference, favouriteWeight);
+    expect(stew.preference, preferenceWeight(Preference.like));
+    expect(plain.favourite, isFalse);
+    expect(plain.preference, 1);
   });
 
   test('a mix is never a dish, but a meal rule can still place it', () {

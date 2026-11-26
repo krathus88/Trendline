@@ -14,6 +14,7 @@ import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/data/preferences/food_preferences_repository.dart';
 import 'package:trendline/data/prep/prep_repository.dart';
 import 'package:trendline/data/profile/profile_repository.dart';
+import 'package:trendline/data/recipes/recipe_favourites_repository.dart';
 import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/sharing/sharing_repository.dart';
@@ -558,6 +559,27 @@ class FakePrepRepository implements PrepRepository {
         ),
       );
     }
+  }
+}
+
+/// Starred recipe IDs in memory.
+class FakeRecipeFavouritesRepository implements RecipeFavouritesRepository {
+  final ids = <String>{};
+  bool fail = false;
+
+  @override
+  Future<Set<String>> fetchAll() async => {...ids};
+
+  @override
+  Future<void> add(String recipeId) async {
+    if (fail) throw FakeNetworkError();
+    ids.add(recipeId);
+  }
+
+  @override
+  Future<void> remove(String recipeId) async {
+    if (fail) throw FakeNetworkError();
+    ids.remove(recipeId);
   }
 }
 

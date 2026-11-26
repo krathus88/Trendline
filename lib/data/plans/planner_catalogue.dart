@@ -22,6 +22,7 @@ class PlannerSources {
     required this.templateFoods,
     required this.preferences,
     required this.rules,
+    this.favourites = const {},
   });
 
   final List<Recipe> recipes;
@@ -32,7 +33,14 @@ class PlannerSources {
   final Map<FoodKey, FoodDraft> templateFoods;
   final FoodPreferences preferences;
   final List<MealRule> rules;
+
+  /// The IDs of the recipes the user has starred.
+  final Set<String> favourites;
 }
+
+/// How much more often the planner offers a favourite recipe: as much as a
+/// liked food or cuisine.
+const double favouriteWeight = 3;
 
 /// A template dish the planner may use, with its expected cooked weight.
 typedef GeneratedOption = ({GeneratedDish dish, double? expectedCookedG});
@@ -68,7 +76,8 @@ class PlannerCatalogue {
 ///   preferences.
 ///
 /// Anything with a "never" food or cuisine is left out; likes and dislikes
-/// set each dish's preference weight.
+/// set each dish's preference weight, and a starred recipe gets
+/// [favouriteWeight].
 PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
   final prefs = s.preferences;
   final dishes = <DishCandidate>[];
@@ -129,6 +138,8 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
         perPortion: n.perPortion,
         maxServingsPerBatch: r.portions,
         keepsDays: r.fridgeDays,
+        preference: s.favourites.contains(r.id) ? favouriteWeight : 1,
+        favourite: s.favourites.contains(r.id),
         contains: {
           'recipe:${r.id}',
           for (final i in r.ingredients) 'food:${i.foodId}',

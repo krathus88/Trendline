@@ -515,6 +515,9 @@ class _ItemRow extends ConsumerWidget {
               children: [
                 for (final o in options)
                   ListTile(
+                    leading: o.favourite
+                        ? const Icon(Icons.star, semanticLabel: 'Favourite')
+                        : null,
                     title: Text(o.name),
                     trailing: Text('${formatKcal(o.perPortion.kcal)} kcal'),
                     onTap: () => Navigator.of(context).pop(o),

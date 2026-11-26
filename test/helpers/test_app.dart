@@ -41,6 +41,7 @@ class TestBackend {
   final referenceFoods = FakeReferenceFoodRepository();
   final recipes = FakeRecipeRepository();
   final preferences = FakeFoodPreferencesRepository();
+  final favourites = FakeRecipeFavouritesRepository();
   final schedules = FakeScheduleRepository();
   final rules = FakeMealRuleRepository();
   final plans = FakeMealPlanRepository();
@@ -78,6 +79,7 @@ class TestBackend {
     householdRepositoryProvider.overrideWithValue(households),
     sharingRepositoryProvider.overrideWithValue(sharing),
     foodPreferencesRepositoryProvider.overrideWithValue(preferences),
+    recipeFavouritesRepositoryProvider.overrideWithValue(favourites),
     scheduleRepositoryProvider.overrideWithValue(schedules),
     mealRuleRepositoryProvider.overrideWithValue(rules),
     mealPlanRepositoryProvider.overrideWithValue(plans),

@@ -56,6 +56,7 @@ class DishCandidate {
     required this.keepsDays,
     this.cuisine,
     this.preference = 1,
+    this.favourite = false,
     this.contains = const {},
     this.minServing = 0.5,
     this.maxServing = 1.75,
@@ -78,8 +79,12 @@ class DishCandidate {
   final int keepsDays;
   final Cuisine? cuisine;
 
-  /// From the user's preferences: 3 liked, 1 neutral, 0.25 disliked.
+  /// From the user's preferences: 3 liked (or a favourite), 1 neutral,
+  /// 0.25 disliked.
   final double preference;
+
+  /// One of the user's starred recipes.
+  final bool favourite;
 
   /// Rule targets it includes (`food:<id>`, `recipe:<id>`), so a rule like
   /// "salmon twice a week" can be met by dishes with salmon in.

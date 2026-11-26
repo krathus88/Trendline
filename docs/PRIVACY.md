@@ -18,7 +18,7 @@ Trendline is a personal weight-loss and meal-planning app, run by its developer 
 - Your account: the Discord user ID you sign in with, and what Discord passes on at sign-in (username, display name, email address and avatar link). Trendline never sees your Discord password.
 - Your profile: sex, birth year, height, activity level, units and other settings.
 - Health data: weigh-ins with body fat and lean mass if you add them, that you confirmed none of the health check’s conditions apply (which one applies is never asked), your goal, your food log, which days you marked complete, and the calorie estimates worked out from them.
-- Food and planning: the foods and recipes you save, likes and dislikes, meal rules, your day schedule, meal plans and meal prep.
+- Food and planning: the foods and recipes you save, your favourite recipes, likes and dislikes, meal rules, your day schedule, meal plans and meal prep.
 - Households and sharing: the names you choose to show, who you share with and what, and invite codes.
 - A record of when you agreed to this policy.
 
