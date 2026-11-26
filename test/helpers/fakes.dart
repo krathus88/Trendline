@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
@@ -19,6 +21,7 @@ import 'package:trendline/data/recipes/recipe_repository.dart';
 import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/data/snapshots/today_snapshot.dart';
+import 'package:trendline/data/sync/change_signals.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/domain/adaptive_tdee.dart';
 import 'package:trendline/domain/consent.dart';
@@ -169,7 +172,13 @@ class FakeFoodRepository implements FoodRepository {
   final shared = <Food>[];
 
   @override
-  Future<List<Food>> fetchAll() async => List.of(items);
+  Future<List<Food>> fetchAll() async {
+    fetches++;
+    return List.of(items);
+  }
+
+  /// How many times the whole list was fetched.
+  int fetches = 0;
 
   @override
   Future<List<Food>> fetchShared() async => List.of(shared);
@@ -559,6 +568,22 @@ class FakePrepRepository implements PrepRepository {
         ),
       );
     }
+  }
+}
+
+/// Change signals a test sends by hand with [send].
+class FakeChangeSignals implements ChangeSignals {
+  final _controller = StreamController<String>.broadcast();
+
+  /// Who is listening, as (user, household) per [watch].
+  final watching = <(String, String?)>[];
+
+  void send(String table) => _controller.add(table);
+
+  @override
+  Stream<String> watch(String userId, String? householdId) {
+    watching.add((userId, householdId));
+    return _controller.stream;
   }
 }
 

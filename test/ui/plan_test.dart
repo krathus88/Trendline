@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/plans/meal_plan_repository.dart';
+import 'package:trendline/data/sync/change_sync.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
@@ -410,5 +411,56 @@ void main() {
     expect(portion.status, PortionStatus.planned);
     expect(portion.day, today);
     expect(portion.slot, MealSlot.lunch);
+  });
+
+  testWidgets('a change elsewhere never drops a plan being edited', (
+    tester,
+  ) async {
+    final backend = await _ready(tester);
+    await backend.pump(tester);
+    await _openPlan(tester);
+    await tester.tap(find.text('Plan this week'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Not saved yet'), findsOneWidget);
+
+    backend.signals.send('plan_items');
+    await tester.pump(changeSyncDelay * 2);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Not saved yet'), findsOneWidget);
+    expect(find.text('Chicken and rice'), findsNWidgets(14));
+  });
+
+  testWidgets('a saved plan picks up a change from another device', (
+    tester,
+  ) async {
+    final backend = await _ready(tester);
+    await backend.pump(tester);
+    await _openPlan(tester);
+    await tester.tap(find.text('Plan this week'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Overnight oats'), findsNWidgets(7));
+
+    // Another device takes the breakfasts out and saves.
+    final week = weekStartOf(DateTime.now());
+    final saved = backend.plans.weeks[week]!;
+    final oats = backend.recipes.items
+        .firstWhere((r) => r.sourceId == 'oats')
+        .id;
+    backend.plans.weeks[week] = SavedPlan(
+      weekStart: saved.weekStart,
+      targets: saved.targets,
+      notes: saved.notes,
+      items: [
+        for (final i in saved.items)
+          if (i.recipeId != oats) i,
+      ],
+    );
+    backend.signals.send('plan_items');
+    await tester.pump(changeSyncDelay * 2);
+    await tester.pumpAndSettle();
+    expect(find.text('Overnight oats'), findsNothing);
+    expect(find.text('Chicken and rice'), findsNWidgets(14));
   });
 }

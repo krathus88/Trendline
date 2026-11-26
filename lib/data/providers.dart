@@ -21,6 +21,7 @@ import 'package:trendline/data/schedule/schedule_repository.dart';
 import 'package:trendline/data/sharing/sharing_repository.dart';
 import 'package:trendline/data/snapshots/off_lookup_cache.dart';
 import 'package:trendline/data/snapshots/snapshot_store.dart';
+import 'package:trendline/data/sync/change_signals.dart';
 import 'package:trendline/data/weigh_ins/weigh_in_repository.dart';
 import 'package:trendline/platform/barcode_scanner.dart';
 import 'package:trendline/platform/file_saver.dart';
@@ -76,6 +77,10 @@ final recipeFavouritesRepositoryProvider =
         ref.watch(supabaseClientProvider),
       ),
     );
+
+final changeSignalsProvider = Provider<ChangeSignals>(
+  (ref) => SupabaseChangeSignals(ref.watch(supabaseClientProvider)),
+);
 
 final foodPreferencesRepositoryProvider = Provider<FoodPreferencesRepository>(
   (ref) => SupabaseFoodPreferencesRepository(ref.watch(supabaseClientProvider)),

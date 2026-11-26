@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/health/health_sync_notifier.dart';
 import 'package:trendline/data/plans/household_plan_notifier.dart';
 import 'package:trendline/data/sharing/sharing_notifier.dart';
+import 'package:trendline/data/sync/change_sync.dart';
 import 'package:trendline/ui/common/feedback.dart';
 import 'package:trendline/ui/food/food_screen.dart';
 import 'package:trendline/ui/plan/plan_screen.dart';
@@ -59,6 +60,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // Publishes the targets while a share includes them. Failures are left
     // for the next change: the viewer sees when they were last updated.
     ref.listen(targetsPublisherProvider, (_, _) {});
+    // Changes made on another device, or by the household, show up live.
+    ref.listen(changeSyncProvider, (_, _) {});
     ref.listen(healthSyncProvider, (previous, next) {
       final before = previous?.value?.lastSyncedAt;
       final now = next.value;

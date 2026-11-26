@@ -42,6 +42,7 @@ class TestBackend {
   final recipes = FakeRecipeRepository();
   final preferences = FakeFoodPreferencesRepository();
   final favourites = FakeRecipeFavouritesRepository();
+  final signals = FakeChangeSignals();
   final schedules = FakeScheduleRepository();
   final rules = FakeMealRuleRepository();
   final plans = FakeMealPlanRepository();
@@ -80,6 +81,7 @@ class TestBackend {
     sharingRepositoryProvider.overrideWithValue(sharing),
     foodPreferencesRepositoryProvider.overrideWithValue(preferences),
     recipeFavouritesRepositoryProvider.overrideWithValue(favourites),
+    changeSignalsProvider.overrideWithValue(signals),
     scheduleRepositoryProvider.overrideWithValue(schedules),
     mealRuleRepositoryProvider.overrideWithValue(rules),
     mealPlanRepositoryProvider.overrideWithValue(plans),
