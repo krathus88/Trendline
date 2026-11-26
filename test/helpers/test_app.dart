@@ -95,6 +95,7 @@ class TestBackend {
           rules: input.rules,
           locked: input.locked,
           meals: input.meals,
+          recent: input.recent,
           iterations: 400,
         ),
         Random(seed),

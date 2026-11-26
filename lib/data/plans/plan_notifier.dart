@@ -296,6 +296,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
         dishes: dishes,
         rules: catalogue.rules,
         locked: locked,
+        recent: await _recentDishes(),
       ),
       seed ?? Random().nextInt(1 << 31),
     );
@@ -346,6 +347,27 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
           ),
         );
       }
+    }
+  }
+
+  /// Last week's dishes, by key and by name, so this week tries others.
+  /// Empty when there was no plan or it can't be loaded: variety is a nice
+  /// extra, never a reason planning fails.
+  Future<Set<String>> _recentDishes() async {
+    try {
+      final last = await ref
+          .read(mealPlanRepositoryProvider)
+          .fetchWeek(addDays(weekStart, -7));
+      if (last == null) return const {};
+      final names = {
+        for (final r in await ref.read(recipesProvider.future)) r.id: r.name,
+      };
+      return {
+        for (final i in last.items)
+          if (i.recipeId case final id?) ...['recipe:$id', ?names[id]],
+      };
+    } on Object {
+      return const {};
     }
   }
 

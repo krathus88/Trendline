@@ -108,6 +108,42 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
     return w;
   }
 
+  // What gives a dish most of its protein, as one id across sources: a
+  // basic food (the user's copy included) by its CoFID code, any other
+  // food by its id.
+  String? proteinOfLibrary(
+    Iterable<LibraryIngredient> ingredients,
+    Map<FoodKey, FoodDraft> drafts,
+  ) {
+    String? best;
+    var most = 0.0;
+    for (final i in ingredients) {
+      final grams = i.rawGrams * (drafts[i.key]?.per100g.proteinG ?? 0) / 100;
+      if (grams > most) {
+        most = grams;
+        best = 'cofid:${i.cofidCode}';
+      }
+    }
+    return best;
+  }
+
+  String? proteinOfRecipe(Recipe r) {
+    String? best;
+    var most = 0.0;
+    for (final i in r.ingredients) {
+      final food = s.foods[i.foodId];
+      if (food == null) continue;
+      final grams = i.rawGrams * food.per100g.proteinG / 100;
+      if (grams > most) {
+        most = grams;
+        best = food.referenceCode != null
+            ? 'cofid:${food.referenceCode}'
+            : 'food:${food.id}';
+      }
+    }
+    return best;
+  }
+
   Nutrition? perPortionOf(LibraryRecipe r, Map<FoodKey, FoodDraft> drafts) =>
       libraryRecipeNutrition(r, {
         for (final e in drafts.entries) e.key: e.value.per100g,
@@ -140,6 +176,7 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
         keepsDays: r.fridgeDays,
         preference: s.favourites.contains(r.id) ? favouriteWeight : 1,
         favourite: s.favourites.contains(r.id),
+        mainProtein: proteinOfRecipe(r),
         contains: {
           'recipe:${r.id}',
           for (final i in r.ingredients) 'food:${i.foodId}',
@@ -172,6 +209,7 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
         keepsDays: r.fridgeDays,
         cuisine: r.cuisine,
         preference: weight,
+        mainProtein: proteinOfLibrary(r.ingredients, s.libraryFoods),
         contains: containsBasic(r.ingredients, s.libraryFoods),
       ),
     );
@@ -219,6 +257,10 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
               keepsDays: t.fridgeDays,
               cuisine: recipe.cuisine,
               preference: weight,
+              mainProtein: proteinOfLibrary(
+                recipe.ingredients,
+                s.templateFoods,
+              ),
               contains: containsBasic(recipe.ingredients, s.templateFoods),
               maxServing: t.noCook ? 1.5 : 1.75,
             ),

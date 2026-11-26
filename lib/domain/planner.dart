@@ -57,6 +57,7 @@ class DishCandidate {
     this.cuisine,
     this.preference = 1,
     this.favourite = false,
+    this.mainProtein,
     this.contains = const {},
     this.minServing = 0.5,
     this.maxServing = 1.75,
@@ -85,6 +86,11 @@ class DishCandidate {
 
   /// One of the user's starred recipes.
   final bool favourite;
+
+  /// What most of its protein comes from (`cofid:<code>` for a basic food,
+  /// `food:<id>` for another), so the week doesn't lean on one protein.
+  /// Null when unknown.
+  final String? mainProtein;
 
   /// Rule targets it includes (`food:<id>`, `recipe:<id>`), so a rule like
   /// "salmon twice a week" can be met by dishes with salmon in.
@@ -228,6 +234,7 @@ class PlannerInput {
     this.days = 7,
     this.iterations = 4000,
     this.meals = plannedMeals,
+    this.recent = const {},
   });
 
   /// Each day's targets, in order ([days] of them; the last repeats).
@@ -243,6 +250,13 @@ class PlannerInput {
   /// The meals to fill with dishes (all of them by default; the household's
   /// shared meals when planning those).
   final List<MealSlot> meals;
+
+  /// Last week's dishes, by key and by name (a template dish comes back
+  /// with a new key but the same name), so this week tries others.
+  final Set<String> recent;
+
+  bool isRecent(DishCandidate d) =>
+      recent.contains(d.key) || recent.contains(d.name);
 
   PlanTargets targetOn(int day) => targets[min(day, targets.length - 1)];
 }
@@ -276,6 +290,13 @@ const double _wCookSession = 0.08;
 const double _wPreference = 0.25;
 const double _wRuleBroken = 5;
 const double _wRepeatSnack = 0.15;
+// Variety at lunch and dinner. Counted per batch or per day, never per
+// serving, so eating one batch over several days (meal prep) costs
+// nothing; breakfast routines are left alone.
+const double _wSameProteinBatch = 0.12;
+const double _wSameProteinDay = 0.15;
+const double _wSameCuisineDay = 0.08;
+const double _wRecentBatch = 0.1;
 
 /// Plans [input]'s days: dishes for breakfast, lunch and dinner, cooked in
 /// batches that keep, a snack a day when there are snack dishes, plus the
@@ -572,6 +593,19 @@ double _cost(
         if (i.isDish) i.key,
     ];
     cost += _wSameDishSameDay * (dishes.length - dishes.toSet().length);
+    // Two different dishes at lunch and dinner that share their main
+    // protein or their cuisine.
+    final lunch = _dishAt(day, MealSlot.lunch, byKey);
+    final dinner = _dishAt(day, MealSlot.dinner, byKey);
+    if (lunch != null && dinner != null && lunch.key != dinner.key) {
+      if (lunch.mainProtein != null &&
+          lunch.mainProtein == dinner.mainProtein) {
+        cost += _wSameProteinDay;
+      }
+      if (lunch.cuisine != null && lunch.cuisine == dinner.cuisine) {
+        cost += _wSameCuisineDay;
+      }
+    }
   }
   for (final i in items) {
     final dish = byKey[i.key];
@@ -585,6 +619,19 @@ double _cost(
   }
   for (final n in perDish.values) {
     cost += _wRepeatBatch * (n - 1);
+  }
+  final perProtein = <String, int>{};
+  for (final b in batches) {
+    if (b.slot == MealSlot.breakfast) continue;
+    final dish = byKey[b.key];
+    if (dish == null) continue;
+    if (input.isRecent(dish)) cost += _wRecentBatch;
+    if (dish.mainProtein case final p?) {
+      perProtein[p] = (perProtein[p] ?? 0) + 1;
+    }
+  }
+  for (final n in perProtein.values) {
+    cost += _wSameProteinBatch * (n - 1);
   }
   // Snacks aren't batched: variety comes from not repeating one too often.
   final perSnack = <String, int>{};
@@ -609,6 +656,20 @@ double _cost(
     }
   }
   return cost;
+}
+
+/// The candidate served at [slot] among [day]'s items, if any.
+DishCandidate? _dishAt(
+  List<PlannedItem> day,
+  MealSlot slot,
+  Map<String, DishCandidate> byKey,
+) {
+  for (final i in day) {
+    if (i.slot == slot && i.isDish) {
+      if (byKey[i.key] case final d?) return d;
+    }
+  }
+  return null;
 }
 
 /// How many meals include [target], directly or inside a dish.

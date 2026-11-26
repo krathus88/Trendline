@@ -142,6 +142,23 @@ void main() {
     expect(plain.preference, 1);
   });
 
+  test('each dish knows its main protein, the same across sources', () {
+    const yogurtPot = Recipe(
+      id: 'r-yog',
+      name: 'Yogurt pot',
+      ingredients: [RecipeIngredient(foodId: 'f-yog', rawGrams: 300)],
+    );
+    final c = buildCatalogue(_sources(recipes: [_myStew, yogurtPot]));
+    String? of(String key) =>
+        c.dishes.firstWhere((d) => d.key == key).mainProtein;
+    // A manual food by its id.
+    expect(of('recipe:r-stew'), 'food:f-chicken');
+    // The library oats get most of their protein from the yogurt, and the
+    // user's copy of that basic food counts as the same protein.
+    expect(of('library:oats'), 'cofid:12-555');
+    expect(of('recipe:r-yog'), 'cofid:12-555');
+  });
+
   test('a mix is never a dish, but a meal rule can still place it', () {
     const latte = Recipe(
       id: 'r-latte',

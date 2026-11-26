@@ -5,6 +5,7 @@ import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
 import 'package:trendline/domain/planner.dart';
+import 'package:trendline/domain/recipe_library.dart';
 
 DishCandidate _dish(
   String key,
@@ -375,5 +376,147 @@ void main() {
         ).items.where((i) => i.key == 'lentil-soup'),
     ].length;
     expect(soups(3), greaterThan(soups(0.25)));
+  });
+
+  group('variety', () {
+    // Four lunch and dinner dishes with the same nutrition, so only variety
+    // tells them apart: two chicken ones (both Indian), a bean chilli and
+    // a fish stew. Short batches, so there are plenty of choices to make.
+    const n = Nutrition(
+      kcal: 600,
+      proteinG: 45,
+      carbsG: 60,
+      fatG: 18,
+      fibreG: 8,
+    );
+    List<DishCandidate> dishes({bool known = true}) => [
+      for (final (key, protein, cuisine) in [
+        ('chicken-curry', 'cofid:chicken', Cuisine.indian),
+        ('chicken-tikka', 'cofid:chicken', Cuisine.indian),
+        ('bean-chilli', 'cofid:beans', Cuisine.mexican),
+        ('fish-stew', 'cofid:cod', Cuisine.mediterranean),
+      ])
+        DishCandidate(
+          key: key,
+          name: key,
+          kind: CandidateKind.library,
+          meals: _mains,
+          perPortion: n,
+          maxServingsPerBatch: 2,
+          keepsDays: 1,
+          mainProtein: known ? protein : null,
+          cuisine: known ? cuisine : null,
+        ),
+      _dishes.firstWhere((d) => d.key == 'oats'),
+    ];
+
+    List<WeekPlan> plans({
+      bool known = true,
+      Set<String> recent = const {},
+    }) => [
+      for (final seed in [1, 2, 3, 4, 5, 6])
+        planWeek(
+          PlannerInput(
+            targets: const [_targets],
+            dishes: dishes(known: known),
+            recent: recent,
+          ),
+          Random(seed),
+        ),
+    ];
+
+    String proteinOf(String key) =>
+        key.startsWith('chicken') ? 'chicken' : key;
+
+    /// Days with two different dishes at lunch and dinner that match by
+    /// [by].
+    int matchingDays(List<WeekPlan> plans, String? Function(String key) by) {
+      var count = 0;
+      for (final plan in plans) {
+        for (var d = 0; d < 7; d++) {
+          String? at(MealSlot slot) => plan
+              .itemsOn(d)
+              .where((i) => i.slot == slot && i.isDish)
+              .firstOrNull
+              ?.key;
+          final lunch = at(MealSlot.lunch);
+          final dinner = at(MealSlot.dinner);
+          if (lunch != null &&
+              dinner != null &&
+              lunch != dinner &&
+              by(lunch) == by(dinner)) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    int servingsOf(List<WeekPlan> plans, Set<String> keys) => [
+      for (final p in plans) ...p.items.where((i) => keys.contains(i.key)),
+    ].length;
+
+    test('lunch and dinner on one day avoid sharing a protein', () {
+      expect(
+        matchingDays(plans(), proteinOf),
+        lessThan(matchingDays(plans(known: false), proteinOf)),
+      );
+    });
+
+    test('and a cuisine', () {
+      String cuisineOf(String key) =>
+          key.startsWith('chicken') ? 'indian' : key;
+      expect(
+        matchingDays(plans(), cuisineOf),
+        lessThan(matchingDays(plans(known: false), cuisineOf)),
+      );
+    });
+
+    test('the week leans less on one protein', () {
+      const chicken = {'chicken-curry', 'chicken-tikka'};
+      expect(
+        servingsOf(plans(), chicken),
+        lessThan(servingsOf(plans(known: false), chicken)),
+      );
+    });
+
+    test('last week’s dishes come up less', () {
+      const lastWeek = {'chicken-curry', 'bean-chilli'};
+      expect(
+        servingsOf(plans(recent: lastWeek), lastWeek),
+        lessThan(servingsOf(plans(), lastWeek)),
+      );
+    });
+
+    test('last week is matched by name too', () {
+      const input = PlannerInput(
+        targets: [_targets],
+        dishes: [],
+        recent: {'Indian chicken rice bowl'},
+      );
+      const renamedKey = DishCandidate(
+        key: 'template:rice-bowl:indian:1',
+        name: 'Indian chicken rice bowl',
+        kind: CandidateKind.template,
+        meals: _mains,
+        perPortion: n,
+        maxServingsPerBatch: 4,
+        keepsDays: 3,
+      );
+      expect(input.isRecent(renamedKey), isTrue);
+      expect(input.isRecent(dishes().first), isFalse);
+    });
+
+    test('variety never costs the calories', () {
+      for (final plan in plans(recent: const {'chicken-curry'})) {
+        for (var d = 0; d < 7; d++) {
+          expect(
+            plan.totalOn(d).kcal,
+            closeTo(_targets.kcal, _targets.kcal * 0.1),
+            reason: 'day $d',
+          );
+        }
+      }
+    });
   });
 }
