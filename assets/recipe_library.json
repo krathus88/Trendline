@@ -227,6 +227,166 @@
         {"cofid": "13-889", "name": "Cumin seeds", "grams": 3, "role": "flavour"},
         {"cofid": "13-861", "name": "Turmeric, ground", "grams": 3, "role": "flavour"}
       ]
+    },
+    {
+      "id": "breakfast-burritos",
+      "version": 1,
+      "name": "Egg, bean and pepper breakfast burritos",
+      "meals": ["breakfast", "lunch"],
+      "cuisine": "mexican",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "method": "1. Deseed and dice the pepper, slice the spring onions and drain and rinse the beans. Beat the eggs with the paprika.\n2. Heat the oil in a large non-stick frying pan and cook the pepper for 4 minutes, until soft. Add the beans and spring onions and warm through.\n3. Pour in the eggs and stir gently over a low heat until the eggs are just set. Take off the heat.\n4. Warm the tortillas, then divide the filling between them, scatter over the grated cheese, fold in the ends and roll up.\n5. Eat one now if you like. Cool the rest quickly, wrap each one and keep in the fridge for up to 3 days, or freeze for up to 3 months. Reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "11-925", "name": "Tortilla, wheat, soft", "grams": 256, "role": "carb"},
+        {"cofid": "12-937", "name": "Eggs, chicken, whole, raw", "grams": 360, "role": "protein"},
+        {"cofid": "13-660", "name": "Beans, red kidney, canned in water, re-heated, drained", "grams": 240, "role": "protein"},
+        {"cofid": "13-524", "name": "Pepper, capsicum, red, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-352", "name": "Spring onions, bulbs and tops, raw", "grams": 40, "role": "veg"},
+        {"cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'", "grams": 80, "role": "dairy"},
+        {"cofid": "13-879", "name": "Paprika", "grams": 3, "role": "flavour"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 5, "role": "fat"}
+      ]
+    },
+    {
+      "id": "baked-oats-apple",
+      "version": 1,
+      "name": "Baked oats with apple and cinnamon",
+      "meals": ["breakfast"],
+      "cuisine": "british",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "method": "1. Heat the oven to 190°C (170°C fan, gas 5). Core and chop the apples.\n2. Beat the eggs with the milk, yogurt, honey and cinnamon, then stir in the oats and most of the apple.\n3. Pour into a baking dish, scatter over the rest of the apple and bake for 35 to 40 minutes, until set and golden.\n4. Cut into portions. Cool quickly and keep in the fridge for up to 3 days. Eat cold, or reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "11-788", "name": "Porridge oats, unfortified", "grams": 240, "role": "carb"},
+        {"cofid": "12-313", "name": "Milk, semi-skimmed, pasteurised, average", "grams": 500, "role": "liquid"},
+        {"cofid": "12-937", "name": "Eggs, chicken, whole, raw", "grams": 120, "role": "protein"},
+        {"cofid": "12-555", "name": "Yogurt, Greek style, plain", "grams": 200, "role": "protein"},
+        {"cofid": "14-319", "name": "Apples, eating, raw, flesh and skin", "grams": 300, "role": "fruit"},
+        {"cofid": "13-874", "name": "Cinnamon, ground", "grams": 4, "role": "flavour"},
+        {"cofid": "17-050", "name": "Honey", "grams": 20, "role": "flavour"}
+      ]
+    },
+    {
+      "id": "lentil-shepherds-pie",
+      "version": 1,
+      "name": "Lentil shepherd's pie",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "british",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": true,
+      "method": "1. Rinse the lentils. Chop the onion, carrots and celery and slice the mushrooms. Peel the potatoes and cut them into chunks.\n2. Heat the oil in a large pan and fry the onion, carrots and celery for 8 minutes, until soft. Add the mushrooms and herbs and cook for 3 minutes.\n3. Add the lentils, tomatoes, tomato purée and stock. Simmer for 35 to 40 minutes, stirring now and then, until the lentils are soft and the sauce is thick.\n4. Meanwhile, boil the potatoes for 15 to 20 minutes until tender, drain and mash with the milk.\n5. Heat the oven to 200°C (180°C fan, gas 6). Spoon the lentils into a baking dish, top with the mash and grated cheese and bake for 20 to 25 minutes, until golden.\n6. Divide between containers. Cool quickly and keep in the fridge for up to 3 days, or freeze for up to 3 months. Reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "13-089", "name": "Lentils, green and brown, whole, dried, raw", "grams": 200, "role": "protein"},
+        {"cofid": "13-489", "name": "Potatoes, old, raw, flesh only", "grams": 1000, "role": "carb"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-496", "name": "Carrots, old, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-636", "name": "Celery, raw", "grams": 100, "role": "veg"},
+        {"cofid": "13-505", "name": "Mushrooms, white, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "13-531", "name": "Tomato puree", "grams": 30, "role": "sauce"},
+        {"cofid": "17-774", "name": "Stock cubes, chicken, made up with water", "grams": 500, "role": "liquid"},
+        {"cofid": "12-313", "name": "Milk, semi-skimmed, pasteurised, average", "grams": 100, "role": "liquid"},
+        {"cofid": "12-548", "name": "Cheese, Cheddar type, '30% less fat'", "grams": 60, "role": "dairy"},
+        {"cofid": "13-884", "name": "Mixed herbs, dried", "grams": 2, "role": "flavour"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 10, "role": "fat"}
+      ]
+    },
+    {
+      "id": "pork-pepper-stir-fry",
+      "version": 1,
+      "name": "Pork and pepper stir-fry with rice",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "chinese",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "method": "1. Cut the pork into thin strips. Deseed and slice the peppers, cut the broccoli into small florets, slice the spring onions, crush the garlic and grate the ginger. Mix the soy sauce, honey and vinegar.\n2. Cook the rice as the packet says.\n3. Heat the oil in a wok or large frying pan over a high heat and stir-fry the pork for 4 to 5 minutes, until browned and the pork has no pink left. Lift it out.\n4. Stir-fry the peppers, broccoli, garlic and ginger for 3 to 4 minutes, until just tender.\n5. Return the pork, add the sauce and toss for a minute until glossy and hot. Scatter over the spring onions.\n6. Divide between containers. Cool quickly (within an hour, as cooked rice left out can make you ill) and keep in the fridge for up to 3 days. Reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "18-510", "name": "Pork, fillet medallions, raw, lean", "grams": 500, "role": "protein"},
+        {"cofid": "11-857", "name": "Rice, white, basmati, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-524", "name": "Pepper, capsicum, red, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-318", "name": "Peppers, capsicum, green, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-502", "name": "Broccoli, green, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-352", "name": "Spring onions, bulbs and tops, raw", "grams": 50, "role": "veg"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "13-890", "name": "Ginger, fresh", "grams": 10, "role": "flavour"},
+        {"cofid": "17-721", "name": "Soy sauce, light and dark varieties", "grams": 45, "role": "sauce"},
+        {"cofid": "17-050", "name": "Honey", "grams": 15, "role": "flavour"},
+        {"cofid": "17-339", "name": "Vinegar", "grams": 15, "role": "flavour"},
+        {"cofid": "17-041", "name": "Oil, rapeseed", "grams": 15, "role": "fat"}
+      ]
+    },
+    {
+      "id": "prawn-pea-pasta",
+      "version": 1,
+      "name": "Prawn, pea and tomato pasta",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "italian",
+      "portions": 4,
+      "fridge_days": 2,
+      "freezable": false,
+      "method": "1. Chop the onion and crush the garlic.\n2. Heat the oil in a large pan and fry the onion for 6 to 8 minutes, until soft. Add the garlic and chilli powder and stir for a minute.\n3. Add the tomatoes, breaking them up, and simmer for 10 minutes. Meanwhile, cook the pasta as the packet says, adding the peas for the last 2 minutes, then drain.\n4. Add the prawns to the sauce and cook for 3 to 4 minutes, until they are pink all the way through.\n5. Stir in the pasta, peas and lemon juice.\n6. Divide between containers. Cool quickly and keep in the fridge for up to 2 days. Reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "16-387", "name": "Prawns, king, raw", "grams": 320, "role": "protein"},
+        {"cofid": "11-716", "name": "Pasta, white, dried, raw", "grams": 320, "role": "carb"},
+        {"cofid": "13-527", "name": "Peas, frozen, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 100, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "13-873", "name": "Chilli powder", "grams": 1, "role": "flavour"},
+        {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 15, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 10, "role": "fat"}
+      ]
+    },
+    {
+      "id": "cod-chickpea-stew",
+      "version": 1,
+      "name": "Cod, chickpea and tomato stew with couscous",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "mediterranean",
+      "portions": 4,
+      "fridge_days": 2,
+      "freezable": false,
+      "method": "1. Chop the onion, deseed and slice the pepper and crush the garlic. Drain and rinse the chickpeas. Cut the cod into large chunks.\n2. Heat the oil in a large pan and fry the onion and pepper for 6 to 8 minutes, until soft. Add the garlic and paprika and stir for a minute.\n3. Add the tomatoes and chickpeas and simmer for 10 minutes.\n4. Nestle the cod into the sauce, cover and cook gently for 6 to 8 minutes, until the cod flakes easily. Stir in the spinach until it wilts, then the lemon juice.\n5. Meanwhile, put the couscous in a bowl, pour over boiling water to just cover, cover and leave for 5 minutes, then fluff with a fork.\n6. Divide between containers. Cool quickly and keep in the fridge for up to 2 days. Reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "16-372", "name": "Cod, flesh only, raw", "grams": 480, "role": "protein"},
+        {"cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained", "grams": 240, "role": "protein"},
+        {"cofid": "11-901", "name": "Couscous, plain, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-524", "name": "Pepper, capsicum, red, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-521", "name": "Spinach, baby, raw", "grams": 100, "role": "veg"},
+        {"cofid": "13-530", "name": "Tomatoes, canned, whole contents", "grams": 400, "role": "sauce"},
+        {"cofid": "13-244", "name": "Garlic, raw", "grams": 10, "role": "flavour"},
+        {"cofid": "13-879", "name": "Paprika", "grams": 4, "role": "flavour"},
+        {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 15, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 10, "role": "fat"}
+      ]
+    },
+    {
+      "id": "halloumi-couscous",
+      "version": 1,
+      "name": "Halloumi, chickpea and roast vegetable couscous",
+      "meals": ["lunch", "dinner"],
+      "cuisine": "mediterranean",
+      "portions": 4,
+      "fridge_days": 3,
+      "freezable": false,
+      "method": "1. Heat the oven to 200°C (180°C fan, gas 6). Slice the courgette, deseed and chop the pepper and cut the onion into wedges. Drain and rinse the chickpeas.\n2. Toss the vegetables and chickpeas with most of the oil and the cumin and roast for 25 minutes, until tender and starting to char.\n3. Meanwhile, put the couscous in a bowl, pour over boiling water to just cover, cover and leave for 5 minutes, then fluff with a fork.\n4. Slice the halloumi and fry it in the rest of the oil for 2 minutes a side, until golden.\n5. Stir the vegetables and lemon juice through the couscous and top with the halloumi.\n6. Divide between containers. Cool quickly and keep in the fridge for up to 3 days. Reheat until piping hot all the way through.",
+      "ingredients": [
+        {"cofid": "12-496", "name": "Cheese, Halloumi", "grams": 250, "role": "protein"},
+        {"cofid": "13-670", "name": "Beans, chick peas, canned, re-heated, drained", "grams": 240, "role": "protein"},
+        {"cofid": "11-901", "name": "Couscous, plain, raw", "grams": 240, "role": "carb"},
+        {"cofid": "13-627", "name": "Courgette, raw", "grams": 200, "role": "veg"},
+        {"cofid": "13-524", "name": "Pepper, capsicum, red, raw", "grams": 150, "role": "veg"},
+        {"cofid": "13-499", "name": "Onions, raw", "grams": 100, "role": "veg"},
+        {"cofid": "14-277", "name": "Lemon juice, fresh", "grams": 20, "role": "flavour"},
+        {"cofid": "13-889", "name": "Cumin seeds", "grams": 3, "role": "flavour"},
+        {"cofid": "17-038", "name": "Oil, olive", "grams": 15, "role": "fat"}
+      ]
     }
   ]
 }
