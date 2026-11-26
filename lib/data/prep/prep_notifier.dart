@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trendline/data/food_logs/food_log_notifier.dart';
 import 'package:trendline/data/providers.dart';
+import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/prep.dart';
@@ -36,6 +37,33 @@ class PrepNotifier extends AsyncNotifier<List<PrepSession>> {
         .read(prepRepositoryProvider)
         .markCooked(session.id, cookedWeightG);
     _replaceSession(saved);
+    await _learnCookedWeight(session, cookedWeightG);
+  }
+
+  /// Records a weighed batch on its recipe too, scaled to the recipe's own
+  /// batch, so the recipe's portions are logged by a measured weight next
+  /// time (cooking it without prep, and the editor's yield). Only the
+  /// grams per portion change: a recipe's nutrition comes from its
+  /// ingredients. Recipes not in the user's list (another household's)
+  /// are left alone, and a failure here never undoes the cooking.
+  Future<void> _learnCookedWeight(PrepSession session, double grams) async {
+    if (session.portionCount <= 0) return;
+    try {
+      final recipes = ref.read(recipesProvider.notifier);
+      final recipe = (await ref.read(recipesProvider.future))
+          .where((r) => r.id == session.recipeId)
+          .firstOrNull;
+      if (recipe == null) return;
+      final scaled =
+          (grams * recipe.portions / session.portionCount * 10).round() / 10;
+      final updated = recipe.withCookedWeight(scaled);
+      if (scaled == recipe.cookedWeightG || validateRecipe(updated) != null) {
+        return;
+      }
+      await recipes.save(updated);
+    } on Object {
+      // The batch is recorded; the recipe keeps its last weight.
+    }
   }
 
   /// Logs [portion] as eaten on [day] at [slot], by its share of the

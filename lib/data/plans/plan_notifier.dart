@@ -266,14 +266,20 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
     // The household's servings stay where they are; their amounts are
     // fitted to the user's day unless the batch is already cooked.
     final boxed = await _boxed();
+    final thisDay = dayOf(DateTime.now());
+    bool isBoxed(PlannedItem i) =>
+        boxed.contains((addDays(weekStart, i.day), i.slot, i.key));
     final locked = [
       for (final i in state.value?.plan?.items ?? const <PlannedItem>[])
         if (i.shared)
-          i.copyWith(
-            locked: boxed.contains((addDays(weekStart, i.day), i.slot, i.key)),
-          )
+          i.copyWith(locked: isBoxed(i))
         // Leftovers are placed again below.
-        else if (i.locked && !_leftovers.containsKey((i.day, i.slot, i.key)))
+        else if (_leftovers.containsKey((i.day, i.slot, i.key)))
+          ?null
+        // Food already cooked for a meal still to come stays there.
+        else if (isBoxed(i) && !addDays(weekStart, i.day).isBefore(thisDay))
+          i.copyWith(locked: true)
+        else if (i.locked)
           i,
     ];
     // Leftovers first, so they're eaten rather than forgotten.
@@ -299,6 +305,46 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
         leftovers: _leftovers.keys.toSet(),
       ),
     );
+  }
+
+  /// Portions of the user's own cooked batches planned for a meal from
+  /// today on in this week that the saved plan ([items]) no longer has
+  /// (the dish was swapped or taken out) become leftovers, so they show in
+  /// Prep and the next plan places them, instead of waiting in a meal that
+  /// won't come. Household batches follow the household's week.
+  Future<void> _keepUnplannedAsLeftovers(List<SavedPlanItem> items) async {
+    final me = ref.read(currentUserIdProvider);
+    final today = dayOf(DateTime.now());
+    final planned = {
+      for (final i in items)
+        if (i.recipeId case final id?) (i.day, i.slot, id),
+    };
+    final moved = {for (final p in _leftovers.values) p.id};
+    final weekEnd = addDays(weekStart, 7);
+    final prep = ref.read(prepRepositoryProvider);
+    for (final s in await ref.read(prepProvider.future)) {
+      if (!s.cooked || s.isShared) continue;
+      for (final p in s.openPortionsFor(me)) {
+        final day = p.day;
+        final slot = p.slot;
+        if (day == null ||
+            slot == null ||
+            moved.contains(p.id) ||
+            day.isBefore(today) ||
+            day.isBefore(weekStart) ||
+            !day.isBefore(weekEnd) ||
+            planned.contains((day, slot, s.recipeId))) {
+          continue;
+        }
+        await prep.updatePortion(
+          p.copyWith(
+            day: () => null,
+            slot: () => null,
+            status: PortionStatus.leftover,
+          ),
+        );
+      }
+    }
   }
 
   /// The user's leftover portions of their own cooked batches (missed
@@ -510,6 +556,7 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
         );
       }
     }
+    await _keepUnplannedAsLeftovers(items);
     _leftovers = {};
     // Saving lays out the plan's prep sessions.
     ref.invalidate(prepProvider);

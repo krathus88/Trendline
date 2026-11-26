@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/goals.dart';
 import 'package:trendline/domain/meal_rules.dart';
 import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/planner.dart';
 import 'package:trendline/domain/prep.dart';
 import 'package:trendline/domain/recipe.dart';
 
@@ -253,6 +255,98 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set up planning'), findsNothing);
     expect(find.text('No plan for this week'), findsNothing);
+  });
+
+  testWidgets('cooked food stays in its meal; taken out, it becomes a '
+      'leftover', (tester) async {
+    final backend = await _ready(tester);
+    final lentils = await backend.foods.save(
+      const FoodDraft(
+        name: 'Lentils',
+        per100g: Nutrition(kcal: 350, proteinG: 24, carbsG: 50, fatG: 1.5),
+        source: FoodSource.manual,
+      ),
+    );
+    backend.recipes.items.add(
+      Recipe(
+        id: 'r-stew',
+        name: 'Lentil stew',
+        ingredients: [RecipeIngredient(foodId: lentils.id, rawGrams: 400)],
+        // Out of the planner's choices, so only the cooked portion puts it
+        // in the plan.
+        listed: false,
+      ),
+    );
+    final today = dayOf(DateTime.now());
+    final week = weekStartOf(today);
+    const targets = PlanTargets(
+      kcal: 2400,
+      proteinG: 140,
+      carbsG: 250,
+      fatG: 80,
+      fibreG: 30,
+    );
+    backend.plans.weeks[week] = SavedPlan(
+      weekStart: week,
+      targets: List.filled(7, targets),
+      notes: const [],
+      items: [
+        SavedPlanItem(
+          id: 'i-stew',
+          day: today,
+          slot: MealSlot.dinner,
+          recipeId: 'r-stew',
+          amount: 1,
+          amountMin: 0.5,
+          amountMax: 1.75,
+        ),
+      ],
+    );
+    backend.prep.sessions.add(
+      PrepSession(
+        id: 's-stew',
+        planId: 'plan',
+        recipeId: 'r-stew',
+        cookOn: today,
+        portionCount: 1,
+        cookedAt: today,
+        cookedWeightG: 300,
+        portions: [
+          PrepPortion(
+            id: 'p-stew',
+            sessionId: 's-stew',
+            day: today,
+            slot: MealSlot.dinner,
+            amount: 1,
+            useBy: addDays(today, 3),
+          ),
+        ],
+      ),
+    );
+    await backend.pump(tester);
+    await _openPlan(tester);
+    expect(find.text('Lentil stew'), findsOneWidget);
+
+    // Regenerating keeps it where it was cooked for.
+    await tester.tap(find.text('Regenerate'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lentil stew'), findsOneWidget);
+    expect(find.byIcon(Icons.lock), findsOneWidget);
+
+    // Taken out and saved: the portion waits in Prep as a leftover.
+    await tester.tap(find.text('Lentil stew'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove from the plan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    final portion = backend.prep.sessions
+        .firstWhere((s) => s.id == 's-stew')
+        .portions
+        .single;
+    expect(portion.status, PortionStatus.leftover);
+    expect(portion.day, isNull);
+    expect(portion.slot, isNull);
   });
 
   testWidgets('a leftover in the freezer goes in the next free meal', (

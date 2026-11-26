@@ -112,6 +112,24 @@ class Recipe {
     householdId: householdId,
   );
 
+  /// This recipe with its whole batch weighed at [grams] cooked.
+  Recipe withCookedWeight(double grams) => Recipe(
+    id: id,
+    name: name,
+    ingredients: ingredients,
+    portions: portions,
+    cookedWeightG: grams,
+    fridgeDays: fridgeDays,
+    freezable: freezable,
+    method: method,
+    origin: origin,
+    sourceId: sourceId,
+    sourceVersion: sourceVersion,
+    estimatedCookedWeightG: estimatedCookedWeightG,
+    listed: listed,
+    householdId: householdId,
+  );
+
   /// A new, unsaved copy owned by [householdId] (null: the user's own). The
   /// database swaps each ingredient for the new owner's copy of its food.
   Recipe copyFor(String? householdId) => Recipe(

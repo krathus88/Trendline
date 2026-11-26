@@ -97,6 +97,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(backend.prep.sessions.single.cookedWeightG, 640);
+    // The recipe learns the weight, scaled to its own 4-portion batch.
+    expect(backend.recipes.items.single.cookedWeightG, 1280);
     // Each of the two portions is half the batch.
     expect(find.text('320 g'), findsNWidgets(2));
 
