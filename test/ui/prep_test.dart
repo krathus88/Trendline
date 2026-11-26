@@ -218,4 +218,69 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Method'), findsNothing);
   });
+
+  group('Leftovers on Today', () {
+    /// A cooked stew with a portion going spare in the fridge (use by
+    /// today) and a frozen one planned for dinner tomorrow.
+    Future<TestBackend> withLeftovers() async {
+      final backend = await _ready(
+        firstDay: addDays(today, -1),
+        cooked: true,
+      );
+      final s = backend.prep.sessions.single;
+      backend.prep.sessions[0] = s.copyWith(
+        portions: [
+          s.portions[0].copyWith(
+            day: () => null,
+            slot: () => null,
+            status: PortionStatus.leftover,
+            useBy: today,
+          ),
+          s.portions[1].copyWith(
+            day: () => addDays(today, 1),
+            storage: PrepStorage.freezer,
+            useBy: addDays(today, 60),
+          ),
+        ],
+      );
+      return backend;
+    }
+
+    testWidgets('shows what to use up and what to thaw', (tester) async {
+      final backend = await withLeftovers();
+      await backend.pump(tester);
+      expect(find.text('Leftovers'), findsOneWidget);
+      expect(
+        find.textContaining('in the fridge · use by today'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('move it to the fridge tonight'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('In the fridge'));
+      await tester.pumpAndSettle();
+      final frozen = backend.prep.sessions.single.portions[1];
+      expect(frozen.storage, PrepStorage.fridge);
+      expect(frozen.useBy, addDays(today, 1));
+      expect(find.textContaining('move it to the fridge'), findsNothing);
+    });
+
+    testWidgets('a leftover opens Prep, where it can be eaten', (
+      tester,
+    ) async {
+      final backend = await withLeftovers();
+      await backend.pump(tester);
+      await tester.tap(find.textContaining('use by today'));
+      await tester.pumpAndSettle();
+      expect(find.text('Cooked portions'), findsOneWidget);
+    });
+
+    testWidgets('nothing to say: no card', (tester) async {
+      final backend = await _ready(firstDay: today, cooked: true);
+      await backend.pump(tester);
+      expect(find.text('Leftovers'), findsNothing);
+    });
+  });
 }

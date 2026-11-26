@@ -113,6 +113,11 @@ class PrepNotifier extends AsyncNotifier<List<PrepSession>> {
     ),
   );
 
+  /// Records that [portion] was moved from the freezer to the fridge to
+  /// thaw (see [thawed]).
+  Future<void> thaw(PrepPortion portion) =>
+      _savePortion(thawed(portion, dayOf(DateTime.now())));
+
   Future<void> discard(PrepPortion portion) =>
       _savePortion(portion.copyWith(status: PortionStatus.discarded));
 

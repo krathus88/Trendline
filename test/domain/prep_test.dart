@@ -223,4 +223,175 @@ void main() {
       expect(placed, isEmpty);
     });
   });
+
+  group('frozen leftovers', () {
+    final monday = DateTime(2026, 12, 7);
+    PrepPortion portion(String id, PrepStorage storage) => PrepPortion(
+      id: id,
+      sessionId: 's',
+      amount: 1,
+      useBy: DateTime(2027, 2, 2),
+      storage: storage,
+      status: PortionStatus.leftover,
+    );
+
+    test('a frozen one waits a night to thaw; a chilled one doesn’t', () {
+      final placed = placeLeftovers(
+        leftovers: [
+          portion('frozen', PrepStorage.freezer),
+          portion('chilled', PrepStorage.fridge),
+        ],
+        weekStart: monday,
+        from: DateTime(2026, 12, 9),
+        taken: (_, _) => false,
+      );
+      expect(
+        {for (final e in placed.entries) e.key.id: e.value},
+        {'chilled': (2, MealSlot.lunch), 'frozen': (3, MealSlot.lunch)},
+      );
+    });
+
+    test('on the week’s last day it waits for next week', () {
+      final placed = placeLeftovers(
+        leftovers: [portion('frozen', PrepStorage.freezer)],
+        weekStart: monday,
+        from: DateTime(2026, 12, 13),
+        taken: (_, _) => false,
+      );
+      expect(placed, isEmpty);
+    });
+
+    test('next week’s plan can have it on the Monday', () {
+      final placed = placeLeftovers(
+        leftovers: [portion('frozen', PrepStorage.freezer)],
+        weekStart: DateTime(2026, 12, 14),
+        from: DateTime(2026, 12, 13),
+        taken: (_, _) => false,
+      );
+      expect(placed.values.single, (0, MealSlot.lunch));
+    });
+  });
+
+  group('leftover nudges', () {
+    final today = DateTime(2026, 12, 9);
+    final tomorrow = DateTime(2026, 12, 10);
+    PrepPortion p(
+      String id, {
+      required DateTime useBy,
+      DateTime? day,
+      PrepStorage storage = PrepStorage.fridge,
+      PortionStatus status = PortionStatus.planned,
+      String? eaterId,
+    }) => PrepPortion(
+      id: id,
+      sessionId: 's',
+      day: day,
+      slot: day == null ? null : MealSlot.dinner,
+      amount: 1,
+      useBy: useBy,
+      storage: storage,
+      status: status,
+      eaterId: eaterId,
+    );
+    PrepSession cooked(List<PrepPortion> portions, {bool cookedYet = true}) =>
+        PrepSession(
+          id: 's',
+          recipeId: 'r1',
+          cookOn: DateTime(2026, 12, 7),
+          portionCount: portions.length.toDouble(),
+          cookedAt: cookedYet ? DateTime(2026, 12, 7, 19) : null,
+          cookedWeightG: cookedYet ? 1200 : null,
+          portions: portions,
+        );
+    Map<String, LeftoverNudge> nudgesOf(
+      List<PrepSession> sessions, {
+      String? me = 'me',
+    }) => {
+      for (final n in leftoverNudges(sessions, me, today))
+        n.portion.id: n.nudge,
+    };
+
+    test('chilled food with no meal to come, going off by tomorrow', () {
+      final nudges = nudgesOf([
+        cooked([
+          // A missed meal, and a portion kept for no meal.
+          p('missed', day: DateTime(2026, 12, 8), useBy: tomorrow),
+          p('spare', useBy: today, status: PortionStatus.leftover),
+          // Still keeps a while: nothing to say yet.
+          p('keeps', useBy: DateTime(2026, 12, 12),
+              status: PortionStatus.leftover),
+          // Its meal is still to come.
+          p('planned', day: today, useBy: today),
+          // Gone off: Prep says so; Today doesn't push eating it.
+          p('off', useBy: DateTime(2026, 12, 8),
+              status: PortionStatus.leftover),
+        ]),
+      ]);
+      expect(nudges, {
+        'missed': LeftoverNudge.useSoon,
+        'spare': LeftoverNudge.useSoon,
+      });
+    });
+
+    test('frozen food planned for today or tomorrow needs thawing', () {
+      final nudges = nudgesOf([
+        cooked([
+          p('tonight', day: tomorrow, useBy: DateTime(2027, 2, 2),
+              storage: PrepStorage.freezer),
+          p('now', day: today, useBy: DateTime(2027, 2, 2),
+              storage: PrepStorage.freezer),
+          p('later', day: DateTime(2026, 12, 12), useBy: DateTime(2027, 2, 2),
+              storage: PrepStorage.freezer),
+          p('kept', useBy: DateTime(2027, 2, 2), storage: PrepStorage.freezer,
+              status: PortionStatus.leftover),
+        ]),
+      ]);
+      expect(nudges, {
+        'now': LeftoverNudge.thaw,
+        'tonight': LeftoverNudge.thaw,
+      });
+      expect(
+        leftoverNudges([cooked([
+          p('tonight', day: tomorrow, useBy: DateTime(2027, 2, 2),
+              storage: PrepStorage.freezer),
+          p('now', day: today, useBy: DateTime(2027, 2, 2),
+              storage: PrepStorage.freezer),
+        ])], 'me', today).map((n) => n.portion.id),
+        ['now', 'tonight'],
+        reason: 'soonest first',
+      );
+    });
+
+    test('only the user’s own portions of cooked batches', () {
+      final nudges = nudgesOf([
+        cooked([
+          p('mine', useBy: today, status: PortionStatus.leftover,
+              eaterId: 'me'),
+          p('theirs', useBy: today, status: PortionStatus.leftover,
+              eaterId: 'them'),
+        ]),
+        cooked([
+          p('uncooked', useBy: today, status: PortionStatus.leftover),
+        ], cookedYet: false),
+      ]);
+      expect(nudges.keys, ['mine']);
+    });
+
+    test('thawing: eaten within a day', () {
+      final frozen = p('f', day: tomorrow, useBy: DateTime(2027, 2, 2),
+          storage: PrepStorage.freezer);
+      final t = thawed(frozen, today);
+      expect(t.storage, PrepStorage.fridge);
+      expect(t.useBy, tomorrow);
+      expect(t.day, tomorrow, reason: 'still planned for its meal');
+      expect(
+        thawed(
+          p('f', day: today, useBy: DateTime(2027, 2, 2),
+              storage: PrepStorage.freezer),
+          today,
+        ).useBy,
+        today,
+      );
+    });
+  });
 }

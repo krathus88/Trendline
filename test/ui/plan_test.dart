@@ -356,7 +356,8 @@ void main() {
     expect(portion.slot, isNull);
   });
 
-  testWidgets('a leftover in the freezer goes in the next free meal', (
+  testWidgets('a frozen leftover goes in the first free meal after a night '
+      'to thaw', (
     tester,
   ) async {
     final backend = await _ready(tester);
@@ -400,17 +401,31 @@ void main() {
     await tester.tap(find.text('Plan this week'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Leftover · 1 portion'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    // Not today: it needs a night in the fridge. On a Sunday, tomorrow is
+    // next week's, so it waits for that plan.
+    final tomorrow = addDays(today, 1);
+    final thisWeek = weekStartOf(today) == weekStartOf(tomorrow);
+    expect(
+      find.textContaining('Leftover · 1 portion'),
+      thisWeek ? findsOneWidget : findsNothing,
+    );
+    final save = find.widgetWithText(FilledButton, 'Save');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
     await tester.pumpAndSettle();
 
     final portion = backend.prep.sessions
         .firstWhere((s) => s.id == 's-old')
         .portions
         .single;
-    expect(portion.status, PortionStatus.planned);
-    expect(portion.day, today);
-    expect(portion.slot, MealSlot.lunch);
+    if (thisWeek) {
+      expect(portion.status, PortionStatus.planned);
+      expect(portion.day, tomorrow);
+      expect(portion.slot, MealSlot.lunch);
+    } else {
+      expect(portion.status, PortionStatus.leftover);
+    }
   });
 
   testWidgets('a change elsewhere never drops a plan being edited', (

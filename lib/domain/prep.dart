@@ -255,7 +255,9 @@ List<PrepSession> activeSessions(List<PrepSession> all, DateTime today) {
 /// Where [leftovers] go in the week starting [weekStart], so they're eaten
 /// rather than forgotten: each (soonest use-by first) takes the earliest
 /// lunch or dinner from [from] up to its use-by date, within the week, that
-/// [taken] doesn't already fill. Those that don't fit are left out.
+/// [taken] doesn't already fill. A frozen one goes no earlier than the day
+/// after [from], so it can thaw overnight in the fridge. Those that don't
+/// fit are left out.
 Map<PrepPortion, (int, MealSlot)> placeLeftovers({
   required List<PrepPortion> leftovers,
   required DateTime weekStart,
@@ -267,8 +269,12 @@ Map<PrepPortion, (int, MealSlot)> placeLeftovers({
   final first = from.isAfter(weekStart) ? daysBetween(weekStart, from) : 0;
   for (final p in [...leftovers]..sort((a, b) => a.useBy.compareTo(b.useBy))) {
     final last = daysBetween(weekStart, p.useBy).clamp(-1, 6);
+    final thawedBy = daysBetween(weekStart, addDays(from, 1));
+    final start = p.storage == PrepStorage.freezer && thawedBy > first
+        ? thawedBy
+        : first;
     search:
-    for (var d = first; d <= last; d++) {
+    for (var d = start; d <= last; d++) {
       for (final slot in const [MealSlot.lunch, MealSlot.dinner]) {
         if (taken(d, slot) || used.contains((d, slot))) continue;
         placed[p] = (d, slot);
@@ -278,4 +284,60 @@ Map<PrepPortion, (int, MealSlot)> placeLeftovers({
     }
   }
   return placed;
+}
+
+/// What Today points out about a leftover.
+enum LeftoverNudge {
+  /// In the fridge with no meal still to come, and its use-by is today or
+  /// tomorrow: eat it (or freeze it) before it's wasted.
+  useSoon,
+
+  /// Frozen, and planned for today or tomorrow: it should be thawing in
+  /// the fridge.
+  thaw,
+}
+
+/// The portions [userId] should hear about on [today], soonest use-by (or
+/// meal) first: cooked, still open, theirs, and needing action now (see
+/// [LeftoverNudge]). Household batches count too: their leftovers aren't
+/// placed in anyone's plan, so this is where they're seen.
+List<({PrepSession session, PrepPortion portion, LeftoverNudge nudge})>
+leftoverNudges(List<PrepSession> sessions, String? userId, DateTime today) {
+  final tomorrow = addDays(today, 1);
+  final out =
+      <({PrepSession session, PrepPortion portion, LeftoverNudge nudge})>[];
+  for (final s in sessions) {
+    if (!s.cooked) continue;
+    for (final p in s.openPortionsFor(userId)) {
+      final timing = portionTiming(p, today);
+      if (timing == PortionTiming.expired) continue;
+      final day = p.day;
+      if (p.storage == PrepStorage.freezer) {
+        if (p.status == PortionStatus.planned &&
+            day != null &&
+            !day.isBefore(today) &&
+            !day.isAfter(tomorrow)) {
+          out.add((session: s, portion: p, nudge: LeftoverNudge.thaw));
+        }
+      } else if (timing == PortionTiming.missed && !p.useBy.isAfter(tomorrow)) {
+        out.add((session: s, portion: p, nudge: LeftoverNudge.useSoon));
+      }
+    }
+  }
+  DateTime when(PrepPortion p) => p.storage == PrepStorage.freezer
+      ? p.day ?? p.useBy
+      : p.useBy;
+  return out..sort((a, b) => when(a.portion).compareTo(when(b.portion)));
+}
+
+/// [portion] moved from the freezer to the fridge on [today] to thaw:
+/// thawed food is eaten within a day, so its use-by becomes tomorrow, or
+/// the day it's planned for if that's today.
+PrepPortion thawed(PrepPortion portion, DateTime today) {
+  final tomorrow = addDays(today, 1);
+  final day = portion.day;
+  return portion.copyWith(
+    storage: PrepStorage.fridge,
+    useBy: day != null && day.isBefore(tomorrow) ? today : tomorrow,
+  );
 }

@@ -24,6 +24,7 @@ import 'package:trendline/ui/setup/setup_checklist.dart';
 import 'package:trendline/ui/theme/app_colors.dart';
 import 'package:trendline/ui/theme/tokens.dart';
 import 'package:trendline/ui/theme/typography.dart';
+import 'package:trendline/ui/today/leftovers_card.dart';
 
 /// A day's food log, by meal, against the day's targets, with the saved
 /// plan's meals still to eat. Today's rest can be re-planned around what
@@ -370,6 +371,7 @@ class _DayLog extends StatelessWidget {
       children: [
         // Until a plan can be made (no weigh-in yet, say): what's left.
         const SetupCard(),
+        if (day == dayOf(DateTime.now())) const LeftoversCard(),
         _Totals(total: total, targets: targets),
         if (onReplan != null) ...[
           const SizedBox(height: Space.sm),
