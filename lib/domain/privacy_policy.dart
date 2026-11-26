@@ -9,10 +9,10 @@ import 'package:meta/meta.dart';
 /// Bump [privacyPolicyVersion] and [privacyPolicyDate] whenever the
 /// meaning changes: everyone is asked to agree again on their next start.
 /// Fixing a typo doesn't need a new version.
-const int privacyPolicyVersion = 1;
+const int privacyPolicyVersion = 2;
 
 /// When this version took effect, as shown to the reader.
-const String privacyPolicyDate = '25 November 2026';
+const String privacyPolicyDate = '26 November 2026';
 
 /// Where people send privacy requests the app can't handle itself.
 const String privacyContact =
@@ -141,8 +141,9 @@ const List<PolicySection> privacyPolicy = [
       'You.',
       'People in your household see the recipes, plans and prep you share '
           'with it, including your portion sizes, which hint at your calorie '
-          'targets. Likes and dislikes are combined for planning without '
-          'saying whose they are.',
+          'targets. Likes and dislikes, and how many of you starred each '
+          'shared recipe, are combined for planning without saying whose '
+          'they are.',
       'People you share with see only what you switch on for them (your '
           'weight trend, daily targets or meal plans), and only until you '
           'stop.',

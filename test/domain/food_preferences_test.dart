@@ -108,4 +108,19 @@ void main() {
     expect(prefs.isNever(_rice), isTrue);
     expect(prefs.cuisineWeights, hasLength(1));
   });
+
+  test('the database’s combined stars are read as shares, without who', () {
+    expect(
+      householdFavouritesFromRows([
+        {'recipe_id': 'r1', 'stars': 1, 'members': 2},
+        {'recipe_id': 'r2', 'stars': 3, 'members': 3},
+        // Malformed or impossible rows are skipped or capped.
+        {'recipe_id': 'r3', 'stars': 1, 'members': 0},
+        {'recipe_id': 'r4', 'stars': '1', 'members': 2},
+        {'recipe_id': 'r5', 'stars': 4, 'members': 2},
+        {'stars': 1, 'members': 2},
+      ]),
+      {'r1': 0.5, 'r2': 1.0, 'r5': 1.0},
+    );
+  });
 }

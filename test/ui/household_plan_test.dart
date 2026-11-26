@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/households/household_notifier.dart';
 import 'package:trendline/data/plans/meal_plan_repository.dart';
+import 'package:trendline/data/plans/planner_catalogue.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
@@ -300,8 +301,8 @@ void main() {
     }
   });
 
-  testWidgets('last week’s dishes and the user’s stars count for the '
-      'household too', (tester) async {
+  testWidgets('last week’s dishes and the household’s stars count for its '
+      'plan', (tester) async {
     final backend = await _household();
     final weekStart = weekStartOf(DateTime.now());
     final lastWeek = addDays(weekStart, -7);
@@ -317,7 +318,8 @@ void main() {
         ),
       ],
     );
-    backend.favourites.ids.add('hr-dal');
+    // Bea starred it; Alex didn't.
+    backend.households.recipeFavourites = {'hr-dal': 0.5};
     await backend.pump(tester);
     await tester.tap(find.text('Plan'));
     await tester.pumpAndSettle();
@@ -328,9 +330,8 @@ void main() {
 
     final input = backend.lastPlannerInput!;
     expect(input.recent, containsAll(['recipe:hr-dal', 'Dal']));
-    expect(
-      input.dishes.singleWhere((d) => d.key == 'recipe:hr-dal').favourite,
-      isTrue,
-    );
+    final dal = input.dishes.singleWhere((d) => d.key == 'recipe:hr-dal');
+    expect(dal.favourite, isTrue);
+    expect(dal.preference, closeTo(1 + (favouriteWeight - 1) / 2, 1e-9));
   });
 }

@@ -56,6 +56,10 @@ abstract interface class HouseholdRepository {
   /// The household's combined food preferences: how many members like,
   /// dislike or never want each food and cuisine, never who.
   Future<FoodPreferences> fetchFoodPreferences();
+
+  /// The household's starred recipes, by ID: the share of members who
+  /// starred each, never who.
+  Future<Map<String, double>> fetchRecipeFavourites();
 }
 
 class SupabaseHouseholdRepository implements HouseholdRepository {
@@ -147,6 +151,14 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   }
 
   @override
+  Future<Map<String, double>> fetchRecipeFavourites() async {
+    final rows = await _db.rpc<List<dynamic>>('household_recipe_favourites');
+    return householdFavouritesFromRows([
+      for (final r in rows) r as Map<String, dynamic>,
+    ]);
+  }
+
+  @override
   Future<FoodPreferences> fetchFoodPreferences() async {
     final rows = await _db.rpc<List<dynamic>>('household_food_preferences');
     return householdPreferencesFromRows([
@@ -154,6 +166,18 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
     ]);
   }
 }
+
+/// The household's combined favourite rows as each recipe's share of
+/// members who starred it. Malformed rows are skipped.
+Map<String, double> householdFavouritesFromRows(
+  List<Map<String, dynamic>> rows,
+) => {
+  for (final row in rows)
+    if ((row['recipe_id'], row['stars'], row['members'])
+        case (final String id, final num stars, final num members)
+        when members > 0 && stars > 0)
+      id: (stars / members).clamp(0.0, 1.0),
+};
 
 /// The household's combined preference rows as [FoodPreferences]. Unknown
 /// cuisines and malformed rows are skipped.

@@ -68,7 +68,7 @@ PlannerSources _sources({
   List<Recipe> recipes = const [],
   FoodPreferences preferences = FoodPreferences.none,
   List<MealRule> rules = const [],
-  Set<String> favourites = const {},
+  Map<String, double> favourites = const {},
 }) => PlannerSources(
   recipes: recipes,
   foods: {
@@ -131,7 +131,7 @@ void main() {
       ingredients: [RecipeIngredient(foodId: 'f-chicken', rawGrams: 600)],
     );
     final c = buildCatalogue(
-      _sources(recipes: [_myStew, other], favourites: {'r-stew'}),
+      _sources(recipes: [_myStew, other], favourites: {'r-stew': 1}),
     );
     final stew = c.dishes.firstWhere((d) => d.key == 'recipe:r-stew');
     final plain = c.dishes.firstWhere((d) => d.key == 'recipe:r-other');
@@ -140,6 +140,15 @@ void main() {
     expect(stew.preference, preferenceWeight(Preference.like));
     expect(plain.favourite, isFalse);
     expect(plain.preference, 1);
+  });
+
+  test('a recipe half a household starred gets half the extra', () {
+    final c = buildCatalogue(
+      _sources(recipes: [_myStew], favourites: {'r-stew': 0.5}),
+    );
+    final stew = c.dishes.firstWhere((d) => d.key == 'recipe:r-stew');
+    expect(stew.favourite, isTrue);
+    expect(stew.preference, closeTo(1 + (favouriteWeight - 1) / 2, 1e-9));
   });
 
   test('each dish knows its main protein, the same across sources', () {

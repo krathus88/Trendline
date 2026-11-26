@@ -248,7 +248,10 @@ class PlanNotifier extends AsyncNotifier<PlanState> {
           await orNull(ref.read(templateFoodsProvider.future)) ?? const {},
       preferences: await ref.read(foodPreferencesProvider.future),
       rules: await ref.read(mealRulesProvider.future),
-      favourites: await ref.read(recipeFavouritesProvider.future),
+      favourites: {
+        for (final id in await ref.read(recipeFavouritesProvider.future))
+          id: 1,
+      },
     );
     return _catalogue = buildCatalogue(sources);
   }

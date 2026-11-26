@@ -13,7 +13,6 @@ import 'package:trendline/data/plans/planner_catalogue.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
-import 'package:trendline/data/recipes/recipe_favourites_notifier.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
@@ -313,9 +312,12 @@ class HouseholdPlanNotifier extends AsyncNotifier<HouseholdPlanState> {
         // left out.
         preferences: await ref.read(householdFoodPreferencesProvider.future),
         rules: const [],
-        // The planning member's own stars: members can't see each other's.
+        // Everyone's stars, combined: fetched each time, since other
+        // members' changes aren't signalled to this device.
         favourites:
-            await orNull(ref.read(recipeFavouritesProvider.future)) ??
+            await orNull(
+              ref.read(householdRepositoryProvider).fetchRecipeFavourites(),
+            ) ??
             const {},
       ),
     );

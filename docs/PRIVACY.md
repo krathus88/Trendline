@@ -1,6 +1,6 @@
 # Trendline privacy policy
 
-Version 1, 25 November 2026.
+Version 2, 26 November 2026.
 
 In short:
 
@@ -43,7 +43,7 @@ On your device, the app keeps your sign-in, and copies of today’s plan, your s
 ## Who can see it
 
 - You.
-- People in your household see the recipes, plans and prep you share with it, including your portion sizes, which hint at your calorie targets. Likes and dislikes are combined for planning without saying whose they are.
+- People in your household see the recipes, plans and prep you share with it, including your portion sizes, which hint at your calorie targets. Likes and dislikes, and how many of you starred each shared recipe, are combined for planning without saying whose they are.
 - People you share with see only what you switch on for them (your weight trend, daily targets or meal plans), and only until you stop.
 - Supabase stores the data for us and can’t use it for anything else. Discord handles sign-in only and gets nothing from the app.
 - Open Food Facts receives the barcodes you scan and the words you search for, to look up products. Nothing that identifies you is sent with them.

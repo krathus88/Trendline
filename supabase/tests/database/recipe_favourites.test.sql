@@ -1,10 +1,11 @@
 -- Favourite recipes: only recipes the user can read, each member's own,
--- invisible to everyone else, gone with the recipe, and in the export.
+-- invisible to everyone else, gone with the recipe, and in the export. The
+-- household sees only combined counts for its own recipes.
 -- Run with: supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(11);
+select plan(15);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a@test.local'),
@@ -100,6 +101,23 @@ select is(
    where user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'), 0,
   'never A''s'
 );
+-- Combined for planning: counts for the household's recipes only.
+select pg_temp.act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select is(
+  (select array_agg(format('%s %s of %s', i.name, f.stars, f.members))
+   from public.household_recipe_favourites() f
+   join ids i on i.id = f.recipe_id),
+  array['shared 2 of 2'],
+  'members get how many starred each household recipe, not A''s own recipe'
+);
+select pg_temp.act_as('cccccccc-cccc-cccc-cccc-cccccccccccc');
+insert into public.recipe_favourites (recipe_id)
+select id from ids where name = 'theirs';
+select is(
+  (select count(*)::int from public.household_recipe_favourites()), 0,
+  'outside a household there''s nothing to combine'
+);
+
 select pg_temp.act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 select is(
   jsonb_array_length(public.export_my_data() -> 'recipe_favourites'), 2,
@@ -115,11 +133,31 @@ select is(
   'and it''s gone'
 );
 
+-- Someone who leaves stops counting; their star stays theirs.
+reset role;
+delete from public.household_members
+where user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+set local role authenticated;
+select pg_temp.act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+select is(
+  (select array_agg(format('%s of %s', stars, members))
+   from public.household_recipe_favourites()),
+  array['1 of 1'],
+  'a member who left no longer counts'
+);
+select pg_temp.act_as('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+select is(
+  (select count(*)::int from public.household_recipe_favourites()), 0,
+  'and sees no counts from their old household'
+);
+select pg_temp.act_as('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+
 -- Deleting a recipe takes every member's favourites of it with it.
 delete from public.recipes where id = (select id from ids where name = 'shared');
 reset role;
 select is(
-  (select count(*)::int from public.recipe_favourites), 0,
+  (select count(*)::int from public.recipe_favourites
+   where recipe_id = (select id from ids where name = 'shared')), 0,
   'a deleted recipe''s favourites go with it, everyone''s'
 );
 

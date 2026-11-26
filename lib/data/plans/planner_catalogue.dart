@@ -34,12 +34,15 @@ class PlannerSources {
   final FoodPreferences preferences;
   final List<MealRule> rules;
 
-  /// The IDs of the recipes the user has starred.
-  final Set<String> favourites;
+  /// Starred recipes, by ID: the share of the people eating who starred
+  /// each (1 for the user's own stars; for a household, how many members
+  /// did out of how many there are).
+  final Map<String, double> favourites;
 }
 
 /// How much more often the planner offers a favourite recipe: as much as a
-/// liked food or cuisine.
+/// liked food or cuisine. A recipe only some of a household starred gets
+/// that share of the extra.
 const double favouriteWeight = 3;
 
 /// A template dish the planner may use, with its expected cooked weight.
@@ -160,6 +163,7 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
     if (!r.listed || r.origin == RecipeOrigin.mix) continue;
     final n = recipeNutrition(r, s.foods);
     if (!n.complete || r.ingredients.isEmpty) continue;
+    final starShare = (s.favourites[r.id] ?? 0).clamp(0.0, 1.0);
     final meals = switch (r.origin) {
       RecipeOrigin.library => libraryById[r.sourceId]?.meals,
       RecipeOrigin.template => templatesById[r.sourceId]?.meals,
@@ -174,8 +178,8 @@ PlannerCatalogue buildCatalogue(PlannerSources s, {int variants = 2}) {
         perPortion: n.perPortion,
         maxServingsPerBatch: r.portions,
         keepsDays: r.fridgeDays,
-        preference: s.favourites.contains(r.id) ? favouriteWeight : 1,
-        favourite: s.favourites.contains(r.id),
+        preference: 1 + (favouriteWeight - 1) * starShare,
+        favourite: starShare > 0,
         mainProtein: proteinOfRecipe(r),
         contains: {
           'recipe:${r.id}',

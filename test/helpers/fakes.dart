@@ -936,6 +936,14 @@ class FakeHouseholdRepository implements HouseholdRepository {
   @override
   Future<FoodPreferences> fetchFoodPreferences() async => foodPreferences;
 
+  /// What household_recipe_favourites() would give: shares by recipe ID.
+  Map<String, double> recipeFavourites = {};
+
+  @override
+  Future<Map<String, double>> fetchRecipeFavourites() async => {
+    ...recipeFavourites,
+  };
+
   @override
   Future<void> rename(String householdId, String name) async {
     final h = household;
