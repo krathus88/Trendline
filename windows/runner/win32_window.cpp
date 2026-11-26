@@ -4,6 +4,7 @@
 #include <flutter_windows.h>
 
 #include "resource.h"
+#include "window_placement.h"
 
 namespace {
 
@@ -146,11 +147,15 @@ bool Win32Window::Create(const std::wstring& title,
 
   UpdateTheme(window);
 
+  // Back where the user last left it, before Flutter sizes its view to the
+  // window, so the first frame is drawn at the right size.
+  show_command_ = RestoreWindowPlacement(window);
+
   return OnCreate();
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_, show_command_);
 }
 
 // static
@@ -180,6 +185,8 @@ Win32Window::MessageHandler(HWND hwnd,
                             LPARAM const lparam) noexcept {
   switch (message) {
     case WM_DESTROY:
+      // The window still exists here: remember its size and place.
+      SaveWindowPlacement(hwnd);
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {

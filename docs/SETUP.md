@@ -115,7 +115,7 @@ The same app runs on Windows, without Health Connect and barcode scanning (searc
 
    The release app is in `build\windows\x64\runner\Release\` (copy the whole folder, not just the `.exe`).
 
-Each time it starts, the app registers the `com.krathus.trendline://` link for your Windows user (under `HKCU\Software\Classes`, no admin rights needed), so Discord sign-in in the browser can return to it. The most recently started copy of the app owns the link: if you switch between a debug and a release build, sign in from the one you started last. Only one window runs at a time; opening the app again brings the running one to the front.
+Each time it starts, the app registers the `com.krathus.trendline://` link for your Windows user (under `HKCU\Software\Classes`, no admin rights needed), so Discord sign-in in the browser can return to it. The most recently started copy of the app owns the link: if you switch between a debug and a release build, sign in from the one you started last. Only one window runs at a time; opening the app again brings the running one to the front. The window opens where it was last closed, at the same size (maximised if it was), unless that place is no longer on a connected screen; this is kept under `HKCU\Software\com.krathus\Trendline`.
 
 To remove the link registration after deleting the app:
 
@@ -138,7 +138,7 @@ To give the app to someone else, build an installer instead of copying the folde
 
 The installer needs no admin rights. It installs for the current Windows user only, into `%LOCALAPPDATA%\Programs\Trendline`. It adds a Start menu shortcut (a desktop one is optional) and registers the sign-in link straight away. Running a newer installer updates the app in place, closing it first.
 
-Uninstalling (Settings > Apps) removes the app and the sign-in link. It also deletes the app's encrypted data on this computer (the sign-in, and the on-device copies of Today, foods, recipes, weigh-ins and barcode lookups) from `%APPDATA%\com.krathus\trendline`. The account and everything in it stay until the account is deleted.
+Uninstalling (Settings > Apps) removes the app, the sign-in link and the saved window size. It also deletes the app's encrypted data on this computer (the sign-in, and the on-device copies of Today, foods, recipes, weigh-ins and barcode lookups) from `%APPDATA%\com.krathus\trendline`. The account and everything in it stay until the account is deleted.
 
 The installer isn't code-signed, so Windows SmartScreen warns about an unknown publisher the first time it's run: choose **More info > Run anyway**. Signing would need a paid code-signing certificate.
 

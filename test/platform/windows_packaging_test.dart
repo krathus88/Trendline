@@ -51,6 +51,23 @@ void main() {
     expect(iss, contains('uninsdeletekey'));
   });
 
+  test('uninstalling removes the saved window size and place', () {
+    final header = File(
+      'windows/runner/window_placement.h',
+    ).readAsStringSync();
+    // In C++ the backslashes are escaped.
+    final key = RegExp(
+      r'kPlacementKey\[\] = L"([^"]*)"',
+    ).firstMatch(header)!.group(1)!.replaceAll(r'\\', r'\');
+    expect(_define(iss, 'SettingsKey'), key);
+    expect(
+      iss,
+      contains(
+        'Subkey: "{#SettingsKey}"; Flags: uninsdeletekey dontcreatekey',
+      ),
+    );
+  });
+
   test('installs per user, without admin rights', () {
     expect(iss, contains('PrivilegesRequired=lowest'));
   });

@@ -15,6 +15,7 @@
 #define AppName "Trendline"
 #define AppExe "trendline.exe"
 #define UrlScheme "com.krathus.trendline"
+#define SettingsKey "Software\com.krathus\Trendline"
 ; Where the app's encrypted local data lives (sign-in and the on-device
 ; copies of Today, foods, recipes, weigh-ins and barcode lookups):
 ; %APPDATA%\<CompanyName>\<ProductName> from windows\runner\Runner.rc.
@@ -75,6 +76,10 @@ Root: HKCU; Subkey: "Software\Classes\{#UrlScheme}"; ValueType: string; ValueNam
 Root: HKCU; Subkey: "Software\Classes\{#UrlScheme}"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\{#UrlScheme}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"",0"
 Root: HKCU; Subkey: "Software\Classes\{#UrlScheme}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
+; The window's last size and place (windows\runner\window_placement.h),
+; written by the app; only removed here.
+Root: HKCU; Subkey: "{#SettingsKey}"; Flags: uninsdeletekey dontcreatekey
+Root: HKCU; Subkey: "Software\{#DataCompany}"; Flags: uninsdeletekeyifempty dontcreatekey
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
