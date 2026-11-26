@@ -13,6 +13,7 @@ import 'package:trendline/data/plans/planner_catalogue.dart';
 import 'package:trendline/data/prep/prep_notifier.dart';
 import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/dish_template_providers.dart';
+import 'package:trendline/data/recipes/recipe_favourites_notifier.dart';
 import 'package:trendline/data/recipes/recipe_library_providers.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/domain/dates.dart';
@@ -190,6 +191,8 @@ DishCandidate forEaters(DishCandidate d, int eaters) => DishCandidate(
   keepsDays: d.keepsDays,
   cuisine: d.cuisine,
   preference: d.preference,
+  favourite: d.favourite,
+  mainProtein: d.mainProtein,
   contains: d.contains,
   minServing: d.minServing,
   maxServing: d.maxServing,
@@ -310,8 +313,33 @@ class HouseholdPlanNotifier extends AsyncNotifier<HouseholdPlanState> {
         // left out.
         preferences: await ref.read(householdFoodPreferencesProvider.future),
         rules: const [],
+        // The planning member's own stars: members can't see each other's.
+        favourites:
+            await orNull(ref.read(recipeFavouritesProvider.future)) ??
+            const {},
       ),
     );
+  }
+
+  /// The household's dishes last week, by key and by name, so this week
+  /// tries others. Empty when there was no week or it can't be loaded.
+  Future<Set<String>> _recentDishes() async {
+    try {
+      final last = await ref
+          .read(mealPlanRepositoryProvider)
+          .fetchHouseholdWeek(addDays(weekStart, -7));
+      if (last == null) return const {};
+      final names = {
+        for (final r in await ref.read(sharedRecipesProvider.future))
+          r.id: r.name,
+      };
+      return {
+        for (final i in last.items)
+          if (i.recipeId case final id?) ...['recipe:$id', ?names[id]],
+      };
+    } on Object {
+      return const {};
+    }
   }
 
   /// Plans the shared [meals] for every member: the dishes are chosen
@@ -341,6 +369,7 @@ class HouseholdPlanNotifier extends AsyncNotifier<HouseholdPlanState> {
             if (d.meals.any(meals.contains)) forEaters(d, eaters),
         ],
         meals: ordered,
+        recent: await _recentDishes(),
       ),
       seed ?? Random().nextInt(1 << 31),
     );

@@ -59,6 +59,8 @@ class TestBackend {
   final files = FakeFileSaver();
 
   /// The recipe library file's contents. Null uses the real one.
+  /// What the planner was last asked to plan.
+  PlannerInput? lastPlannerInput;
   String? library;
 
   /// The dish template file's contents. Null uses the real one.
@@ -90,18 +92,21 @@ class TestBackend {
     // Plan on the test's thread with a short search, so it's quick and
     // fake-async friendly.
     planRunnerProvider.overrideWithValue(
-      (input, seed) async => planWeek(
-        PlannerInput(
-          targets: input.targets,
-          dishes: input.dishes,
-          rules: input.rules,
-          locked: input.locked,
-          meals: input.meals,
-          recent: input.recent,
-          iterations: 400,
-        ),
-        Random(seed),
-      ),
+      (input, seed) async {
+        lastPlannerInput = input;
+        return planWeek(
+          PlannerInput(
+            targets: input.targets,
+            dishes: input.dishes,
+            rules: input.rules,
+            locked: input.locked,
+            meals: input.meals,
+            recent: input.recent,
+            iterations: 400,
+          ),
+          Random(seed),
+        );
+      },
     ),
     foodLogRepositoryProvider.overrideWithValue(foodLogs),
     barcodeScannerProvider.overrideWithValue(scanner),

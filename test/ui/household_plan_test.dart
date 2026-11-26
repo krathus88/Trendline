@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:trendline/data/households/household_notifier.dart';
+import 'package:trendline/data/plans/meal_plan_repository.dart';
 import 'package:trendline/domain/dates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
@@ -297,5 +298,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Chicken and rice'), findsNothing);
     }
+  });
+
+  testWidgets('last week’s dishes and the user’s stars count for the '
+      'household too', (tester) async {
+    final backend = await _household();
+    final weekStart = weekStartOf(DateTime.now());
+    final lastWeek = addDays(weekStart, -7);
+    backend.plans.householdWeeks[lastWeek] = HouseholdWeek(
+      weekStart: lastWeek,
+      items: [
+        SavedPlanItem(
+          day: lastWeek,
+          slot: MealSlot.dinner,
+          recipeId: 'hr-dal',
+          eaterId: 'user-1',
+          amount: 1,
+        ),
+      ],
+    );
+    backend.favourites.ids.add('hr-dal');
+    await backend.pump(tester);
+    await tester.tap(find.text('Plan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Household meals'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Plan shared meals'));
+    await tester.pumpAndSettle();
+
+    final input = backend.lastPlannerInput!;
+    expect(input.recent, containsAll(['recipe:hr-dal', 'Dal']));
+    expect(
+      input.dishes.singleWhere((d) => d.key == 'recipe:hr-dal').favourite,
+      isTrue,
+    );
   });
 }

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trendline/domain/dish_templates.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
+import 'package:trendline/domain/nutrition.dart';
+import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
 
 /// Basic foods as the data migration loads them: key -> (kcal, protein).
@@ -371,9 +373,10 @@ void main() {
         for (final f in t.flavourIds) {
           for (final dish in dishesOf(t, f)) {
             final method = dish.method!;
-            final protein = dish.picks[t.slots.indexWhere(
-              (s) => s.role == IngredientRole.protein,
-            )]!;
+            final protein =
+                dish.picks[t.slots.indexWhere(
+                  (s) => s.role == IngredientRole.protein,
+                )]!;
             // Raw meat, fish and eggs always get a doneness check.
             if (protein.done case final done?) {
               expect(method, contains(done), reason: dish.name);
@@ -401,9 +404,8 @@ void main() {
           (s) => s.role == IngredientRole.protein,
         )) {
           for (final o in slot.options) {
-            if (RegExp('Chicken|Turkey|Beef|Salmon|Cod|Eggs').hasMatch(
-              o.raw.name,
-            )) {
+            if (RegExp('Chicken|Turkey|Beef|Salmon|Cod|Eggs')
+                .hasMatch(o.raw.name)) {
               expect(o.done, isNotNull, reason: '${t.id} ${o.label}');
             }
           }
@@ -485,6 +487,103 @@ void main() {
           reason: to,
         );
       }
+    });
+  });
+
+  group('templateCopyMethod', () {
+    /// [dish] saved as a recipe before templates had methods: its foods
+    /// keep only their CoFID codes.
+    (Recipe, Map<String, Food>) copyOf(GeneratedDish dish) {
+      final foods = <String, Food>{};
+      final ingredients = <RecipeIngredient>[];
+      for (final (i, ing) in dish.ingredients.indexed) {
+        foods['f$i'] = Food(
+          id: 'f$i',
+          name: ing.cofidName,
+          per100g: const Nutrition(kcal: 100, proteinG: 1, carbsG: 1, fatG: 1),
+          source: FoodSource.cofid,
+          referenceCode: ing.cofidCode,
+        );
+        ingredients.add(
+          RecipeIngredient(foodId: 'f$i', rawGrams: ing.rawGrams),
+        );
+      }
+      final recipe = Recipe(
+        id: 'r',
+        name: dish.name,
+        portions: dish.template.portions,
+        ingredients: ingredients,
+        origin: RecipeOrigin.template,
+        sourceId: dish.template.id,
+      );
+      return (recipe, foods);
+    }
+
+    test('gives an old copy the steps it would get today', () {
+      var checked = 0;
+      final wrong = <String>[];
+      for (final t in shipped.templates) {
+        for (final flavourId in [
+          ...t.flavourIds,
+          if (t.flavourIds.isEmpty) null,
+        ]) {
+          for (var seed = 0; seed < 6; seed++) {
+            final dish = generateDish(
+              t,
+              shipped.flavours,
+              FoodPreferences.none,
+              Random(seed),
+              flavourId: flavourId,
+            );
+            if (dish is! GeneratedDish) continue;
+            final (recipe, foods) = copyOf(dish);
+            checked++;
+            if (templateCopyMethod(recipe, foods, shipped) != dish.method) {
+              wrong.add('${t.id} / $flavourId / ${dish.name}');
+            }
+          }
+        }
+      }
+      expect(checked, greaterThan(50));
+      expect(wrong, isEmpty);
+    });
+
+    test('nothing for other recipes or a template that is gone', () {
+      final dish = generateDish(
+        shipped.templates.first,
+        shipped.flavours,
+        FoodPreferences.none,
+        Random(1),
+      ) as GeneratedDish;
+      final (recipe, foods) = copyOf(dish);
+      expect(
+        templateCopyMethod(
+          Recipe(
+            id: 'r',
+            name: recipe.name,
+            portions: recipe.portions,
+            ingredients: recipe.ingredients,
+          ),
+          foods,
+          shipped,
+        ),
+        isNull,
+      );
+      expect(
+        templateCopyMethod(
+          Recipe(
+            id: 'r',
+            name: recipe.name,
+            portions: recipe.portions,
+            ingredients: recipe.ingredients,
+            origin: RecipeOrigin.template,
+            sourceId: 'no-such-template',
+          ),
+          foods,
+          shipped,
+        ),
+        isNull,
+      );
     });
   });
 }

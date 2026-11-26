@@ -53,6 +53,23 @@ void main() {
       expect(forEaters(d, 1).maxServingsPerBatch, 6);
     });
 
+    test('a shared dish keeps its star and main protein, for variety', () {
+      const d = DishCandidate(
+        key: 'recipe:stew',
+        name: 'stew',
+        kind: CandidateKind.recipe,
+        meals: {MealSlot.dinner},
+        perPortion: _n,
+        maxServingsPerBatch: 4,
+        keepsDays: 3,
+        favourite: true,
+        mainProtein: 'cofid:18-290',
+      );
+      final shared = forEaters(d, 2);
+      expect(shared.favourite, isTrue);
+      expect(shared.mainProtein, 'cofid:18-290');
+    });
+
     test('the planner gets its amount; everyone else one portion', () {
       const item = PlannedItem(
         day: 2,

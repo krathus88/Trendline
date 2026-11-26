@@ -11,10 +11,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// policies. See the change_signals migration.
 abstract interface class ChangeSignals {
   /// The names of tables as their rows change for [userId] and, when set,
-  /// for the household [householdId]. Listening joins the channels;
-  /// cancelling leaves them.
+  /// for the household [householdId], or [everyTable] after the connection
+  /// comes back, since signals sent while it was down are lost. Listening
+  /// joins the channels; cancelling leaves them.
   Stream<String> watch(String userId, String? householdId);
 }
+
+/// Signalled after a reconnect: anything may have changed meanwhile.
+const String everyTable = '*';
 
 class SupabaseChangeSignals implements ChangeSignals {
   const new(this._db);
@@ -32,6 +36,10 @@ class SupabaseChangeSignals implements ChangeSignals {
           if (householdId != null) 'household:$householdId',
         ]) {
           const private = RealtimeChannelConfig(private: true);
+          // The client rejoins a dropped channel by itself and reports
+          // each join as `subscribed`; every join after the first follows
+          // a gap.
+          var joined = false;
           channels.add(
             _db
                 .channel(topic, opts: private)
@@ -43,7 +51,13 @@ class SupabaseChangeSignals implements ChangeSignals {
                     }
                   },
                 )
-                .subscribe(),
+                .subscribe((status, _) {
+                  if (status != RealtimeSubscribeStatus.subscribed) return;
+                  if (joined && !controller.isClosed) {
+                    controller.add(everyTable);
+                  }
+                  joined = true;
+                }),
           );
         }
       },

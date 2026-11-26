@@ -16,6 +16,7 @@ import 'package:trendline/data/providers.dart';
 import 'package:trendline/data/recipes/recipe_favourites_notifier.dart';
 import 'package:trendline/data/recipes/recipes_notifier.dart';
 import 'package:trendline/data/schedule/schedule_notifier.dart';
+import 'package:trendline/data/sync/change_signals.dart';
 import 'package:trendline/data/weigh_ins/weigh_ins_notifier.dart';
 import 'package:trendline/domain/dates.dart';
 
@@ -54,10 +55,28 @@ final changeSyncProvider = Provider<void>((ref) {
   });
 });
 
-/// Refetches the data held for [tables]. Plans with unsaved changes are
+/// The tables [refreshChanged] refetches data for.
+const Set<String> syncedTables = {
+  'profiles',
+  'goals',
+  'weigh_ins',
+  'day_logs',
+  'food_logs',
+  'foods',
+  'recipes',
+  'recipe_favourites',
+  'food_preferences',
+  'day_schedules',
+  'meal_rules',
+  'meal_plans',
+  'prep_sessions',
+};
+
+/// Refetches the data held for [tables], or for all of it on
+/// [everyTable]. Plans with unsaved changes are
 /// left alone (see [PlanNotifier.refresh]).
 void refreshChanged(Ref ref, Set<String> tables) {
-  for (final table in tables) {
+  for (final table in tables.contains(everyTable) ? syncedTables : tables) {
     switch (table) {
       case 'profiles':
         ref.invalidate(profileProvider);

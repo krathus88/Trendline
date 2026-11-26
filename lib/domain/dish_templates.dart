@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:meta/meta.dart';
 import 'package:trendline/domain/food.dart';
 import 'package:trendline/domain/food_preferences.dart';
+import 'package:trendline/domain/recipe.dart';
 import 'package:trendline/domain/recipe_library.dart';
 
 /// The herbs and spices (and aromatics) that give a dish its cuisine, in
@@ -709,6 +710,55 @@ String? dishMethod(
   }
   if (steps.isEmpty) return null;
   return [for (final (n, s) in steps.indexed) '${n + 1}. $s'].join('\n');
+}
+
+/// The method for a copy of a template dish saved before templates had
+/// methods: its template's current one, for the options and flavour its
+/// ingredients show it was made with. Null for any other recipe, or when
+/// the template is gone or has no method.
+String? templateCopyMethod(
+  Recipe recipe,
+  Map<String, Food> foods,
+  DishTemplates templates,
+) {
+  if (recipe.origin != RecipeOrigin.template) return null;
+  final template = templates.templates
+      .where((t) => t.id == recipe.sourceId)
+      .firstOrNull;
+  if (template == null) return null;
+  // Copies' foods keep the CoFID code they came from, in slot order. Each
+  // fills one slot: two slots can share a list of options.
+  final remaining = [
+    for (final i in recipe.ingredients) ?foods[i.foodId]?.referenceCode,
+  ];
+  final codes = remaining.toSet();
+  final picks = <TemplateOption?>[];
+  for (final slot in template.slots) {
+    TemplateOption? pick;
+    for (final (n, code) in remaining.indexed) {
+      pick = slot.options.where((o) => o.raw.code == code).firstOrNull;
+      if (pick != null) {
+        remaining.removeAt(n);
+        break;
+      }
+    }
+    picks.add(pick);
+  }
+  // The flavour named in the dish's name, else the one most of whose
+  // ingredients it has.
+  final name = recipe.name.toLowerCase();
+  FlavourProfile? flavour;
+  var best = 0.0;
+  for (final id in template.flavourIds) {
+    final f = templates.flavours[id];
+    if (f == null) continue;
+    final score =
+        (name.contains(f.name.toLowerCase()) ? 100 : 0) +
+        f.ingredients.where((i) => codes.contains(i.cofidCode)).length /
+            max(1, f.ingredients.length);
+    if (score > best) (best, flavour) = (score, f);
+  }
+  return dishMethod(template, flavour, picks);
 }
 
 /// "a", "a and b", "a, b and c".

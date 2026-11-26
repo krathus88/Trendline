@@ -97,6 +97,21 @@ void main() {
       expect(foods.fetches, before + 1);
     });
 
+    test('after a reconnect everything is refetched', () async {
+      final c = container();
+      await c.read(authStatusProvider.future);
+      // Riverpod rebuilds the sync on its next tick after signing in.
+      await Future<void>.delayed(Duration.zero);
+      c.listen(foodsProvider, (_, _) {});
+      await c.read(foodsProvider.future);
+
+      // Saved while the connection was down: its signal was lost.
+      await foods.save(_oats);
+      signals.send(everyTable);
+      await Future<void>.delayed(changeSyncDelay * 2);
+      expect((await c.read(foodsProvider.future)).single.name, 'Oats');
+    });
+
     test('other tables leave the food list alone', () async {
       final c = container();
       await c.read(authStatusProvider.future);
