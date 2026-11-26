@@ -42,8 +42,8 @@ jobs:
   build-windows:
     # Checks the desktop app still builds without the Android-only plugins
     # (Health Connect, barcode scanning) and with the runner's URL scheme
-    # code. Built without Supabase settings, which the app handles by
-    # showing its setup screen.
+    # code, then that the installer still compiles. Built without Supabase
+    # settings, which the app handles by showing its setup screen.
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -59,6 +59,29 @@ jobs:
 
       - name: Build
         run: flutter build windows --release
+
+      # Inno Setup isn't on GitHub's Windows images. Pinned to one release
+      # from its official GitHub releases and checked against the SHA-256
+      # in winget's manifest before it runs. To update, change both lines.
+      - name: Install Inno Setup
+        shell: pwsh
+        env:
+          INNO_URL: https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe
+          INNO_SHA256: 9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732
+        run: |
+          $setup = Join-Path $env:RUNNER_TEMP 'innosetup.exe'
+          Invoke-WebRequest -Uri $env:INNO_URL -OutFile $setup
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $env:INNO_SHA256) { throw "Inno Setup hash mismatch: $hash" }
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Inno Setup install failed: $($p.ExitCode)" }
+
+      # Checks the installer script still compiles against the release
+      # folder. Not uploaded: CI builds without Supabase settings, so this
+      # installer's app would only show its setup screen.
+      - name: Build installer
+        shell: pwsh
+        run: ./tool/build_windows_installer.ps1 -SkipBuild
 
   database:
     # Applies every migration to a throwaway local Supabase database, then
