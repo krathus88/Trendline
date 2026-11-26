@@ -122,3 +122,24 @@ To remove the link registration after deleting the app:
 ```sh
 reg delete "HKCU\Software\Classes\com.krathus.trendline" /f
 ```
+
+### Windows installer
+
+To give the app to someone else, build an installer instead of copying the folder:
+
+1. Install [Inno Setup 6](https://jrsoftware.org/isinfo.php).
+2. Run, from the project folder:
+
+   ```powershell
+   .\tool\build_windows_installer.ps1
+   ```
+
+   It builds the release app with your `dart_defines.json`, then writes `build\windows\installer\Trendline-Setup-<version>.exe` (the version comes from `pubspec.yaml`).
+
+The installer needs no admin rights. It installs for the current Windows user only, into `%LOCALAPPDATA%\Programs\Trendline`. It adds a Start menu shortcut (a desktop one is optional) and registers the sign-in link straight away. Running a newer installer updates the app in place, closing it first.
+
+Uninstalling (Settings > Apps) removes the app and the sign-in link. It also deletes the app's encrypted data on this computer (the sign-in, and the on-device copies of Today, foods, recipes, weigh-ins and barcode lookups) from `%APPDATA%\com.krathus\trendline`. The account and everything in it stay until the account is deleted.
+
+The installer isn't code-signed, so Windows SmartScreen warns about an unknown publisher the first time it's run: choose **More info > Run anyway**. Signing would need a paid code-signing certificate.
+
+The icon (Windows, Android and the Play listing) is drawn by `tool/make_icons.dart`. Run `dart run tool/make_icons.dart` after changing it.

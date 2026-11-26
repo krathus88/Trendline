@@ -74,3 +74,5 @@ Include these credits in the full description:
 > Trendline gives estimates, not medical advice. Talk to your GP if you have a health condition.
 
 The same credits are shown in the app, in Settings and in food search results.
+
+**App icon:** upload `docs/store/icon_512.png` (512 × 512, full square; Play rounds the corners). It's drawn by `tool/make_icons.dart` with the launcher and Windows icons, so they always match: change the icon there and run `dart run tool/make_icons.dart`.

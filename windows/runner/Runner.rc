@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.krathus" "\0"
-            VALUE "FileDescription", "trendline" "\0"
+            VALUE "FileDescription", "Trendline" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "trendline" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.krathus. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Krathus88. All rights reserved." "\0"
             VALUE "OriginalFilename", "trendline.exe" "\0"
-            VALUE "ProductName", "trendline" "\0"
+            VALUE "ProductName", "Trendline" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
